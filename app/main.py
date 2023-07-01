@@ -1,10 +1,13 @@
+
 from fastapi import FastAPI, HTTPException
+from fastapi_pagination import add_pagination
 from starlette.middleware.cors import CORSMiddleware
 
 from app.api.api_v1 import api_router
 from app.core.config import settings
 
 app = FastAPI(openapi_url=f"{ settings.API_V1_STR }/openapi.json")
+add_pagination(app)
 
 app.add_middleware(
     CORSMiddleware,
@@ -14,3 +17,7 @@ app.add_middleware(
 )
 
 app.include_router(api_router, prefix=settings.API_V1_STR)
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("app.main:app", reload=True, log_level="info")

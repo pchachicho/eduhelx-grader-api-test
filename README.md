@@ -6,13 +6,23 @@ A microservice supporting student submissions to otter grader within EduHeLx
 
 ### Installation
 You'll need to have installed libpq (Postgres client) first before installing psycopg2 (Postgres driver).
-```python
+```bash
+# Setup virtual environment
 python3 -m venv venv
 source venv/bin/activate
+
+# Install requirements
 pip install -r requirements.txt
+
+# Setup .env
+cp .env.sample .env
+vim .env
 ```
 
 ### Running
-```python
+```bash
+set -a && source .env
+python -m app.main
+# or
 uvicorn --reload app.main:app --log-level=info
 ```

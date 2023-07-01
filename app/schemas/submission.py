@@ -1,8 +1,7 @@
 from datetime import datetime
 from pydantic import BaseModel
-from .student import Student
 
-class Submission(BaseModel):
+class SubmissionSchema(BaseModel):
     id: int
     student_id: int
     commit_id: str

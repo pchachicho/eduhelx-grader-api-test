@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Sequence, Integer, Text
 from app.database import Base
 
-class Student(Base):
+class StudentModel(Base):
     __tablename__ = "student"
 
     id = Column(Integer, Sequence("student_id_seq"), primary_key=True, autoincrement=True, index=True)

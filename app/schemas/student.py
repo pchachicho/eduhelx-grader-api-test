@@ -1,7 +1,7 @@
 from datetime import datetime
 from pydantic import BaseModel
 
-class Student(BaseModel):
+class StudentSchema(BaseModel):
     id: int
     first_name: str
     last_name: str

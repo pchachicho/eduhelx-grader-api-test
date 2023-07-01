@@ -1,2 +1,2 @@
-from .student import Student
-from .submission import Submission
+from .student import StudentModel
+from .submission import SubmissionModel
