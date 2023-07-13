@@ -3,6 +3,7 @@ from pydantic import BaseModel
 
 class StudentSchema(BaseModel):
     id: int
+    student_onyen: str
     first_name: str
     last_name: str
     professor_onyen: str
