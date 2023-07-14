@@ -4,6 +4,7 @@ from sqlalchemy import (
     func
 )
 from sqlalchemy.orm import relationship
+from sqlalchemy.ext.hybrid import hybrid_property
 from app.database import Base
 
 class AssignmentModel(Base):
@@ -17,3 +18,11 @@ class AssignmentModel(Base):
     released_date = Column(DateTime(timezone=True))
     last_modified_date = Column(DateTime(timezone=True), default=func.current_timestamp())
     due_date = Column(DateTime(timezone=True), nullable=False)
+
+    @hybrid_property
+    def is_released(self) -> bool:
+        return self.released_date is not None and func.current_timestamp() >= self.released_date
+
+    @hybrid_property
+    def is_closed(self) -> bool:
+        return func.current_timestamp() > self.due_date

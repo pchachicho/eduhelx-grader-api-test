@@ -1,4 +1,5 @@
-from datetime import datetime
+from typing import List
+from datetime import datetime, timedelta
 from pydantic import BaseModel
 
 class AssignmentSchema(BaseModel):
@@ -13,3 +14,6 @@ class AssignmentSchema(BaseModel):
 
     class Config:
         orm_mode = True
+
+class StudentAssignmentSchema(AssignmentSchema):
+    extra_time: timedelta | None

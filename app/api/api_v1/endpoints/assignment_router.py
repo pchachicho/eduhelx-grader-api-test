@@ -5,18 +5,30 @@ from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import AssignmentModel, SubmissionModel, StudentModel
-from app.schemas import AssignmentSchema, SubmissionSchema
+from app.models import AssignmentModel, SubmissionModel, StudentModel, ExtraTimeModel
+from app.schemas import StudentAssignmentSchema, SubmissionSchema
 from app.api.deps import get_db
 
 router = APIRouter()
 
-@router.get("/assignments", response_model=List[AssignmentSchema])
-def get_assignments(
+@router.get("/assignments", response_model=List[StudentAssignmentSchema])
+def get_student_assignments(
     *,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    onyen: str
 ):
     assignments = db.query(AssignmentModel).all()
+    # Go through and add extra time to any assignments, if alloted.
+    for assignment in assignments:
+        extra_time = db.query(ExtraTimeModel) \
+            .join(StudentModel) \
+            .filter(
+                (ExtraTimeModel.assignment_id == assignment.id) &
+                (StudentModel.student_onyen == onyen)
+            ) \
+            .first()
+        if extra_time is not None:
+            assignment.extra_time = extra_time.time
     return assignments
 
 @router.get("/assignment/{assignment_id}/submissions", response_model=List[SubmissionSchema])
