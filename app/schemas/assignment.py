@@ -8,12 +8,14 @@ class AssignmentSchema(BaseModel):
     git_remote_url: str
     revision_count: int
     created_date: datetime
-    released_date: datetime | None
+    released_date: datetime
     last_modified_date: datetime
-    due_date: datetime
+    base_time: timedelta
 
     class Config:
         orm_mode = True
 
 class StudentAssignmentSchema(AssignmentSchema):
-    extra_time: timedelta | None
+    extra_time: timedelta
+    is_released: bool
+    is_closed: bool

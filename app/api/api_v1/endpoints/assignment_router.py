@@ -20,15 +20,10 @@ def get_student_assignments(
     assignments = db.query(AssignmentModel).all()
     # Go through and add extra time to any assignments, if alloted.
     for assignment in assignments:
-        extra_time = db.query(ExtraTimeModel) \
-            .join(StudentModel) \
-            .filter(
-                (ExtraTimeModel.assignment_id == assignment.id) &
-                (StudentModel.student_onyen == onyen)
-            ) \
-            .first()
-        if extra_time is not None:
-            assignment.extra_time = extra_time.time
+        assignment.extra_time = assignment.get_extra_time(db, onyen)
+        assignment.is_released = assignment.get_is_released(db)
+        assignment.is_closed = assignment.get_is_closed_for_student(db, onyen)
+
     return assignments
 
 @router.get("/assignment/{assignment_id}/submissions", response_model=List[SubmissionSchema])

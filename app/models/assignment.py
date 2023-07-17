@@ -1,11 +1,14 @@
+from datetime import timedelta
 from sqlalchemy import (
     Column, Sequence, ForeignKey,
-    Integer, Text, DateTime,
+    Integer, Text, DateTime, Interval,
     func
 )
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, Session
 from sqlalchemy.ext.hybrid import hybrid_property
 from app.database import Base
+from .student import StudentModel
+from .extra_time import ExtraTimeModel
 
 class AssignmentModel(Base):
     __tablename__ = "assignment"
@@ -15,14 +18,30 @@ class AssignmentModel(Base):
     git_remote_url = Column(Text, nullable=False)
     revision_count = Column(Integer, default=0)
     created_date = Column(DateTime(timezone=True), default=func.current_timestamp())
-    released_date = Column(DateTime(timezone=True))
+    released_date = Column(DateTime(timezone=True), nullable=False)
     last_modified_date = Column(DateTime(timezone=True), default=func.current_timestamp())
-    due_date = Column(DateTime(timezone=True), nullable=False)
+    base_time = Column(Interval, nullable=False)
 
-    @hybrid_property
-    def is_released(self) -> bool:
-        return self.released_date is not None and func.current_timestamp() >= self.released_date
+    def get_assignment_time(self, db: Session, onyen: str) -> timedelta:
+        extra_time = self.get_extra_time(db, onyen)
+        return self.base_time + extra_time
 
-    @hybrid_property
-    def is_closed(self) -> bool:
-        return func.current_timestamp() > self.due_date
+    def get_extra_time(self, db: Session, onyen: str) -> timedelta:
+        extra_time = db.query(ExtraTimeModel) \
+            .join(StudentModel) \
+            .filter(
+                (ExtraTimeModel.assignment_id == self.id) &
+                (StudentModel.student_onyen == onyen)
+            ) \
+            .first()
+        # If a student does not have any extra time allotted for the assignment,
+        # allocate them a timedelta of 0.
+        return extra_time.time if extra_time is not None else timedelta()
+
+    def get_is_released(self, db: Session) -> bool:
+        current_timestamp = db.scalar(func.current_timestamp())
+        return current_timestamp >= self.released_date
+
+    def get_is_closed_for_student(self, db: Session, onyen: str) -> bool:
+        current_timestamp = db.scalar(func.current_timestamp())
+        return current_timestamp > self.released_date + self.get_assignment_time(db, onyen)
