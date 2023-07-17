@@ -5,8 +5,7 @@ from pydantic import BaseModel
 class AssignmentSchema(BaseModel):
     id: int
     name: str
-    git_remote_url: str
-    revision_count: int
+    directory_path: str
     created_date: datetime
     released_date: datetime
     last_modified_date: datetime
