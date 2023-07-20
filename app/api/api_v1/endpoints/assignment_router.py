@@ -25,7 +25,7 @@ def get_student_assignments(
         assignment.is_deferred = assignment.adjusted_available_date != assignment.available_date
         assignment.is_extended = assignment.adjusted_due_date != assignment.due_date
         assignment.is_released = assignment.get_is_released()
-        assignment.is_available = assignment.get_is_available(db)
+        assignment.is_available = assignment.get_is_available_for_student(db, onyen)
         assignment.is_closed = assignment.get_is_closed_for_student(db, onyen)
 
     return assignments
