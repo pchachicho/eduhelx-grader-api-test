@@ -20,8 +20,12 @@ def get_student_assignments(
     assignments = db.query(AssignmentModel).all()
     # Go through and add extra time to any assignments, if alloted.
     for assignment in assignments:
-        assignment.extra_time = assignment.get_extra_time(db, onyen)
-        assignment.is_released = assignment.get_is_released(db)
+        assignment.adjusted_available_date = assignment.get_adjusted_available_date(db, onyen)
+        assignment.adjusted_due_date = assignment.get_adjusted_due_date(db, onyen)
+        assignment.is_deferred = assignment.adjusted_available_date != assignment.available_date
+        assignment.is_extended = assignment.adjusted_due_date != assignment.due_date
+        assignment.is_released = assignment.get_is_released()
+        assignment.is_available = assignment.get_is_available(db)
         assignment.is_closed = assignment.get_is_closed_for_student(db, onyen)
 
     return assignments

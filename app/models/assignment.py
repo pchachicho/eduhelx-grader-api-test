@@ -1,4 +1,5 @@
 from datetime import timedelta
+from re import L
 from sqlalchemy import (
     Column, Sequence, ForeignKey,
     Integer, Text, DateTime, Interval,
@@ -17,13 +18,20 @@ class AssignmentModel(Base):
     name = Column(Text, nullable=False)
     directory_path = Column(Text, nullable=False)
     created_date = Column(DateTime(timezone=True), default=func.current_timestamp())
-    released_date = Column(DateTime(timezone=True), nullable=False)
+    available_date = Column(DateTime(timezone=True))
+    due_date = Column(DateTime(timezone=True))
     last_modified_date = Column(DateTime(timezone=True), default=func.current_timestamp())
-    base_time = Column(Interval, nullable=False)
 
-    def get_assignment_time(self, db: Session, onyen: str) -> timedelta:
+
+    # The release date for a specific student, considering extra_time
+    def get_adjusted_available_date(self, db: Session, onyen: str):
+        return self.available_date
+
+    # The due date for a specific student, considering extra_time
+    def get_adjusted_due_date(self, db: Session, onyen: str):
+        if self.due_date is None: return None
         extra_time = self.get_extra_time(db, onyen)
-        return self.base_time + extra_time
+        return self.due_date + extra_time
 
     def get_extra_time(self, db: Session, onyen: str) -> timedelta:
         extra_time = db.query(ExtraTimeModel) \
@@ -37,10 +45,17 @@ class AssignmentModel(Base):
         # allocate them a timedelta of 0.
         return extra_time.time if extra_time is not None else timedelta()
 
-    def get_is_released(self, db: Session) -> bool:
+    def get_is_released(self):
+        return self.available_date is not None and self.due_date is not None
+
+    def get_is_available(self, db: Session) -> bool:
+        if not self.get_is_released(): return False
+
         current_timestamp = db.scalar(func.current_timestamp())
-        return current_timestamp >= self.released_date
+        return current_timestamp >= self.available_date
 
     def get_is_closed_for_student(self, db: Session, onyen: str) -> bool:
+        if not self.get_is_released(): return False
+
         current_timestamp = db.scalar(func.current_timestamp())
-        return current_timestamp > self.released_date + self.get_assignment_time(db, onyen)
+        return current_timestamp > self.available_date + self.get_assignment_time(db, onyen)
