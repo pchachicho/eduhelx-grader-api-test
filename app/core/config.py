@@ -10,11 +10,11 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
     DEV_PHASE: DevPhase = DevPhase.PROD
 
-    PGHOST: str
-    PGPORT: str = "5432"
-    PGDATABASE: str
-    PGUSER: str
-    PGPASSWORD: str
+    POSTGRES_HOST: str
+    POSTGRES_PORT: str = "5432"
+    POSTGRES_DB: str
+    POSTGRES_USER: str
+    POSTGRES_PASSWORD: str
     SQLALCHEMY_DATABASE_URI: Optional[PostgresDsn] = None
 
     @validator("SQLALCHEMY_DATABASE_URI", pre=True)
@@ -22,11 +22,11 @@ class Settings(BaseSettings):
         if isinstance(v, str): return v
         return PostgresDsn.build(
             scheme="postgresql",
-            host=values.get("PGHOST"),
-            port=values.get("PGPORT"),
-            path="/" + values.get("PGDATABASE"),
-            user=values.get("PGUSER"),
-            password=values.get("PGPASSWORD")
+            host=values.get("POSTGRES_HOST"),
+            port=values.get("POSTGRES_PORT"),
+            path="/" + values.get("POSTGRES_DB"),
+            user=values.get("POSTGRES_USER"),
+            password=values.get("POSTGRES_PASSWORD")
         )
 
     class Config:
