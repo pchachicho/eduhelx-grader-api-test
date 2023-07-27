@@ -23,28 +23,38 @@ class AssignmentModel(Base):
     last_modified_date = Column(DateTime(timezone=True), default=func.current_timestamp())
 
 
-    # The release date for a specific student, considering extra_time
-    def get_adjusted_available_date(self, db: Session, onyen: str):
-        return self.available_date
-
-    # The due date for a specific student, considering extra_time
-    def get_adjusted_due_date(self, db: Session, onyen: str):
-        if self.due_date is None: return None
-        extra_time = self.get_extra_time(db, onyen)
-        return self.due_date + extra_time
-
-    def get_extra_time(self, db: Session, onyen: str) -> timedelta:
-        extra_time = db.query(ExtraTimeModel) \
+    def _get_extra_time_model(self, db: Session, onyen: str):
+        extra_time_model = db.query(ExtraTimeModel) \
             .join(StudentModel) \
             .filter(
                 (ExtraTimeModel.assignment_id == self.id) &
                 (StudentModel.student_onyen == onyen)
             ) \
             .first()
+        return extra_time_model
+
+    # The release date for a specific student, considering extra_time
+    def get_adjusted_available_date(self, db: Session, onyen: str):
+        if self.available_date is None: return None
+
+        extra_time_model = self._get_extra_time_model(db, onyen)
+        if extra_time_model is not None:
+            if extra_time_model.deferred_date is not None:
+                return extra_time_model.deferred_date
+        
+        return self.available_date
+
+    # The due date for a specific student, considering extra_time
+    def get_adjusted_due_date(self, db: Session, onyen: str):
+        if self.due_date is None: return None
+
+        extra_time_model = self._get_extra_time_model(db, onyen)
         # If a student does not have any extra time allotted for the assignment,
         # allocate them a timedelta of 0.
-        return extra_time.time if extra_time is not None else timedelta()
+        extra_time = extra_time_model.extra_time if extra_time_model is not None else timedelta(0)
 
+        return self.due_date + extra_time
+    
     def get_is_released(self):
         return self.available_date is not None and self.due_date is not None
 
