@@ -19,9 +19,13 @@ class AssignmentModel(Base):
     directory_path = Column(Text, nullable=False)
     created_date = Column(DateTime(timezone=True), default=func.current_timestamp())
     available_date = Column(DateTime(timezone=True))
-    due_date = Column(DateTime(timezone=True))
+    assignment_duration = Column(Interval)
     last_modified_date = Column(DateTime(timezone=True), default=func.current_timestamp())
 
+    @hybrid_property
+    def due_date(self):
+        if self.available_date is None or self.assignment_duration is None: return None
+        return self.available_date + self.assignment_duration
 
     def _get_extra_time_model(self, db: Session, onyen: str):
         extra_time_model = db.query(ExtraTimeModel) \
@@ -56,7 +60,7 @@ class AssignmentModel(Base):
         return self.due_date + extra_time
     
     def get_is_released(self):
-        return self.available_date is not None and self.due_date is not None
+        return self.available_date is not None and self.assignment_duration is not None
 
     def get_is_available_for_student(self, db: Session, onyen: str) -> bool:
         if not self.get_is_released(): return False

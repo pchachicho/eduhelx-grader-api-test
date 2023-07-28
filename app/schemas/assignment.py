@@ -8,7 +8,7 @@ class AssignmentSchema(BaseModel):
     directory_path: str
     created_date: datetime
     available_date: datetime | None
-    due_date: datetime | None
+    assignment_duration: timedelta | None
     last_modified_date: datetime
 
     class Config:
