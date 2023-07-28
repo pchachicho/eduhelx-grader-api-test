@@ -24,7 +24,8 @@ class AssignmentModel(Base):
 
     @hybrid_property
     def due_date(self):
-        if self.available_date is None or self.assignment_duration is None: return None
+        if self.available_date is None or self.assignment_duration is None:
+            return None
         return self.available_date + self.assignment_duration
 
     def _get_extra_time_model(self, db: Session, onyen: str):
@@ -50,14 +51,16 @@ class AssignmentModel(Base):
 
     # The due date for a specific student, considering extra_time
     def get_adjusted_due_date(self, db: Session, onyen: str):
-        if self.due_date is None: return None
+        available_date = self.get_adjusted_available_date(db, onyen)
+        if available_date is None or self.assignment_duration is None:
+            return None
 
         extra_time_model = self._get_extra_time_model(db, onyen)
         # If a student does not have any extra time allotted for the assignment,
         # allocate them a timedelta of 0.
         extra_time = extra_time_model.extra_time if extra_time_model is not None else timedelta(0)
 
-        return self.due_date + extra_time
+        return available_date + self.assignment_duration + extra_time
     
     def get_is_released(self):
         return self.available_date is not None and self.assignment_duration is not None
