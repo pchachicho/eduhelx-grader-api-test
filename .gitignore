@@ -146,3 +146,8 @@ log/*
 venv
 .idea/
 *.DS_Store
+
+# Helm for a while
+chart/Chart.lock
+chart/charts
+*.tgz

@@ -1,0 +1,9 @@
+{{- if .Values.config.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "grader-api.fullname" . }}
+data:
+  {{- toYaml .Values.config.data | nindent 2 }}
+  POSTGRES_HOST: {{ printf "%s%s" (include "grader-api.fullname" .) "-postgresql" }}
+{{- end }}
