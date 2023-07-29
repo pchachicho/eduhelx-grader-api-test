@@ -41,8 +41,8 @@ single `.env` file at `/app/.env`, which is then used by our application for its
 configuration.
 
 When running in Docker, we expect the `.env` file to be provided directly.
-The `start.py` script checks for the existence of this file and if it doesn't
-exist, it tries to load the environment variables using python-dotenv.
+The `start.py` script checks for the existence of this file and if it 
+exists, it tries to load the environment variables using python-dotenv.
 
 After the `.env` file has been created or checked, the `start.py` script starts
 the application using the Uvicorn ASGI server.
