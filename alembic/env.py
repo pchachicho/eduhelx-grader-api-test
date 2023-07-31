@@ -18,11 +18,11 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
-from models import assignment
-from models import course
-from models import extra_time
-from models import student
-from models import submission
+from app.models import assignment
+from app.models import course
+from app.models import extra_time
+from app.models import student
+from app.models import submission
 target_metadata = course.Base.metadata
 
 # other values from the config, defined by the needs of env.py,
@@ -62,6 +62,13 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
 
     """
+
+    try:
+        from app.core.config import settings
+        config.set_main_option('sqlalchemy.url',settings.SQLALCHEMY_DATABASE_URI)
+    except Exception:
+        pass
+
     connectable = engine_from_config(
         config.get_section(config.config_ini_section),
         prefix="sqlalchemy.",

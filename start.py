@@ -3,6 +3,9 @@ import glob
 import subprocess
 import sys
 from dotenv import load_dotenv
+from alembic.config import Config
+from alembic import command
+
 
 def main():
     # Mapping table for special case filename transformations
@@ -34,6 +37,10 @@ def main():
     # If .env file exists, turn it into env variables
     if os.path.exists(env_path):
         load_dotenv(env_path)
+
+    # Run Alembic migrations
+    alembic_cfg = Config("alembic.ini")
+    command.upgrade(alembic_cfg, "head")
 
     # Start the application
     subprocess.run(["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"])
