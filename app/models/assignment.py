@@ -55,7 +55,9 @@ class AssignmentModel(Base):
             deferred_time = timedelta(0)
             extra_time = timedelta(0)
 
-        return self.due_date + deferred_time + extra_time
+        student_base_extra_time = db.query(StudentModel.base_extra_time).filter_by(student_onyen=onyen).scalar()
+
+        return self.due_date + deferred_time + extra_time + student_base_extra_time
     
     def get_is_released(self):
         return self.available_date is not None and self.due_date is not None
