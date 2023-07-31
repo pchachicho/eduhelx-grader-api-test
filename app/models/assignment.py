@@ -17,10 +17,10 @@ class AssignmentModel(Base):
     id = Column(Integer, Sequence("assignment_id_seq"), primary_key=True, autoincrement=True, index=True)
     name = Column(Text, nullable=False)
     directory_path = Column(Text, nullable=False)
-    created_date = Column(DateTime(timezone=True), default=func.current_timestamp())
+    created_date = Column(DateTime(timezone=True), server_default=func.current_timestamp())
     available_date = Column(DateTime(timezone=True))
     due_date = Column(DateTime(timezone=True))
-    last_modified_date = Column(DateTime(timezone=True), default=func.current_timestamp())
+    last_modified_date = Column(DateTime(timezone=True), server_default=func.current_timestamp())
 
     def _get_extra_time_model(self, db: Session, onyen: str):
         extra_time_model = db.query(ExtraTimeModel) \

@@ -12,8 +12,8 @@ class ExtraTimeModel(Base):
 
     id = Column(Integer, Sequence("extra_time_id_seq"), primary_key=True, autoincrement=True, index=True)
     
-    deferred_time = Column(Interval, default="0")
-    extra_time = Column(Interval, default="0")
+    deferred_time = Column(Interval, server_default="0")
+    extra_time = Column(Interval, server_default="0")
 
     student_id = Column(Integer, ForeignKey("student.id"), nullable=False)
     assignment_id = Column(Integer, ForeignKey("assignment.id"), nullable=False)

@@ -9,4 +9,4 @@ class StudentModel(Base):
     first_name = Column(Text, nullable=False)
     last_name = Column(Text, nullable=False)
     professor_onyen = Column(Text, nullable=False)
-    base_extra_time = Column(Interval, default="0")
+    base_extra_time = Column(Interval, server_default="0")
