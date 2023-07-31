@@ -60,3 +60,44 @@ This prevents accidental overwriting of existing Secrets.
 The generated password is used for the PostgreSQL database that our application
 connects to. It's important to handle this password securely, as it provides
 access to the database.
+
+## Alembic Migrations with Environment Variable Based Configuration
+
+This approach uses Alembic for database migrations in a Python project. Alembic
+configurations are set based on environment variables, providing flexibility to
+work across different environments.
+
+## Configuration
+
+The database connection URL is primarily configured through environment
+variables. The `config.py` module in the project constructs the database URL
+based on these environment variables.
+
+If the necessary environment variables are not set, the configuration falls back
+to the `sqlalchemy.url` specified in the `alembic.ini` file.
+
+## Running Migrations
+
+Before running the server, Alembic is invoked to migrate the database to the
+most up-to-date revision (the "head"). The `start.py` script has been augmented
+to include this step.
+
+In the `env.py` file, the following code is used to set the database URL:
+
+### Try to import config module and get the database URL
+
+Attempt to get the configuration from the server config, but if that fails
+use the default from the alembic config
+
+    try:
+         from app.core.config import settings
+         config.set_main_option('sqlalchemy.url',settings.SQLALCHEMY_DATABASE_URI)
+     except Exception:
+         pass
+
+### Now proceed with the rest of the env.py file...
+
+if context.is_offline_mode():
+    run_migrations_offline()
+else:
+    run_migrations_online()
