@@ -19,7 +19,7 @@ def create_submission(
     assignment_id: int,
     commit_id: str
 ):
-    student = db.query(StudentModel).filter_by(id=onyen).first()
+    student = db.query(StudentModel).filter_by(student_onyen=onyen).first()
     assignment = db.query(AssignmentModel).filter_by(id=assignment_id).first()
     if student is None:
         raise HTTPException(status_code=400, detail="Student does not exist")
@@ -30,7 +30,7 @@ def create_submission(
     if assignment.get_is_closed_for_student(db, onyen):
         raise HTTPException(status_code=400, detail="Assignment is closed for submission")
     submission = SubmissionModel(
-        student_id=onyen,
+        student_id=student.id,
         assignment_id=assignment_id,
         commit_id=commit_id
     )
