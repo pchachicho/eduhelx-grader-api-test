@@ -43,7 +43,9 @@ def main(host, port, reload):
     command.upgrade(alembic_cfg, "head")
 
     # Start the application
-    subprocess.run(["uvicorn", "app.main:app", "--host", host, "--port", port, "--reload" if reload else ""])
+    uvicorn_args = ["uvicorn", "app.main:app", "--host", host, "--port", port]
+    if reload: uvicorn_args.append("--reload")
+    subprocess.run(uvicorn_args)
 
 
 if __name__ == "__main__":
