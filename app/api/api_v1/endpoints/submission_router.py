@@ -15,18 +15,22 @@ router = APIRouter()
 def create_submission(
     *,
     db: Session = Depends(get_db),
-    student_id: int,
+    onyen: int,
     assignment_id: int,
     commit_id: str
 ):
-    student = db.query(StudentModel).filter_by(id=student_id).first()
+    student = db.query(StudentModel).filter_by(student_onyen=onyen).first()
     assignment = db.query(AssignmentModel).filter_by(id=assignment_id).first()
     if student is None:
         raise HTTPException(status_code=400, detail="Student does not exist")
     if assignment is None:
         raise HTTPException(status_code=400, detail="Assignment does not exist")
+    if not assignment.get_is_released():
+        raise HTTPException(status_code=400, detail="Assignment has not been released")
+    if assignment.get_is_closed_for_student(db, onyen):
+        raise HTTPException(status_code=400, detail="Assignment is closed for submission")
     submission = SubmissionModel(
-        student_id=student_id,
+        student_id=student.id,
         assignment_id=assignment_id,
         commit_id=commit_id
     )
