@@ -1,13 +1,11 @@
 from datetime import datetime
 from pydantic import BaseModel
 
-class StudentSchema(BaseModel):
+class InstructorSchema(BaseModel):
     id: int
-    student_onyen: str
+    instructor_onyen: str
     first_name: str
     last_name: str
-    join_date: str
-    exit_date: str | None
 
     class Config:
         orm_mode = True
