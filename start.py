@@ -51,9 +51,9 @@ def main(host, port, reload):
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument("--host", default="127.0.0.1", help="The host to bind to.")
-    parser.add_argument("--port", default="8000", help="The port to bind to.")
-    parser.add_argument("--reload", action="store_true", help="Enable auto-reload.")
+    parser.add_argument("-H", "--host", default="0.0.0.0", help="The host to bind to.")
+    parser.add_argument("-p", "--port", default="8000", help="The port to bind to.")
+    parser.add_argument("-r", "--reload", action="store_true", help="Enable auto-reload.")
     args = parser.parse_args()
     
     host = args.host
