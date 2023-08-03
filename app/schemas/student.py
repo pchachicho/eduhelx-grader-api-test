@@ -6,8 +6,8 @@ class StudentSchema(BaseModel):
     student_onyen: str
     first_name: str
     last_name: str
-    join_date: str
-    exit_date: str | None
+    join_date: datetime
+    exit_date: datetime | None
 
     class Config:
         orm_mode = True
