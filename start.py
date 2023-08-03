@@ -7,7 +7,7 @@ from alembic.config import Config
 from alembic import command
 
 
-def main():
+def main(host, port, reload):
     # Mapping table for special case filename transformations
     special_cases = {
         "postgres-password": "POSTGRES_PASSWORD"
@@ -43,8 +43,20 @@ def main():
     command.upgrade(alembic_cfg, "head")
 
     # Start the application
-    subprocess.run(["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"])
+    uvicorn_args = ["uvicorn", "app.main:app", "--host", host, "--port", port]
+    if reload: uvicorn_args.append("--reload")
+    subprocess.run(uvicorn_args)
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--host", default="127.0.0.1", help="The host to bind to.")
+    parser.add_argument("--port", default="8000", help="The port to bind to.")
+    parser.add_argument("--reload", action="store_true", help="Enable auto-reload.")
+    args = parser.parse_args()
+    
+    host = args.host
+    port = args.port
+    reload = args.reload
+    main(host, port, reload)
