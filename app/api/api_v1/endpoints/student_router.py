@@ -12,7 +12,7 @@ from app.api.deps import get_db
 router = APIRouter()
 
 @router.get("/student", response_model=StudentSchema)
-def get_submission(
+def get_student(
     *,
     db: Session = Depends(get_db),
     onyen: str
