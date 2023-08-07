@@ -65,5 +65,5 @@ def get_submission(
 ):
     student = db.query(StudentModel).filter_by(student_onyen=onyen).first()
     assignment = db.query(AssignmentModel).filter_by(id=assignment_id).first()
-    submission_commit_id = db.scalar(SubmissionModel.commit_id).filter_by(student_id=student.id, assignment_id=assignment.id).order_by(desc(SubmissionModel.submission_time))
+    submission_commit_id = db.query(SubmissionModel.commit_id).filter_by(student_id=student.id, assignment_id=assignment.id).order_by(desc(SubmissionModel.submission_time)).scalar()
     return submission_commit_id
