@@ -17,7 +17,7 @@ class SubmissionBody(BaseModel):
     assignment_id: int
     commit_id: str
 
-def validate_submission(db: Session, onyen: int, assignment_id: int):
+def validate_submission(db: Session, onyen: str, assignment_id: int):
     student = db.query(StudentModel).filter_by(student_onyen=onyen).first()
     assignment = db.query(AssignmentModel).filter_by(id=assignment_id).first()
 
@@ -30,6 +30,8 @@ def validate_submission(db: Session, onyen: int, assignment_id: int):
         raise HTTPException(status_code=404, detail="Assignment does not exist")
     if not assignment.get_is_released():
         raise HTTPException(status_code=403, detail="Assignment has not been released")
+    if not assignment.get_is_available_for_student(db, onyen):
+        raise HTTPException(status_code=403, detail="Assignment has not opened yet")
     if assignment.get_is_closed_for_student(db, onyen):
         raise HTTPException(status_code=403, detail="Assignment is closed for submission")
     
@@ -58,7 +60,7 @@ def create_submission(
 def get_submission(
     *,
     db: Session = Depends(get_db),
-    onyen: int,
+    onyen: str,
     assignment_id: int
 ):
     student = db.query(StudentModel).filter_by(student_onyen=onyen).first()
