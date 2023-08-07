@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi_pagination import Page
 from fastapi_pagination.ext.sqlalchemy import paginate
-from sqlalchemy import select
+from sqlalchemy import desc
 from sqlalchemy.orm import Session
 
 from app.models import SubmissionModel, StudentModel, AssignmentModel
@@ -65,5 +65,5 @@ def get_submission(
 ):
     student = db.query(StudentModel).filter_by(student_onyen=onyen).first()
     assignment = db.query(AssignmentModel).filter_by(id=assignment_id).first()
-    submission_commit_id = assignment.get_latest_submission_commit(db, student.id)
+    submission_commit_id = db.scalar(SubmissionModel.commit_id).filter_by(student_id=student.id, assignment_id=assignment.id).order_by(desc(SubmissionModel.submission_time))
     return submission_commit_id

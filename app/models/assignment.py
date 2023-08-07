@@ -74,7 +74,3 @@ class AssignmentModel(Base):
 
         current_timestamp = db.scalar(func.current_timestamp())
         return current_timestamp > self.get_adjusted_due_date(db, onyen)
-    
-    def get_latest_submission_commit(self, db: Session, student_id: int):
-        commit_id = db.scalar(SubmissionModel.commit_id).filter_by(student_id=student_id, assignment_id=self.id).order_by(desc(SubmissionModel.submission_time))
-        return commit_id
