@@ -1,4 +1,5 @@
 from typing import List
+from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi_pagination import Page
 from fastapi_pagination.ext.sqlalchemy import paginate
@@ -11,6 +12,11 @@ from app.api.deps import get_db
 
 router = APIRouter()
 
+class SubmissionBody(BaseModel):
+    onyen: str
+    assignment_id: int
+    commit_id: str
+
 def validate_submission(db: Session, onyen: int, assignment_id: int):
     student = db.query(StudentModel).filter_by(student_onyen=onyen).first()
     assignment = db.query(AssignmentModel).filter_by(id=assignment_id).first()
@@ -19,9 +25,9 @@ def validate_submission(db: Session, onyen: int, assignment_id: int):
     if assignment is None:
         raise HTTPException(status_code=404, detail="Assignment does not exist")
     if not assignment.get_is_released():
-        raise HTTPException(status_code=423, detail="Assignment has not been released")
+        raise HTTPException(status_code=403, detail="Assignment has not been released")
     if assignment.get_is_closed_for_student(db, onyen):
-        raise HTTPException(status_code=423, detail="Assignment is closed for submission")
+        raise HTTPException(status_code=403, detail="Assignment is closed for submission")
     
     return student, assignment
 
@@ -29,15 +35,14 @@ def validate_submission(db: Session, onyen: int, assignment_id: int):
 def create_submission(
     *,
     db: Session = Depends(get_db),
-    onyen: int,
-    assignment_id: int,
-    commit_id: str
+    submission: SubmissionBody
 ):
-    student, assignment = validate_submission(db, onyen, assignment_id)
+    student, assignment = validate_submission(db, submission.onyen, submission.assignment_id)
+
     submission = SubmissionModel(
         student_id=student.id,
-        assignment_id=assignment.id,
-        commit_id=commit_id
+        assignment_id=submission.assignment_id,
+        commit_id=submission.commit_id
     )
     
     db.add(submission)
