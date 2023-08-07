@@ -59,17 +59,17 @@ class AssignmentModel(Base):
 
         return self.due_date + deferred_time + extra_time + student_base_extra_time
     
-    def get_is_released(self):
+    def get_is_created(self):
         return self.available_date is not None and self.due_date is not None
 
     def get_is_available_for_student(self, db: Session, onyen: str) -> bool:
-        if not self.get_is_released(): return False
+        if not self.get_is_created(): return False
 
         current_timestamp = db.scalar(func.current_timestamp())
         return current_timestamp >= self.get_adjusted_available_date(db, onyen)
 
     def get_is_closed_for_student(self, db: Session, onyen: str) -> bool:
-        if not self.get_is_released(): return False
+        if not self.get_is_created(): return False
 
         current_timestamp = db.scalar(func.current_timestamp())
         return current_timestamp > self.get_adjusted_due_date(db, onyen)
