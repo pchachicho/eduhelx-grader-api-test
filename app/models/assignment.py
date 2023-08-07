@@ -2,7 +2,7 @@ from datetime import timedelta
 from re import L
 from sqlalchemy import (
     Column, Sequence, ForeignKey,
-    Integer, Text, DateTime, Interval, desc,
+    Integer, Text, DateTime, Interval,
     func
 )
 from sqlalchemy.orm import relationship, Session
@@ -10,7 +10,6 @@ from sqlalchemy.ext.hybrid import hybrid_property
 from app.database import Base
 from .student import StudentModel
 from .extra_time import ExtraTimeModel
-from .submission import SubmissionModel
 
 class AssignmentModel(Base):
     __tablename__ = "assignment"
