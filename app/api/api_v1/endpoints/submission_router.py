@@ -20,6 +20,10 @@ class SubmissionBody(BaseModel):
 def validate_submission(db: Session, onyen: int, assignment_id: int):
     student = db.query(StudentModel).filter_by(student_onyen=onyen).first()
     assignment = db.query(AssignmentModel).filter_by(id=assignment_id).first()
+
+    # TODO: We should validate that the submitted commit id actually exists in gitea before persisting it in the database.
+    # We don't want another component of EduHeLx to assume the commit we return exists and crash when it doesn't.
+    # Alternatively, we could bake this logic into the endpoints to get submissions, rather than into this one.
     if student is None:
         raise HTTPException(status_code=404, detail="Student does not exist")
     if assignment is None:
