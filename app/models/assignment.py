@@ -2,7 +2,7 @@ from datetime import timedelta
 from re import L
 from sqlalchemy import (
     Column, Sequence, ForeignKey,
-    Integer, Text, DateTime, Interval,
+    Integer, Text, DateTime, Interval, desc,
     func
 )
 from sqlalchemy.orm import relationship, Session
@@ -75,9 +75,6 @@ class AssignmentModel(Base):
         current_timestamp = db.scalar(func.current_timestamp())
         return current_timestamp > self.get_adjusted_due_date(db, onyen)
     
-    def get_latest_submission_time(self, db: Session, onyen: str):
-        submission_time = db.query(func.max(SubmissionModel.submission_time)) \
-            .join(StudentModel).filter(
-                (SubmissionModel.assignment_id == self.id) & (StudentModel.student_onyen == onyen)
-            ).scalar()
-        return submission_time
+    def get_latest_submission_commit(self, db: Session, student_id: int):
+        commit_id = db.scalar(SubmissionModel.commit_id).filter_by(student_id=student_id, assignment_id=self.id).order_by(desc(SubmissionModel.submission_time))
+        return commit_id

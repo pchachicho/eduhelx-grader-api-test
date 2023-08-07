@@ -52,6 +52,7 @@ def get_submission(
     onyen: int,
     assignment_id: int
 ):
-    student, assignment = validate_submission(db, onyen, assignment_id)
-    submission = db.query(SubmissionModel).filter_by(student_id=student.id, assignment_id=assignment.id, submission_time=assignment.get_latest_submission_time(db, onyen)).first()
-    return submission
+    student = db.query(StudentModel).filter_by(student_onyen=onyen).first()
+    assignment = db.query(AssignmentModel).filter_by(id=assignment_id).first()
+    submission_commit_id = assignment.get_latest_submission_commit(db, student.id)
+    return submission_commit_id
