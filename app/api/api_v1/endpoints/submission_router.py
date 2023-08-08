@@ -56,7 +56,7 @@ def create_submission(
 
     return submission
 
-@router.get("/submission/", response_model=Page[SubmissionSchema])
+@router.get("/submission/", response_model=str)
 def get_submission(
     *,
     db: Session = Depends(get_db),
@@ -65,5 +65,7 @@ def get_submission(
 ):
     student = db.query(StudentModel).filter_by(student_onyen=onyen).first()
     assignment = db.query(AssignmentModel).filter_by(id=assignment_id).first()
-    submission_commit_id = db.query(SubmissionModel.commit_id).filter_by(student_id=student.id, assignment_id=assignment.id).order_by(desc(SubmissionModel.submission_time)).scalar()
+    submission_commit_id = db.query(SubmissionModel.commit_id).\
+        filter_by(student_id=student.id, assignment_id=assignment.id).\
+        order_by(desc(SubmissionModel.submission_time)).limit(1).scalar()
     return submission_commit_id
