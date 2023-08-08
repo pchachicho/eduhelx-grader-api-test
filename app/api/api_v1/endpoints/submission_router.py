@@ -28,7 +28,7 @@ def validate_submission(db: Session, onyen: str, assignment_id: int):
         raise HTTPException(status_code=404, detail="Student does not exist")
     if assignment is None:
         raise HTTPException(status_code=404, detail="Assignment does not exist")
-    if not assignment.get_is_released():
+    if not assignment.get_is_created():
         raise HTTPException(status_code=403, detail="Assignment has not been released")
     if not assignment.get_is_available_for_student(db, onyen):
         raise HTTPException(status_code=403, detail="Assignment has not opened yet")
