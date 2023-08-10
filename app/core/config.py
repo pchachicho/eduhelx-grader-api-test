@@ -10,6 +10,12 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
     DEV_PHASE: DevPhase = DevPhase.PROD
 
+    # Authentication
+    JWT_SECRET_KEY: str
+    JWT_ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRES_MINUTES: int = 30 # 30 minutes
+    REFRESH_TOKEN_EXPIRES_MINUTES: int = 60 * 24 * 30 # 1 month
+
     POSTGRES_HOST: str
     POSTGRES_PORT: str = "5432"
     POSTGRES_DB: str
