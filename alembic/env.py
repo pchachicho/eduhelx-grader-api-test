@@ -22,7 +22,7 @@ from app.database import Base
 from app.models import assignment
 from app.models import course
 from app.models import extra_time
-from app.models import student
+from app.models.user import base, student, instructor
 from app.models import submission
 target_metadata = Base.metadata
 
