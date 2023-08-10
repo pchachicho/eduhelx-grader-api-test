@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Sequence, Integer, Text, Interval, DateTime, func
-from app.database import Base
+from .base import UserModel
 
-class StudentModel(Base):
+class StudentModel(UserModel):
     __tablename__ = "student"
 
     base_extra_time = Column(Interval, server_default="0")

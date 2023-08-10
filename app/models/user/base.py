@@ -1,8 +1,7 @@
-import
 from sqlalchemy import Column, Sequence, Integer, Text
 from app.database import Base
 
-class User(Base):
+class UserModel(Base):
     __tablename__ = "user"
     
     id = Column(Integer, Sequence("user_id_seq"), primary_key=True, autoincrement=True, index=True)

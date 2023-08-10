@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Sequence, Integer, Text
-from app.database import Base
+from .base import UserModel
 
-class InstructorModel(Base):
+class InstructorModel(UserModel):
     __tablename__ = "instructor"
     
     __mapper_args__ = {"polymorphic_identity": "instructor"}
