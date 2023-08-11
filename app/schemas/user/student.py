@@ -1,5 +1,5 @@
 from datetime import datetime
-from .user import UserModel
+from .user import UserSchema
 
 class StudentSchema(UserSchema):
     join_date: datetime
