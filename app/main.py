@@ -13,7 +13,7 @@ def init_routers(app: FastAPI):
     app.include_router(api_router, prefix=settings.API_V1_STR)
 
 def init_listeners(app: FastAPI):
-    @app_.exception_handler(CustomException)
+    @app.exception_handler(CustomException)
     async def custom_exception_handler(request: Request, exc: CustomException):
         return JSONResponse(
             status_code=exc.code,

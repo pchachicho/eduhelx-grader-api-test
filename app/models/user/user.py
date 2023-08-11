@@ -7,9 +7,9 @@ class UserType(enum.Enum):
     INSTRUCTOR = "instructor"
 
 class UserModel(Base):
-    __tablename__ = "user"
+    __tablename__ = "user_account"
     
-    id = Column(Integer, Sequence("user_id_seq"), primary_key=True, autoincrement=True, index=True)
+    id = Column(Integer, Sequence("user_account_id_seq"), primary_key=True, autoincrement=True, index=True)
     user_type = Column(Enum(UserType), nullable=False)
 
     onyen = Column(Text, nullable=False, unique=True, index=True)
@@ -19,6 +19,6 @@ class UserModel(Base):
     password = Column(Text, nullable=False)
 
     __mapper_args__ = {
-        "polymorphic_on": user_type,
+        "polymorphic_on": "user_type",
         "polymorphic_identity": "user"
     }

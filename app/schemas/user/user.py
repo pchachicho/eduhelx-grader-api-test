@@ -1,11 +1,13 @@
-from datetime import datetime
 from pydantic import BaseModel
+from app.models.user import UserType
 
-class InstructorSchema(BaseModel):
+class UserSchema(BaseModel):
     id: int
-    instructor_onyen: str
+    user_type: UserType
+    onyen: str
     first_name: str
     last_name: str
+    email: str
 
     class Config:
         orm_mode = True
