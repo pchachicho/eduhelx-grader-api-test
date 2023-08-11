@@ -16,7 +16,7 @@ class UserService:
     async def login(self, onyen: str, password: str) -> RefreshTokenSchema:
         user = self.session.query(UserModel).filter_by(onyen=onyen, password=password).first()
         if not user:
-            raise UserNotFoundException
+            raise UserNotFoundException()
 
         response = RefreshTokenSchema(
             access_token=TokenHelper.encode(payload={"id": user.id, "onyen": user.onyen}, expire_period=settings.ACCESS_TOKEN_EXPIRES_MINUTES),
@@ -25,6 +25,12 @@ class UserService:
         return response
 
 class StudentService(UserService):
+    async def get_user_by_onyen(self, onyen: str) -> StudentModel:
+        user = self.session.query(StudentModel).filter_by(onyen=onyen).first()
+        if user is None:
+            raise UserNotFoundException()
+        return user
+
     async def create_student(
         self,
         onyen: str,
@@ -47,6 +53,12 @@ class StudentService(UserService):
         self.session.commit()
 
 class InstructorService(UserService):
+    async def get_instructor_by_onyen(self, onyen: str) -> InstructorModel:
+        user = self.session.query(InstructorModel).filter_by(onyen=onyen).first()
+        if user is None:
+            raise UserNotFoundException()
+        return user
+
     async def create_instructor(
         self,
         onyen: str,
