@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from app.models import StudentModel, AssignmentModel, SubmissionModel
 from app.core.exceptions import SubmissionNotFoundException
 from .user_service import StudentService
-from .assignment_service import AssignmentService
+from .assignment_service import StudentAssignmentService
 
 class SubmissionService:
     def __init__(self, session: Session):
@@ -20,7 +20,7 @@ class SubmissionService:
         # Alternatively, we could bake this logic into the endpoints to get submissions, rather than into this one.
 
         # Assert the assignment can be submitted to by the student.
-        await AssignmentService(self.session).validate_student_can_submit(student, assignment)
+        await StudentAssignmentService(self.session).validate_student_can_submit(student, assignment)
 
         submission = SubmissionModel(
             student_id=student.id,
