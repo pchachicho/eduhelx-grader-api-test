@@ -1,7 +1,7 @@
 from typing import List
 from datetime import datetime
 from pydantic import BaseModel
-from .instructor import InstructorSchema
+from .user import InstructorSchema
 
 class CourseSchema(BaseModel):
     id: int
