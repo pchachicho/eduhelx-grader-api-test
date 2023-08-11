@@ -7,18 +7,23 @@ from sqlalchemy.orm import Session
 
 from app.models import StudentModel
 from app.schemas import StudentSchema
+from app.services import StudentService
 from app.core.dependencies import get_db
 
 router = APIRouter()
 
+@router.get("/students", response_model=List[StudentSchema])
+async def get_students(
+    *,
+    db: Session = Depends(get_db)
+):
+    return []
+
 @router.get("/student", response_model=StudentSchema)
-def get_student(
+async def get_student(
     *,
     db: Session = Depends(get_db),
     onyen: str
 ):
-    student = db.query(StudentModel).filter_by(student_onyen=onyen).first()
-    if student is None:
-        raise HTTPException(status_code=404, detail="Student does not exist")
-    
+    student = await StudentService(db).get_user_by_onyen(onyen)
     return student
