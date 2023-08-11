@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.models import StudentModel
 from app.schemas import StudentSchema
-from app.api.deps import get_db
+from app.core.dependencies import get_db
 
 router = APIRouter()
 

@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.models import CourseModel, InstructorModel
 from app.services import CourseService
 from app.schemas import CourseWithInstructorsSchema
-from app.api.deps import get_db
+from app.core.dependencies import get_db
 
 router = APIRouter()
 

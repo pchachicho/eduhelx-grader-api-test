@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.models import SubmissionModel, StudentModel, ExtraTimeModel
 from app.schemas import StudentAssignmentSchema, SubmissionSchema
 from app.services import AssignmentService, StudentAssignmentService, StudentService, SubmissionService
-from app.api.deps import get_db
+from app.core.dependencies import get_db
 
 router = APIRouter()
 
