@@ -1,6 +1,7 @@
 from app.schemas import RefreshTokenSchema
-from core.exceptions.token import DecodeTokenException
-from core.utils.token_helper import TokenHelper
+from app.core.config import settings
+from app.core.exceptions.token import DecodeTokenException
+from app.core.utils.token_helper import TokenHelper
 
 
 class JwtService:
@@ -18,6 +19,6 @@ class JwtService:
             raise DecodeTokenException()
 
         return RefreshTokenSchema(
-            access_token=TokenHelper.encode(payload=access_token),
-            refresh_token=TokenHelper.encode(payload={"sub": "refresh"}),
+            access_token=TokenHelper.encode(payload=access_token, expire_period=settings.ACCESS_TOKEN_EXPIRES_MINUTES),
+            refresh_token=TokenHelper.encode(payload={"sub": "refresh"}, expire_period=settings.REFRESH_TOKEN_EXPIRES_MINUTES),
         )

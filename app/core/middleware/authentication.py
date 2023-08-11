@@ -1,15 +1,15 @@
-from typing import Optional, Tuple
-
 import jwt
+from typing import Optional, Tuple
+from pydantic import BaseModel, Field
 from starlette.authentication import AuthenticationBackend
 from starlette.middleware.authentication import (
     AuthenticationMiddleware as BaseAuthenticationMiddleware,
 )
 from starlette.requests import HTTPConnection
+from app.core.config import settings
 
-from core.config import config
-from ..schemas import CurrentUser
-
+class CurrentUser(BaseModel, validate_assignment=True):
+    onyen: str = Field(None, description="Onyen of the current user")
 
 class AuthBackend(AuthenticationBackend):
     async def authenticate(
@@ -33,14 +33,14 @@ class AuthBackend(AuthenticationBackend):
         try:
             payload = jwt.decode(
                 credentials,
-                config.JWT_SECRET_KEY,
-                algorithms=[config.JWT_ALGORITHM],
+                settings.JWT_SECRET_KEY,
+                algorithms=[settings.JWT_ALGORITHM],
             )
-            user_id = payload.get("user_id")
+            onyen = payload.get("onyen")
         except jwt.exceptions.PyJWTError:
             return False, current_user
 
-        current_user.id = user_id
+        current_user.onyen = onyen
         return True, current_user
 
 

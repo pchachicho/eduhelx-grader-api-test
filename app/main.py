@@ -7,6 +7,7 @@ from starlette.middleware.cors import CORSMiddleware
 
 from app.api.api_v1 import api_router
 from app.core.config import settings
+from app.core.middleware import AuthenticationMiddleware, AuthBackend
 from app.core.exceptions import CustomException
 
 def init_routers(app: FastAPI):
@@ -20,6 +21,17 @@ def init_listeners(app: FastAPI):
             content={"error_code": exc.error_code, "message": exc.message},
         )
 
+def on_auth_error(request: Request, exc: Exception):
+    status_code, error_code, message = 401, None, str(exc)
+    if isinstance(exc, CustomException):
+        status_code = int(exc.code)
+        error_code = exc.error_code
+        message = exc.message
+    return JSONResponse(
+        status_code=status_code,
+        content={"error_code": error_code, "message": message}
+    )
+
 def make_middleware() -> List[Middleware]:
     return [
         Middleware(
@@ -28,6 +40,11 @@ def make_middleware() -> List[Middleware]:
             allow_origins=["*"],
             allow_methods=["*"],
             allow_headers=["*"]
+        ),
+        Middleware(
+            AuthenticationMiddleware,
+            backend=AuthBackend(),
+            on_error=on_auth_error
         )
     ]
 
