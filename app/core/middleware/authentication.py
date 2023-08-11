@@ -9,6 +9,7 @@ from starlette.requests import HTTPConnection
 from app.core.config import settings
 
 class CurrentUser(BaseModel, validate_assignment=True):
+    id: int = Field(None, description="ID of the current user")
     onyen: str = Field(None, description="Onyen of the current user")
 
 class AuthBackend(AuthenticationBackend):
@@ -36,10 +37,12 @@ class AuthBackend(AuthenticationBackend):
                 settings.JWT_SECRET_KEY,
                 algorithms=[settings.JWT_ALGORITHM],
             )
+            id = payload.get("id")
             onyen = payload.get("onyen")
         except jwt.exceptions.PyJWTError:
             return False, current_user
 
+        current_user.id = id
         current_user.onyen = onyen
         return True, current_user
 
