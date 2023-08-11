@@ -22,27 +22,10 @@ async def get_student_assignments(
     assignments = await AssignmentService(db).get_assignments()
 
     # Go through and add student-specific info to the assignment.
+    student_assignments = []
     for assignment in assignments:
-        assignment_service = StudentAssignmentService(db, student, assignment)
-
-        assignment.adjusted_available_date = assignment_service.get_adjusted_available_date()
-        assignment.adjusted_due_date = assignment_service.get_adjusted_due_date()
-        assignment.is_available = assignment_service.get_is_available()
-        assignment.is_closed = assignment_service.get_is_closed()
-        assignment.is_deferred = assignment.adjusted_available_date != assignment.available_date
-        assignment.is_extended = assignment.adjusted_due_date != assignment.due_date
+        student_assignment = await StudentAssignmentService(db, student, assignment).get_student_assignment_schema()
+        student_assignments.append(student_assignment)
+        
 
     return assignments
-
-@router.get("/assignment/{assignment_id}/submissions", response_model=List[SubmissionSchema])
-async def get_assignment_submissions(
-    *,
-    db: Session = Depends(get_db),
-    assignment_id: int,
-    onyen: str
-):
-    return db.query(SubmissionModel) \
-        .filter_by(assignment_id=assignment_id) \
-        .join(StudentModel) \
-        .filter(StudentModel.student_onyen == onyen) \
-        .all()

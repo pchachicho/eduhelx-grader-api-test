@@ -7,7 +7,9 @@ class CourseSchema(BaseModel):
     id: int
     name: str
     master_remote_url: str
-    instructors: List[InstructorSchema]
 
     class Config:
         orm_mode = True
+
+class CourseWithInstructorsSchema(CourseSchema):
+    instructors: List[InstructorSchema]

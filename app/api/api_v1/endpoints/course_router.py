@@ -6,16 +6,17 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import CourseModel, InstructorModel
-from app.schemas import CourseSchema
+from app.services import CourseService
+from app.schemas import CourseWithInstructorsSchema
 from app.api.deps import get_db
 
 router = APIRouter()
 
-@router.get("/course", response_model=CourseSchema)
-def get_course(
+@router.get("/course", response_model=CourseWithInstructorsSchema)
+async def get_course(
     *,
     db: Session = Depends(get_db)
 ):
-    course = CourseModel.get_course(db)
-    course.instructors = db.query(InstructorModel).all()
+    course_service = CourseService(db)
+    course = await CourseService(db).get_course_with_instructors_schema()
     return course

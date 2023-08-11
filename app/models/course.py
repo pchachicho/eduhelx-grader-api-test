@@ -9,7 +9,3 @@ class CourseModel(Base):
     id = Column(Integer, Sequence("course_id_seq"), primary_key=True, autoincrement=True, index=True)
     name = Column(Text, nullable=False)
     master_remote_url = Column(Text, nullable=False)
-
-    @classmethod
-    def get_course(cls, db: Session) -> CourseModel:
-        return db.query(cls).first()

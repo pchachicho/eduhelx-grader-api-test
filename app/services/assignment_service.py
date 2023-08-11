@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 from app.models import AssignmentModel, StudentModel, ExtraTimeModel
+from app.schemas import StudentAssignmentSchema
 from app.core.config import settings
 from app.core.utils.token_helper import TokenHelper
 from app.core.exceptions import (
@@ -88,3 +89,13 @@ class StudentAssignmentService(AssignmentService):
 
         if self.get_is_closed():
             raise AssignmentClosedException()
+
+    async def get_student_assignment_schema(self) -> StudentAssignmentSchema:
+        self.assignment.adjusted_available_date = self.get_adjusted_available_date()
+        self.assignment.adjusted_due_date = self.get_adjusted_due_date()
+        self.assignment.is_available = self.get_is_available()
+        self.assignment.is_closed = self.get_is_closed()
+        self.assignment.is_deferred = self.assignment.adjusted_available_date != self.assignment.available_date
+        self.assignment.is_extended = self.assignment.adjusted_due_date != self.assignment.due_date
+
+        return StudentAssignmentSchema.from_orm(self.assignment)
