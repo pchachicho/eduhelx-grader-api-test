@@ -1,3 +1,4 @@
+from typing import List
 from datetime import datetime, timedelta
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -21,6 +22,10 @@ class AssignmentService:
             raise AssignmentNotFoundException()
         return assignment
 
+    async def get_assignments(self) -> List[AssignmentModel]:
+        return self.session.query(AssignmentModel) \
+            .all()
+
         
 
 class StudentAssignmentService(AssignmentService):
@@ -30,7 +35,7 @@ class StudentAssignmentService(AssignmentService):
         self.assignment = assignment
         self.extra_time_model = self._get_extra_time_model()
 
-    def _get_extra_time_model(self, db: Session, onyen: str) -> ExtraTimeModel | None:
+    def _get_extra_time_model(self) -> ExtraTimeModel | None:
         extra_time_model = self.session.query(ExtraTimeModel) \
             .filter(
                 (ExtraTimeModel.assignment_id == self.assignment.id) &
@@ -62,25 +67,24 @@ class StudentAssignmentService(AssignmentService):
 
         return self.assignment.due_date + deferred_time + extra_time + self.student.base_extra_time
 
-    async def get_is_available(self) -> bool:
+    def get_is_available(self) -> bool:
         if not self.assignment.is_created: return False
 
         current_timestamp = self.session.scalar(func.current_timestamp())
         return current_timestamp >= self.get_adjusted_available_date()
     
-    async def get_is_closed(self) -> bool:
+    def get_is_closed(self) -> bool:
         if not self.assignment.is_created: return False
 
         current_timestamp = self.session.scalar(func.current_timestamp())
         return current_timestamp > self.get_adjusted_due_date()
-        
 
     async def validate_student_can_submit(self):
         if not self.assignment.is_created:
             raise AssignmentNotCreatedException()
         
-        if not await self.get_is_available():
+        if not self.get_is_available():
             raise AssignmentNotOpenException()
 
-        if await self.get_is_closed():
+        if self.get_is_closed():
             raise AssignmentClosedException()
