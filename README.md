@@ -2,6 +2,7 @@
 A microservice supporting student submissions to otter grader within EduHeLx
 
 
+
 ## Usage
 
 ### Installation
@@ -75,6 +76,9 @@ based on these environment variables.
 
 If the necessary environment variables are not set, the configuration falls back
 to the `sqlalchemy.url` specified in the `alembic.ini` file.
+
+### Database Schema
+
 
 ## Running Migrations
 
