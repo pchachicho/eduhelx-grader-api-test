@@ -79,6 +79,7 @@ to the `sqlalchemy.url` specified in the `alembic.ini` file.
 
 ### Database Schema
 
+<img src="/resources/DatabaseDesign.svg" >
 
 ## Running Migrations
 
