@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import AssignmentModel, SubmissionModel, StudentModel, ExtraTimeModel
-from app.schemas import StudentAssignmentSchema, SubmissionSchema
+from app.schemas import StudentAssignmentSchema, SubmissionSchema, AssignmentSchema
 from app.api.deps import get_db
 
 router = APIRouter()
@@ -42,3 +42,19 @@ def get_assignment_submissions(
         .join(StudentModel) \
         .filter(StudentModel.student_onyen == onyen) \
         .all()
+
+@router.post("/assignment/{assignment_id}/deadline", response_model=AssignmentSchema)
+def set_assignment_deadline(
+    *,
+    db: Session = Depends(get_db),
+    assignment_id: int,
+    new_due_date: str
+):
+    assignment = db.query(AssignmentModel).filter_by(id=assignment_id).first()
+    if assignment is None:
+        raise HTTPException(status_code=404, detail="Assignment does not exist")
+    
+    assignment.due_date = new_due_date
+    db.commit()
+    
+    return assignment
