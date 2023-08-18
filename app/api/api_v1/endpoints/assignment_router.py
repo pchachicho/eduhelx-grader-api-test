@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi_pagination import Page
@@ -54,6 +55,8 @@ def set_assignment_deadline(
     if assignment is None:
         raise HTTPException(status_code=404, detail="Assignment does not exist")
     
+    # convert the input param string to a datetime object
+    new_due_date = datetime.strptime(new_due_date, '%Y-%m-%d %H:%M:%S')
     assignment.due_date = new_due_date
     db.commit()
     
