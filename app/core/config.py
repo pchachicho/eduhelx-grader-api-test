@@ -1,6 +1,6 @@
 from typing import Optional, Any, Dict, List
 from enum import Enum
-from pydantic import BaseSettings, PostgresDsn, validator
+from pydantic import BaseSettings, PostgresDsn, validator, root_validator
 
 class DevPhase(str, Enum):
     DEV = "dev"
@@ -9,6 +9,7 @@ class DevPhase(str, Enum):
 class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
     DEV_PHASE: DevPhase = DevPhase.PROD
+    DISABLE_AUTHENTICATION: bool = False
 
     # Authentication
     JWT_SECRET_KEY: str
@@ -34,6 +35,16 @@ class Settings(BaseSettings):
             user=values.get("POSTGRES_USER"),
             password=values.get("POSTGRES_PASSWORD")
         )
+
+    @root_validator
+    def validate_mutually_exclusive(cls, values: Dict[str, Any]) -> Any:
+        dev_phase = values.get("DEV_PHASE")
+        disable_authentication = values.get("DISABLE_AUTHENTICATION")
+
+        if disable_authentication and dev_phase == "PROD":
+            raise ValueError("You cannot use DISABLE_AUTHENTICATION in production mode. Either enable authentication or set DEV_PHASE to DEV.")
+
+        return values
 
     class Config:
         case_sensitive = True

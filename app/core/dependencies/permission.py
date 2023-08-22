@@ -6,6 +6,7 @@ from fastapi.openapi.models import APIKey, APIKeyIn
 from fastapi.security.base import SecurityBase
 
 from app.services import UserService
+from app.core.config import settings
 from app.core.exceptions import CustomException, UnauthorizedException
 
 
@@ -23,6 +24,9 @@ class PermissionDependency(SecurityBase):
         self.scheme_name = self.__class__.__name__
 
     async def __call__(self, request: Request):
+        if settings.DISABLE_AUTHENTICATION:
+            # If authentication is disabled, we treat the anonymous user as if they have every permission.
+            return
         for permission in self.permissions:
             cls = permission()
             if not await cls.has_permission(request=request):
