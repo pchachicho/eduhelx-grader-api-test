@@ -1,3 +1,4 @@
+from typing import List
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
 from app.models import StudentModel, AssignmentModel, SubmissionModel
@@ -32,6 +33,18 @@ class SubmissionService:
         self.session.commit()
 
         return submission
+
+    async def get_submissions(
+        self,
+        student: StudentModel,
+        assignment: AssignmentModel
+    ) -> List[SubmissionModel]:
+        submissions = self.session.query(SubmissionModel) \
+            .filter_by(student_id=student.id, assignment_id=assignment.id) \
+            .order_by(desc(SubmissionModel.submission_time)) \
+            .all()
+
+        return submissions
 
     async def get_latest_submission(
         self,

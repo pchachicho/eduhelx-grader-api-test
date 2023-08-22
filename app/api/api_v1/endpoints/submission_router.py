@@ -34,8 +34,21 @@ async def create_submission(
 
     return submission
 
-@router.get("/submission/", response_model=str)
-async def get_submission(
+@router.get("/submissions", response_model=List[SubmissionSchema])
+async def get_submissions(
+    *,
+    db: Session = Depends(get_db),
+    onyen: str,
+    assignment_id: int
+):
+    student = await StudentService(db).get_user_by_onyen(onyen)
+    assignment = await AssignmentService(db).get_assignment_by_id(assignment_id)
+    submissions = await SubmissionService(db).get_submissions(student, assignment)
+
+    return submissions
+
+@router.get("/latest_submission/", response_model=SubmissionSchema)
+async def get_latest_submission(
     *,
     db: Session = Depends(get_db),
     onyen: str,
@@ -45,4 +58,4 @@ async def get_submission(
     assignment = await AssignmentService(db).get_assignment_by_id(assignment_id)
     submission = await SubmissionService(db).get_latest_submission(student, assignment)
 
-    return submission.commit_id
+    return submission
