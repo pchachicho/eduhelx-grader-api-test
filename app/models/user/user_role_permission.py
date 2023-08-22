@@ -10,7 +10,7 @@ class UserRolePermissionModel(Base):
     role_id = Column(Integer, ForeignKey("user_role.id"))
     permission_id = Column(Integer, ForeignKey("user_permission.id"))
 
-    role = relationship("UserRole", foreign_keys="UserRolePermissionModel.role_id")
-    permission = relationship("UserPermission", foreign_keys="UserRolePermissionModel.permission_id")
+    role = relationship("UserRoleModel", back_populates="role_permissions")
+    permission = relationship("UserPermissionModel", foreign_keys="UserRolePermissionModel.permission_id")
 
     __table_args__ = (UniqueConstraint("role_id", "permission_id"),)
