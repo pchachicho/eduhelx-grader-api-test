@@ -9,7 +9,7 @@ class UserSchema(BaseModel):
     first_name: str
     last_name: str
     email: str
-    role: UserRoleSchema
+    # role: UserRoleSchema
 
     class Config:
         orm_mode = True
