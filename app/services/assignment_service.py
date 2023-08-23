@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 from app.models import AssignmentModel, StudentModel, ExtraTimeModel
-from app.schemas import StudentAssignmentSchema
+from app.schemas import AssignmentSchema, StudentAssignmentSchema
 from app.core.config import settings
 from app.core.utils.token_helper import TokenHelper
 from app.core.exceptions import (
@@ -91,11 +91,12 @@ class StudentAssignmentService(AssignmentService):
             raise AssignmentClosedException()
 
     async def get_student_assignment_schema(self) -> StudentAssignmentSchema:
-        self.assignment.adjusted_available_date = self.get_adjusted_available_date()
-        self.assignment.adjusted_due_date = self.get_adjusted_due_date()
-        self.assignment.is_available = self.get_is_available()
-        self.assignment.is_closed = self.get_is_closed()
-        self.assignment.is_deferred = self.assignment.adjusted_available_date != self.assignment.available_date
-        self.assignment.is_extended = self.assignment.adjusted_due_date != self.assignment.due_date
+        assignment = AssignmentSchema.from_orm(self.assignment).dict()
+        assignment["adjusted_available_date"] = self.get_adjusted_available_date()
+        assignment["adjusted_due_date"] = self.get_adjusted_due_date()
+        assignment["is_available"] = self.get_is_available()
+        assignment["is_closed"] = self.get_is_closed()
+        assignment["is_deferred"] = assignment["adjusted_available_date"] != assignment["available_date"]
+        assignment["is_extended"] = assignment["adjusted_due_date"] != assignment["due_date"]
 
-        return StudentAssignmentSchema.from_orm(self.assignment)
+        return StudentAssignmentSchema(**assignment)

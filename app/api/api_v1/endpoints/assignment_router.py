@@ -4,18 +4,22 @@ from fastapi_pagination import Page
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-
 from app.models import SubmissionModel, StudentModel, ExtraTimeModel
-from app.schemas import StudentAssignmentSchema, SubmissionSchema
+from app.schemas import StudentAssignmentSchema, AssignmentSchema, SubmissionSchema
 from app.services import AssignmentService, StudentAssignmentService, StudentService, SubmissionService
-from app.core.dependencies import get_db
+from app.core.dependencies import get_db, PermissionDependency, AssignmentListPermission
 
 router = APIRouter()
 
-@router.get("/assignments", response_model=List[StudentAssignmentSchema])
-async def get_student_assignments(
+@router.get(
+    "/assignments",
+    # If the user is a student, student assignments are returned.
+    response_model=List[StudentAssignmentSchema] | List[AssignmentSchema]
+)
+async def get_assignments(
     *,
     db: Session = Depends(get_db),
+    perm: None = Depends(PermissionDependency(AssignmentListPermission)),
     onyen: str
 ):
     student = await StudentService(db).get_user_by_onyen(onyen)

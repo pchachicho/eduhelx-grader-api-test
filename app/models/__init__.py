@@ -1,4 +1,4 @@
-from .user import UserModel, StudentModel, InstructorModel
+from .user import UserModel, StudentModel, InstructorModel, UserRoleModel, UserPermissionModel
 from .submission import SubmissionModel
 from .assignment import AssignmentModel
 from .extra_time import ExtraTimeModel
