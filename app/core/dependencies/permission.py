@@ -9,7 +9,7 @@ from app.services import UserService
 from app.core.config import settings
 from app.core.dependencies import get_db
 from app.models import UserPermissionModel
-from app.core.exceptions import CustomException, UnauthorizedException, ForbiddenException, UserNotFoundException
+from app.core.exceptions import UnauthorizedException, MissingPermissionException, UserNotFoundException
 
 
 class BasePermission(ABC):
@@ -17,7 +17,7 @@ class BasePermission(ABC):
     async def verify_permission(self, request: Request):
         pass
 
-class RolePermission(BasePermission):
+class BaseRolePermission(BasePermission):
     permission_name: str
 
     async def verify_permission(self, request: Request):
@@ -26,15 +26,24 @@ class RolePermission(BasePermission):
             user = await UserService(db).get_user_by_onyen(request.user.onyen)
         except UserNotFoundException:
             raise UnauthorizedException()
-        permissions = user.role.permissions if user.role is not None else []
-        if not any([permission.name == self.permission_name for permission in user.role.permissions]):
-            raise ForbiddenException()
 
+        # If no permission is specified, this will just verify the user is logged in. 
+        if self.permission_name is None:
+            return True
 
-class InstructorListPermission(RolePermission):
+        for permission in user.role.permissions:
+            if permission.name == self.permission_name:
+                return    
+        raise MissingPermissionException(self.permission_name)
+
+# For the purposes of endpoints where no explicit permissions are required beyond having a user identity (logged in). 
+class LoggedInPermission(BaseRolePermission):
+    pass
+
+class InstructorListPermission(BaseRolePermission):
     permission_name = "instructor:list"
 
-class AssignmentListPermission(RolePermission):
+class AssignmentListPermission(BaseRolePermission):
     permission_name = "assignment:list"
 
 

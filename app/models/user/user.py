@@ -16,10 +16,10 @@ class UserModel(Base):
     onyen = Column(Text, nullable=False, unique=True, index=True)
     first_name = Column(Text, nullable=False)
     last_name = Column(Text, nullable=False)
-    email = Column(Text, nullable=False)
+    email = Column(Text, nullable=False, unique=True)
     password = Column(Text, nullable=False)
     
-    role_id = Column(Integer, ForeignKey("user_role.id"))
+    role_id = Column(Integer, ForeignKey("user_role.id"), nullable=False)
     role = relationship("UserRoleModel", foreign_keys="UserModel.role_id")
 
     __mapper_args__ = {
