@@ -52,10 +52,10 @@ class LoggedInPermission(BaseRolePermission):
     pass
 
 class InstructorListPermission(BaseRolePermission):
-    permission_name = "instructor:list"
+    permission_name = "instructor:get"
 
 class AssignmentListPermission(BaseRolePermission):
-    permission_name = "assignment:list"
+    permission_name = "assignment:get"
 
 
 class PermissionDependency(SecurityBase):

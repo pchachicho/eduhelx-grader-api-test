@@ -10,6 +10,8 @@ class AssignmentSchema(BaseModel):
     available_date: datetime | None
     due_date: datetime | None
     last_modified_date: datetime
+    # Has both an available_date and due_date set
+    is_created: bool
 
     class Config:
         orm_mode = True
@@ -19,8 +21,6 @@ class StudentAssignmentSchema(AssignmentSchema):
     adjusted_due_date: datetime | None
     is_available: bool
     is_closed: bool
-    # Has both an available_date and due_date set
-    is_created: bool
     # Release date is deferred to a later date for the student
     is_deferred: bool
     # Due date is extended to a later date for the student
