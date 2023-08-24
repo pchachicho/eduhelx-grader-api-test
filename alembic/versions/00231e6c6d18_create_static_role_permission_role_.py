@@ -55,9 +55,7 @@ roles = [
 # to list their own submissions, since they own these resources. "submission:get" indicates that a user is authorized
 # to list any user's submissions.
 role_permissions = [
-   {"role_name": "student", "permission_name": "assignment:get"},
    {"role_name": "student", "permission_name": "course:get"},
-   {"role_name": "student", "permission_name": "submission:get"},
    {"role_name": "student", "permission_name": "submission:create"},
    {"role_name": "student", "permission_name": "instructor:get"},
 

@@ -8,14 +8,15 @@ from sqlalchemy.orm import Session
 from app.models import CourseModel, InstructorModel
 from app.services import CourseService
 from app.schemas import CourseWithInstructorsSchema
-from app.core.dependencies import get_db
+from app.core.dependencies import get_db, PermissionDependency, CourseListPermission, InstructorListPermission
 
 router = APIRouter()
 
 @router.get("/course", response_model=CourseWithInstructorsSchema)
 async def get_course(
     *,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    perm: None = Depends(PermissionDependency(CourseListPermission, InstructorListPermission))
 ):
     course_service = CourseService(db)
     course = await CourseService(db).get_course_with_instructors_schema()

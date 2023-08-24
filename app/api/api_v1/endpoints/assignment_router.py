@@ -3,12 +3,12 @@ from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 from app.schemas import StudentAssignmentSchema, AssignmentSchema
 from app.services import AssignmentService, StudentAssignmentService, StudentService
-from app.core.dependencies import get_db, PermissionDependency, AssignmentListPermission, UserIsStudentPermission
+from app.core.dependencies import get_db, PermissionDependency, UserIsStudentPermission
 
 router = APIRouter()
 
 @router.get(
-    "/assignments",
+    "/assignments/self",
     # If the user is a student, student assignments are returned.
     response_model=List[StudentAssignmentSchema] | List[AssignmentSchema]
 )
@@ -16,7 +16,7 @@ async def get_assignments(
     *,
     request: Request,
     db: Session = Depends(get_db),
-    perm: None = Depends(PermissionDependency(UserIsStudentPermission, AssignmentListPermission))
+    perm: None = Depends(PermissionDependency(UserIsStudentPermission))
 ):
     onyen = request.user.onyen
 

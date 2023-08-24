@@ -10,7 +10,9 @@ from app.core.exceptions import (
     PasswordDoesNotMatchException,
     DuplicateEmailOrOnyen,
     UserNotFoundException,
-    PasswordDoesNotMatchException
+    PasswordDoesNotMatchException,
+    NotAStudentException,
+    NotAnInstructorException
 )
 
 class UserService:
@@ -67,6 +69,12 @@ class StudentService(UserService):
         self.session.add(student)
         self.session.commit()
 
+    async def get_user_by_onyen(self, onyen: str) -> StudentModel:
+        user = await super().get_user_by_onyen(onyen)
+        if not isinstance(user, StudentModel):
+            raise NotAStudentException()
+        return user
+
 class InstructorService(UserService):
     async def list_instructors(self) -> List[InstructorModel]:
         return self.session.query(InstructorModel).all()
@@ -92,3 +100,9 @@ class InstructorService(UserService):
         )
         self.session.add(instructor)
         self.session.commit()
+
+    async def get_user_by_onyen(self, onyen: str) -> InstructorModel:
+        user = await super().get_user_by_onyen(onyen)
+        if not isinstance(user, InstructorModel):
+            raise NotAnInstructorException()
+        return user

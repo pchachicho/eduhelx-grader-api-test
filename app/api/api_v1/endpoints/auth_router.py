@@ -1,10 +1,10 @@
 from typing import List
 from pydantic import BaseModel
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Request, Depends
 from sqlalchemy.orm import Session
 from app.schemas import RefreshTokenSchema, UserRoleSchema
 from app.services import UserService, JwtService
-from app.core.dependencies import get_db
+from app.core.dependencies import get_db, PermissionDependency, RequireLoginPermission
 
 router = APIRouter()
 
@@ -31,12 +31,14 @@ async def refresh(
     token = await JwtService().refresh_access_token(refresh_token)
     return token
 
-@router.get("/role", response_model=UserRoleSchema)
+@router.get("/role/self", response_model=UserRoleSchema)
 async def get_role(
     *,
+    request: Request,
     db: Session = Depends(get_db),
-    onyen: str
+    perm: None = Depends(PermissionDependency(RequireLoginPermission)),
 ):
+    onyen = request.user.onyen
     user = await UserService(db).get_user_by_onyen(onyen)
     return user.role
     
