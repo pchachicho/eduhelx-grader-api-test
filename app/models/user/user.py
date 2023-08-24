@@ -19,8 +19,8 @@ class UserModel(Base):
     email = Column(Text, nullable=False, unique=True)
     password = Column(Text, nullable=False)
     
-    role_id = Column(Integer, ForeignKey("user_role.id"), nullable=False)
-    role = relationship("UserRoleModel", foreign_keys="UserModel.role_id")
+    role_name = Column(Text, ForeignKey("user_role.name"), nullable=False)
+    role = relationship("UserRoleModel", foreign_keys="UserModel.role_name")
 
     __mapper_args__ = {
         "polymorphic_on": "user_type",

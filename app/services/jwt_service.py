@@ -7,17 +7,15 @@ class JwtService:
     async def verify_token(self, token: str) -> None:
         TokenHelper.decode(token=token)
 
-    async def create_refresh_token(
+    async def refresh_access_token(
         self,
-        access_token: str,
-        refresh_token: str,
-    ) -> RefreshTokenSchema:
-        access_token = TokenHelper.decode(token=access_token)
+        refresh_token: str
+    ) -> str:
         refresh_token = TokenHelper.decode(token=refresh_token)
         if refresh_token.get("sub") != "refresh":
             raise DecodeTokenException()
 
-        return RefreshTokenSchema(
-            access_token=TokenHelper.encode(payload=access_token, expire_period=settings.ACCESS_TOKEN_EXPIRES_MINUTES),
-            refresh_token=TokenHelper.encode(payload={"sub": "refresh"}, expire_period=settings.REFRESH_TOKEN_EXPIRES_MINUTES),
-        )
+        return TokenHelper.encode(payload={
+            "id": refresh_token.get("id"),
+            "onyen": refresh_token.get("onyen")
+        }, expire_period=settings.ACCESS_TOKEN_EXPIRES_MINUTES)

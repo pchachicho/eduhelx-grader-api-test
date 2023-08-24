@@ -22,13 +22,13 @@ async def login(
     token = await UserService(db).login(login_body.onyen, login_body.password)
     return token
 
-@router.post("/refresh", response_model=RefreshTokenSchema)
+@router.post("/refresh", response_model=str)
 async def refresh(
     *,
     db: Session = Depends(get_db),
-    refresh_body: RefreshTokenSchema
+    refresh_token: str
 ):
-    token = await JwtService().create_refresh_token(refresh_body.access_token, refresh_body.refresh_token)
+    token = await JwtService().refresh_access_token(refresh_token)
     return token
 
 @router.get("/role", response_model=UserRoleSchema)

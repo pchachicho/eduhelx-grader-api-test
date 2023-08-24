@@ -40,7 +40,7 @@ class UserService:
 
         response = RefreshTokenSchema(
             access_token=TokenHelper.encode(payload=current_user.dict(), expire_period=settings.ACCESS_TOKEN_EXPIRES_MINUTES),
-            refresh_token=TokenHelper.encode(payload={"sub": "refresh"}, expire_period=settings.REFRESH_TOKEN_EXPIRES_MINUTES)
+            refresh_token=TokenHelper.encode(payload={"sub": "refresh", **current_user.dict()}, expire_period=settings.REFRESH_TOKEN_EXPIRES_MINUTES)
         )
         return response
 
@@ -61,6 +61,7 @@ class StudentService(UserService):
             first_name=first_name,
             last_name=last_name,
             email=email,
+            role_name="student",
             password=PasswordHelper.hash_password(password)
         )
         self.session.add(student)
@@ -86,7 +87,8 @@ class InstructorService(UserService):
             first_name=first_name,
             last_name=last_name,
             email=email,
-            password=PasswordHelper.hash_password(password)
+            password=PasswordHelper.hash_password(password),
+            role_name="instructor"
         )
         self.session.add(instructor)
         self.session.commit()

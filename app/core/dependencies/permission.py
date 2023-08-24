@@ -18,7 +18,15 @@ class BasePermission(ABC):
         pass
 
 class BaseRolePermission(BasePermission):
+    admin_role_name = "admin"
     permission_name: str
+
+    # If no permission is specified, the permission should serve as a stand-in for login verification.
+    async def only_verify_login(self) -> bool:
+        return self.permission_name is None
+
+    async def is_admin(self, user) -> bool:
+        return user.role.name == self.admin_role_name
 
     async def verify_permission(self, request: Request):
         db = next(get_db())
@@ -27,13 +35,16 @@ class BaseRolePermission(BasePermission):
         except UserNotFoundException:
             raise UnauthorizedException()
 
-        # If no permission is specified, this will just verify the user is logged in. 
-        if self.permission_name is None:
-            return True
+        if await self.only_verify_login():
+            return
+
+        if await self.is_admin(user):
+            return
 
         for permission in user.role.permissions:
             if permission.name == self.permission_name:
-                return    
+                return
+                
         raise MissingPermissionException(self.permission_name)
 
 # For the purposes of endpoints where no explicit permissions are required beyond having a user identity (logged in). 
