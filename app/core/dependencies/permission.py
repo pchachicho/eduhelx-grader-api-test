@@ -8,48 +8,54 @@ from fastapi.security.base import SecurityBase
 from app.services import UserService
 from app.core.config import settings
 from app.core.dependencies import get_db
-from app.models import UserPermissionModel
-from app.core.exceptions import UnauthorizedException, MissingPermissionException, UserNotFoundException
+from app.models import StudentModel, InstructorModel
+from app.core.exceptions import (
+    UnauthorizedException, MissingPermissionException, UserNotFoundException,
+    NotAStudentException, NotAnInstructorException
+)
 
+ADMIN_ROLE_NAME = "admin"
 
 class BasePermission(ABC):
+    def __init__(self, db, user):
+        self.db = db
+        self.user = user
+
     @abstractmethod
     async def verify_permission(self, request: Request):
         pass
 
-class BaseRolePermission(BasePermission):
-    admin_role_name = "admin"
-    permission_name: str
-
-    # If no permission is specified, the permission should serve as a stand-in for login verification.
-    async def only_verify_login(self) -> bool:
-        return self.permission_name is None
-
-    async def is_admin(self, user) -> bool:
-        return user.role.name == self.admin_role_name
-
+class RequireLoginPermission(BasePermission):
     async def verify_permission(self, request: Request):
-        db = next(get_db())
-        try:
-            user = await UserService(db).get_user_by_onyen(request.user.onyen)
-        except UserNotFoundException:
+        if self.user is None:
             raise UnauthorizedException()
 
-        if await self.only_verify_login():
+class UserIsStudentPermission(BasePermission):
+    async def verify_permission(self, request: Request):
+        if not isinstance(self.user, StudentModel):
+            raise NotAStudentException()
+
+class UserIsInstructorPermission(BasePermission):
+    async def verify_permission(self, request: Request):
+        if not isinstance(self.user, InstructorModel):
+            raise NotAnInstructorException()
+        
+
+class BaseRolePermission(RequireLoginPermission):
+    permission_name: str
+
+    async def verify_permission(self, request: Request):
+        await super().verify_permission(request)
+
+        # Always allow for admin role
+        if self.user.role.name == ADMIN_ROLE_NAME:
             return
 
-        if await self.is_admin(user):
-            return
-
-        for permission in user.role.permissions:
+        for permission in self.user.role.permissions:
             if permission.name == self.permission_name:
                 return
                 
         raise MissingPermissionException(self.permission_name)
-
-# For the purposes of endpoints where no explicit permissions are required beyond having a user identity (logged in). 
-class LoggedInPermission(BaseRolePermission):
-    pass
 
 class InstructorListPermission(BaseRolePermission):
     permission_name = "instructor:get"
@@ -68,6 +74,13 @@ class PermissionDependency(SecurityBase):
         if settings.DISABLE_AUTHENTICATION:
             # If authentication is disabled, we treat the anonymous user as if they have every permission.
             return
+
+        db = next(get_db())
+        try:
+            user = await UserService(db).get_user_by_onyen(request.user.onyen)
+        except UserNotFoundException:
+            user = None
+        
         for permission in self.permissions:
-            cls = permission()
+            cls = permission(db, user)
             await cls.verify_permission(request=request)

@@ -1,13 +1,9 @@
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException
-from fastapi_pagination import Page
-from fastapi_pagination.ext.sqlalchemy import paginate
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
-from app.models import SubmissionModel, StudentModel, ExtraTimeModel
-from app.schemas import StudentAssignmentSchema, AssignmentSchema, SubmissionSchema
-from app.services import AssignmentService, StudentAssignmentService, StudentService, SubmissionService
-from app.core.dependencies import get_db, PermissionDependency, AssignmentListPermission
+from app.schemas import StudentAssignmentSchema, AssignmentSchema
+from app.services import AssignmentService, StudentAssignmentService, StudentService
+from app.core.dependencies import get_db, PermissionDependency, AssignmentListPermission, UserIsStudentPermission
 
 router = APIRouter()
 
@@ -18,10 +14,12 @@ router = APIRouter()
 )
 async def get_assignments(
     *,
+    request: Request,
     db: Session = Depends(get_db),
-    perm: None = Depends(PermissionDependency(AssignmentListPermission)),
-    onyen: str
+    perm: None = Depends(PermissionDependency(UserIsStudentPermission, AssignmentListPermission))
 ):
+    onyen = request.user.onyen
+
     student = await StudentService(db).get_user_by_onyen(onyen)
     assignments = await AssignmentService(db).get_assignments()
 
