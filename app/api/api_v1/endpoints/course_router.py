@@ -18,6 +18,4 @@ async def get_course(
     db: Session = Depends(get_db),
     perm: None = Depends(PermissionDependency(CourseListPermission, InstructorListPermission))
 ):
-    course_service = CourseService(db)
-    course = await CourseService(db).get_course_with_instructors_schema()
-    return course
+    return await CourseService(db).get_course_with_instructors_schema()
