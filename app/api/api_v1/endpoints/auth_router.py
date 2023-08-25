@@ -11,6 +11,9 @@ router = APIRouter()
 class LoginBody(BaseModel):
     onyen: str
     password: str
+
+class RefreshBody(BaseModel):
+    refresh_token: str
     
 
 @router.post("/login", response_model=RefreshTokenSchema)
@@ -26,9 +29,9 @@ async def login(
 async def refresh(
     *,
     db: Session = Depends(get_db),
-    refresh_token: str
+    refresh_body: RefreshBody
 ):
-    token = await JwtService().refresh_access_token(refresh_token)
+    token = await JwtService().refresh_access_token(refresh_body.refresh_token)
     return token
 
 @router.get("/role/self", response_model=UserRoleSchema)
