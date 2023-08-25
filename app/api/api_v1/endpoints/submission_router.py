@@ -36,7 +36,7 @@ async def get_submissions(
     *,
     request: Request,
     db: Session = Depends(get_db),
-    perm: None = Depends(PermissionDependency(UserIsStudentPermission, SubmissionListPermission)),
+    perm: None = Depends(PermissionDependency(UserIsStudentPermission)),
     assignment_id: int
 ):
     onyen = request.user.onyen
