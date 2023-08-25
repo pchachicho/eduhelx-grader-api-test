@@ -9,8 +9,7 @@ router = APIRouter()
 
 @router.get(
     "/assignments/self",
-    # If the user is a student, student assignments are returned.
-    response_model=List[StudentAssignmentSchema] | List[AssignmentSchema]
+    response_model=List[StudentAssignmentSchema]
 )
 async def get_assignments(
     *,
@@ -30,4 +29,4 @@ async def get_assignments(
         student_assignments.append(student_assignment)
         
 
-    return assignments
+    return student_assignments
