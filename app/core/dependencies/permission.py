@@ -7,7 +7,7 @@ from fastapi.security.base import SecurityBase
 
 from app.services import UserService
 from app.core.config import settings
-from app.core.dependencies import get_db
+from app.database import SessionLocal
 from app.models import StudentModel, InstructorModel
 from app.core.exceptions import (
     UnauthorizedException, MissingPermissionException, UserNotFoundException,
@@ -120,7 +120,7 @@ class PermissionDependency(SecurityBase):
             # If authentication is disabled, we treat the anonymous user as if they have every permission.
             return
 
-        db = next(get_db())
+        db = SessionLocal()
         try:
             user = await UserService(db).get_user_by_onyen(request.user.onyen)
         except UserNotFoundException:
@@ -129,3 +129,4 @@ class PermissionDependency(SecurityBase):
         for permission in self.permissions:
             cls = permission(db, user)
             await cls.verify_permission(request=request)
+        db.close()
