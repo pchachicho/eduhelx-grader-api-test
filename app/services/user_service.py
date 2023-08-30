@@ -55,7 +55,7 @@ class StudentService(UserService):
         email: str,
         password: str,
         confirm_password: str
-    ):
+    ) -> StudentModel:
         if password != confirm_password:
             raise PasswordDoesNotMatchException()
         student = StudentModel(
@@ -68,6 +68,8 @@ class StudentService(UserService):
         )
         self.session.add(student)
         self.session.commit()
+
+        return student
 
     async def get_user_by_onyen(self, onyen: str) -> StudentModel:
         user = await super().get_user_by_onyen(onyen)
@@ -87,7 +89,7 @@ class InstructorService(UserService):
         email: str,
         password: str,
         confirm_password: str
-    ):
+    ) -> InstructorModel:
         if password != confirm_password:
             raise PasswordDoesNotMatchException()
         instructor = InstructorModel(
@@ -100,6 +102,8 @@ class InstructorService(UserService):
         )
         self.session.add(instructor)
         self.session.commit()
+
+        return instructor
 
     async def get_user_by_onyen(self, onyen: str) -> InstructorModel:
         user = await super().get_user_by_onyen(onyen)
