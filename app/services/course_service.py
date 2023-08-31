@@ -1,8 +1,10 @@
 from typing import List
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 from app.models import CourseModel, InstructorModel
 from app.schemas import CourseWithInstructorsSchema
 from app.core.config import settings
+from app.core.exceptions import MultipleCoursesExistException, NoCourseExistsException
 from .user_service import InstructorService
 
 class CourseService:
@@ -10,7 +12,12 @@ class CourseService:
         self.session = session
     
     async def get_course(self) -> CourseModel:
-        return self.session.query(CourseModel).first()
+        try:
+            return self.session.query(CourseModel).one()
+        except MultipleResultsFound as e:
+            raise MultipleCoursesExistException()
+        except NoResultFound as e:
+            raise NoCourseExistsException()
     
     async def get_course_with_instructors_schema(self) -> CourseWithInstructorsSchema:
         course = await self.get_course()

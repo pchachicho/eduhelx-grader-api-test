@@ -44,4 +44,3 @@ async def get_role(
     onyen = request.user.onyen
     user = await UserService(db).get_user_by_onyen(onyen)
     return user.role
-    
