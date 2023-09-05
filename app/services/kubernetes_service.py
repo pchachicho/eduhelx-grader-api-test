@@ -22,7 +22,8 @@ class KubernetesService:
     def create_credential_secret(self, course_name: str, onyen: str, password: str, user_type: UserType):
         current_namespace = self.get_current_namespace()
 
-        secret_name = f"{course_name}-{onyen}-credential-secret"
+        # Secret names are subject to RFC 1123 meaning they cannot contain uppercase characters or spaces.
+        secret_name = f"{course_name.lower().replace(' ', '-')}-{onyen.lower()}-credential-secret"
         secret_data = {
             "onyen": onyen,
             "password": password,

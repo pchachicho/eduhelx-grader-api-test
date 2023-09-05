@@ -32,17 +32,7 @@ async def create_instructor_without_password(
     perm: None = Depends(PermissionDependency(InstructorCreatePermission)),
     instructor_body: CreateInstructorWithoutPasswordBody
 ):
-    password = PasswordHelper.generate_password(64)
     instructor = await InstructorService(db).create_instructor(
-        **instructor_body.dict(),
-        password=password,
-        confirm_password=password
-    )
-    course = await CourseService(db).get_course()
-    KubernetesService().create_credential_secret(
-        course_name=course.name,
-        onyen=instructor_body.onyen,
-        password=password,
-        user_type=UserType.INSTRUCTOR
+        **instructor_body.dict()
     )
     return instructor

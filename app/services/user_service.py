@@ -1,7 +1,9 @@
 from typing import List
 from sqlalchemy.orm import Session
 from app.models import UserModel, StudentModel, InstructorModel, UserRoleModel
+from app.models.user import UserType
 from app.schemas import RefreshTokenSchema
+from app.services import KubernetesService
 from app.core.config import settings
 from app.core.utils.token_helper import TokenHelper
 from app.core.utils.auth_helper import PasswordHelper
@@ -12,7 +14,8 @@ from app.core.exceptions import (
     UserNotFoundException,
     PasswordDoesNotMatchException,
     NotAStudentException,
-    NotAnInstructorException
+    NotAnInstructorException,
+    UserAlreadyExistsException
 )
 
 class UserService:
@@ -27,6 +30,12 @@ class UserService:
 
     async def get_user_by_onyen(self, onyen: str) -> UserModel:
         user = self.session.query(UserModel).filter_by(onyen=onyen).first()
+        if user is None:
+            raise UserNotFoundException()
+        return user
+
+    async def get_user_by_email(self, email: str) -> UserModel:
+        user = self.session.query(UserModel).filter_by(email=email).first()
         if user is None:
             raise UserNotFoundException()
         return user
@@ -52,22 +61,41 @@ class StudentService(UserService):
         onyen: str,
         first_name: str,
         last_name: str,
-        email: str,
-        password: str,
-        confirm_password: str
+        email: str
     ) -> StudentModel:
-        if password != confirm_password:
-            raise PasswordDoesNotMatchException()
+        from app.services import CourseService
+
+        try:
+            await super().get_user_by_onyen(onyen)
+            raise UserAlreadyExistsException()
+        except UserNotFoundException:
+            pass
+        
+        try:
+            await super().get_user_by_email(onyen)
+            raise UserAlreadyExistsException()
+        except UserNotFoundException:
+            pass
+
+        password = PasswordHelper.generate_password(64)
         student = StudentModel(
             onyen=onyen,
             first_name=first_name,
             last_name=last_name,
             email=email,
             role_name="student",
-            password=PasswordHelper.hash_password(password)
+            password=PasswordHelper.hash_password(password),
         )
         self.session.add(student)
         self.session.commit()
+
+        course = await CourseService(self.session).get_course()
+        KubernetesService().create_credential_secret(
+            course_name=course.name,
+            onyen=onyen,
+            password=password,
+            user_type=UserType.STUDENT
+        )
 
         return student
 
@@ -86,12 +114,23 @@ class InstructorService(UserService):
         onyen: str,
         first_name: str,
         last_name: str,
-        email: str,
-        password: str,
-        confirm_password: str
+        email: str
     ) -> InstructorModel:
-        if password != confirm_password:
-            raise PasswordDoesNotMatchException()
+        from app.services import CourseService
+
+        try:
+            await super().get_user_by_onyen(onyen)
+            raise UserAlreadyExistsException()
+        except UserNotFoundException:
+            pass
+        
+        try:
+            await super().get_user_by_email(onyen)
+            raise UserAlreadyExistsException()
+        except UserNotFoundException:
+            pass
+
+        password = PasswordHelper.generate_password(64)
         instructor = InstructorModel(
             onyen=onyen,
             first_name=first_name,
@@ -102,6 +141,14 @@ class InstructorService(UserService):
         )
         self.session.add(instructor)
         self.session.commit()
+
+        course = await CourseService(self.session).get_course()
+        KubernetesService().create_credential_secret(
+            course_name=course.name,
+            onyen=onyen,
+            password=password,
+            user_type=UserType.INSTRUCTOR
+        )
 
         return instructor
 

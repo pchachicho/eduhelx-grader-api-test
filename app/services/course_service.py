@@ -5,7 +5,6 @@ from app.models import CourseModel, InstructorModel
 from app.schemas import CourseWithInstructorsSchema
 from app.core.config import settings
 from app.core.exceptions import MultipleCoursesExistException, NoCourseExistsException
-from .user_service import InstructorService
 
 class CourseService:
     def __init__(self, session: Session):
@@ -20,6 +19,8 @@ class CourseService:
             raise NoCourseExistsException()
     
     async def get_course_with_instructors_schema(self) -> CourseWithInstructorsSchema:
+        from .user_service import InstructorService
+        
         course = await self.get_course()
         course.instructors = await InstructorService(self.session).list_instructors()
         return CourseWithInstructorsSchema.from_orm(course)
