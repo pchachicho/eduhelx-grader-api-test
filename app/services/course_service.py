@@ -24,3 +24,14 @@ class CourseService:
         course = await self.get_course()
         course.instructors = await InstructorService(self.session).list_instructors()
         return CourseWithInstructorsSchema.from_orm(course)
+
+    async def create_course(self, name: str) -> CourseModel:
+        course = CourseModel(
+            name=name,
+            master_remote_url=""
+        )
+        
+        self.session.add(course)
+        self.session.commit()
+
+        return course

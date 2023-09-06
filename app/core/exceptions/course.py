@@ -9,3 +9,8 @@ class NoCourseExistsException(CustomException):
     code = 500
     error_code = "COURSE__NO_COURSE_EXISTS"
     message = "database misconfigured, no course exists in course table"
+
+class CourseAlreadyExistsException(CustomException):
+    code = 403
+    error_code = "COURSE__ALREADY_EXISTS"
+    message = "course already exists, try modifying the existing course instead"
