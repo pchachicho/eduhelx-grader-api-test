@@ -1,3 +1,4 @@
+from pydantic import BaseModel
 from datetime import datetime
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException
@@ -10,7 +11,14 @@ from app.models import AssignmentModel, SubmissionModel, StudentModel, ExtraTime
 from app.schemas import StudentAssignmentSchema, SubmissionSchema, AssignmentSchema
 from app.api.deps import get_db
 
+
 router = APIRouter()
+
+class UpdatedAssignmentBody(BaseModel):
+    new_name: str | None
+    directory_path: str | None
+    available_date: datetime | None
+    due_date: datetime | None
 
 @router.get("/assignments", response_model=List[StudentAssignmentSchema])
 def get_student_assignments(
@@ -44,20 +52,28 @@ def get_assignment_submissions(
         .filter(StudentModel.student_onyen == onyen) \
         .all()
 
-@router.post("/assignment/{assignment_id}/deadline", response_model=AssignmentSchema)
-def set_assignment_deadline(
+@router.patch("/assignment/{assignment_name}", response_model=AssignmentSchema)
+def update_assignment_fields(
     *,
     db: Session = Depends(get_db),
-    assignment_id: int,
-    new_due_date: str
+    assignment_name: str,
+    assignment_body: UpdatedAssignmentBody
 ):
-    assignment = db.query(AssignmentModel).filter_by(id=assignment_id).first()
+    # Assumption that the Name is unique
+    assignment = db.query(AssignmentModel).filter_by(name=assignment_name).first()
     if assignment is None:
         raise HTTPException(status_code=404, detail="Assignment does not exist")
-    
-    # convert the input param string to a datetime object
-    new_due_date = datetime.strptime(new_due_date, '%Y-%m-%d %H:%M:%S')
-    assignment.due_date = new_due_date
+
+    if assignment_body.new_name is not None:
+        assignment.name = assignment_body.new_name
+    if assignment_body.directory_path is not None:
+        assignment.directory_path = assignment_body.directory_path
+    if assignment_body.available_date is not None:
+        assignment.available_date = assignment_body.available_date
+    if assignment_body.due_date is not None:
+        assignment.due_date = assignment_body.due_date
+
+    assignment.last_modified_date = datetime.now()
     db.commit()
-    
+
     return assignment
