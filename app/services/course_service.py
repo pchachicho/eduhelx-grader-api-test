@@ -25,7 +25,7 @@ class CourseService:
         course.instructors = await InstructorService(self.session).list_instructors()
         return CourseWithInstructorsSchema.from_orm(course)
 
-    async def create_course(self, name: str) -> CourseModel:
+    async def create_course(self, name: str, master_remote_url: str) -> CourseModel:
         try:
             self.get_course()
             raise CourseAlreadyExistsException()
@@ -34,7 +34,7 @@ class CourseService:
 
         course = CourseModel(
             name=name,
-            master_remote_url=""
+            master_remote_url=master_remote_url
         )
         
         self.session.add(course)
