@@ -2,12 +2,12 @@ from .base import CustomException
 
 class AssignmentNotOpenException(CustomException):
     code = 403
-    error_code = "ASSIGNMENT_NOT_OPEN"
+    error_code = "ASSIGNMENT__NOT_OPEN"
     message = "assignment not open to student yet"
 
 class AssignmentClosedException(CustomException):
     code = 403
-    error_code = "ASSIGNMENT_CLOSED"
+    error_code = "ASSIGNMENT__CLOSED"
     message = "assignment closed for student"
 
 class AssignmentNotCreatedException(CustomException):
