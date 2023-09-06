@@ -4,7 +4,7 @@ from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 from app.models import CourseModel, InstructorModel
 from app.schemas import CourseWithInstructorsSchema
 from app.core.config import settings
-from app.core.exceptions import MultipleCoursesExistException, NoCourseExistsException
+from app.core.exceptions import MultipleCoursesExistException, NoCourseExistsException, CourseAlreadyExistsException
 
 class CourseService:
     def __init__(self, session: Session):
@@ -26,6 +26,12 @@ class CourseService:
         return CourseWithInstructorsSchema.from_orm(course)
 
     async def create_course(self, name: str) -> CourseModel:
+        try:
+            self.get_course()
+            raise CourseAlreadyExistsException()
+        except NoResultFound:
+            pass
+
         course = CourseModel(
             name=name,
             master_remote_url=""
