@@ -10,7 +10,7 @@ router = APIRouter()
 
 class LoginBody(BaseModel):
     onyen: str
-    password: str
+    autogen_password: str
 
 class RefreshBody(BaseModel):
     refresh_token: str
@@ -22,7 +22,7 @@ async def login(
     db: Session = Depends(get_db),
     login_body: LoginBody
 ):
-    token = await UserService(db).login(login_body.onyen, login_body.password)
+    token = await UserService(db).login(login_body.onyen, login_body.autogen_password)
     return token
 
 @router.post("/refresh", response_model=str)

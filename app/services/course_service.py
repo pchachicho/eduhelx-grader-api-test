@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from app.models import CourseModel, InstructorModel
 from app.schemas import CourseWithInstructorsSchema
 from app.core.config import settings
-from .user_service import InstructorService
+from app.services import InstructorService
 
 class CourseService:
     def __init__(self, session: Session):

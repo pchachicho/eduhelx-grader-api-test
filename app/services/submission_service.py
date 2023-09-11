@@ -3,8 +3,7 @@ from sqlalchemy import desc
 from sqlalchemy.orm import Session
 from app.models import StudentModel, AssignmentModel, SubmissionModel
 from app.core.exceptions import SubmissionNotFoundException
-from .user_service import StudentService
-from .assignment_service import StudentAssignmentService
+from app.services import StudentService, StudentAssignmentService
 
 class SubmissionService:
     def __init__(self, session: Session):

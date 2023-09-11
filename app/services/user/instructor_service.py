@@ -13,22 +13,19 @@ class InstructorService(UserService):
         onyen: str,
         first_name: str,
         last_name: str,
-        email: str,
-        password: str,
-        confirm_password: str
+        email: str
     ):
-        if password != confirm_password:
-            raise PasswordDoesNotMatchException()
         instructor = InstructorModel(
             onyen=onyen,
             first_name=first_name,
             last_name=last_name,
             email=email,
-            password=PasswordHelper.hash_password(password),
             role_name="instructor"
         )
         self.session.add(instructor)
         self.session.commit()
+
+        await super().create_user_auto_password_auth(onyen)
 
     async def get_user_by_onyen(self, onyen: str) -> InstructorModel:
         user = await super().get_user_by_onyen(onyen)
