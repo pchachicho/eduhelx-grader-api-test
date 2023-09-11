@@ -17,7 +17,6 @@ class UserModel(Base):
     first_name = Column(Text, nullable=False)
     last_name = Column(Text, nullable=False)
     email = Column(Text, nullable=False, unique=True)
-    password = Column(Text, nullable=False)
     
     role_name = Column(Text, ForeignKey("user_role.name"), nullable=False)
     role = relationship("UserRoleModel", foreign_keys="UserModel.role_name")

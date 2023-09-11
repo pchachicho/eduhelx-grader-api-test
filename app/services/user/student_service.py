@@ -13,8 +13,6 @@ class StudentService(UserService):
         last_name: str,
         email: str
     ) -> StudentModel:
-        from app.services import CourseService, KubernetesService
-
         try:
             await super().get_user_by_onyen(onyen)
             raise UserAlreadyExistsException()
@@ -27,27 +25,17 @@ class StudentService(UserService):
         except UserNotFoundException:
             pass
 
-        password = PasswordHelper.generate_password(64)
         student = StudentModel(
             onyen=onyen,
             first_name=first_name,
             last_name=last_name,
             email=email,
-            role_name="student",
-            password=PasswordHelper.hash_password(password),
+            role_name="student"
         )
         self.session.add(student)
         self.session.commit()
 
-        course = await CourseService(self.session).get_course()
-        KubernetesService().create_credential_secret(
-            course_name=course.name,
-            onyen=onyen,
-            password=password,
-            user_type=UserType.STUDENT
-        )
-
-        return student
+        await super().create_user_auto_password_auth(onyen)
 
     async def get_user_by_onyen(self, onyen: str) -> StudentModel:
         user = await super().get_user_by_onyen(onyen)

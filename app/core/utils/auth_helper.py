@@ -12,7 +12,7 @@ class PasswordHelper:
     @staticmethod
     def verify_password(password: str, hashed_password: str) -> bool:
         return password_context.verify(password, hashed_password)
-
+    
     # Generate a variable-length cryptographically secure password
     @staticmethod
     def generate_password(length: int) -> str:

@@ -30,27 +30,17 @@ class InstructorService(UserService):
         except UserNotFoundException:
             pass
 
-        password = PasswordHelper.generate_password(64)
         instructor = InstructorModel(
             onyen=onyen,
             first_name=first_name,
             last_name=last_name,
             email=email,
-            password=PasswordHelper.hash_password(password),
             role_name="instructor"
         )
         self.session.add(instructor)
         self.session.commit()
 
-        course = await CourseService(self.session).get_course()
-        KubernetesService().create_credential_secret(
-            course_name=course.name,
-            onyen=onyen,
-            password=password,
-            user_type=UserType.INSTRUCTOR
-        )
-
-        return instructor
+        await super().create_user_auto_password_auth(onyen)
 
     async def get_user_by_onyen(self, onyen: str) -> InstructorModel:
         user = await super().get_user_by_onyen(onyen)

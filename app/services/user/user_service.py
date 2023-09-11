@@ -1,6 +1,7 @@
 from typing import List
 from sqlalchemy.orm import Session
-from app.models import UserModel
+from app.models import UserModel, AutoPasswordAuthModel
+from app.models.user import UserType
 from app.schemas import RefreshTokenSchema
 from app.core.config import settings
 from app.core.utils.token_helper import TokenHelper
@@ -34,11 +35,12 @@ class UserService:
             raise UserNotFoundException()
         return user
 
-    async def login(self, onyen: str, password: str) -> RefreshTokenSchema:
+    async def login(self, onyen: str, autogen_password: str) -> RefreshTokenSchema:
         user = self.session.query(UserModel).filter_by(onyen=onyen).first()
-        if not user:
+        user_auth = self.session.query(AutoPasswordAuthModel).filter_by(onyen=onyen).first()
+        if not user or not user_auth:
             raise UserNotFoundException()
-        if not PasswordHelper.verify_password(password, user.password):
+        if not PasswordHelper.verify_password(autogen_password, user_auth.autogen_password_hash):
             raise PasswordDoesNotMatchException()
 
         current_user = CurrentUser(id=user.id, onyen=user.onyen)
@@ -48,3 +50,25 @@ class UserService:
             refresh_token=TokenHelper.encode(payload={"sub": "refresh", **current_user.dict()}, expire_period=settings.REFRESH_TOKEN_EXPIRES_MINUTES)
         )
         return response
+    
+    async def create_user_auto_password_auth(self, onyen: str):
+        from app.services import CourseService, KubernetesService
+        
+        autogen_password = PasswordHelper.generate_password(64)
+        autogen_password_hash = PasswordHelper.hash_password(autogen_password)
+
+        user_auth = AutoPasswordAuthModel(
+            onyen=onyen,
+            autogen_password_hash=autogen_password_hash
+        )
+        self.session.add(user_auth)
+        self.session.commit()
+
+        course = await CourseService(self.session).get_course()
+        user = await self.get_user_by_onyen(onyen)
+        KubernetesService().create_credential_secret(
+            course_name=course.name,
+            onyen=onyen,
+            password=autogen_password,
+            user_type=user.user_type
+        )

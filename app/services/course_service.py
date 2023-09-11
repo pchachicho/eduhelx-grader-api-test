@@ -1,9 +1,8 @@
 from typing import List
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
-from app.models import CourseModel, InstructorModel
+from app.models import CourseModel
 from app.schemas import CourseWithInstructorsSchema
-from app.core.config import settings
 from app.core.exceptions import MultipleCoursesExistException, NoCourseExistsException, CourseAlreadyExistsException
 
 class CourseService:
