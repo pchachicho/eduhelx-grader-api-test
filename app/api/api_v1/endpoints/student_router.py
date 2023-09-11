@@ -37,7 +37,7 @@ async def get_student(
     return student
 
 @router.post("/student", response_model=StudentSchema)
-async def create_student_without_password(
+async def create_student_with_autogen_password(
     *,
     db: Session = Depends(get_db),
     perm: None = Depends(PermissionDependency(StudentCreatePermission)),
