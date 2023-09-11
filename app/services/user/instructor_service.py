@@ -16,8 +16,6 @@ class InstructorService(UserService):
         last_name: str,
         email: str
     ) -> InstructorModel:
-        from app.services import CourseService, KubernetesService
-
         try:
             await super().get_user_by_onyen(onyen)
             raise UserAlreadyExistsException()
@@ -25,7 +23,7 @@ class InstructorService(UserService):
             pass
         
         try:
-            await super().get_user_by_email(onyen)
+            await super().get_user_by_email(email)
             raise UserAlreadyExistsException()
         except UserNotFoundException:
             pass
