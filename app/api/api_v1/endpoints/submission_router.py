@@ -1,71 +1,61 @@
 from typing import List
 from pydantic import BaseModel
-from fastapi import APIRouter, Depends, HTTPException
-from fastapi_pagination import Page
-from fastapi_pagination.ext.sqlalchemy import paginate
-from sqlalchemy import desc
+from fastapi import APIRouter, Request, Depends
 from sqlalchemy.orm import Session
-
-from app.models import SubmissionModel, StudentModel, AssignmentModel
 from app.schemas import SubmissionSchema
-from app.api.deps import get_db
+from app.services import SubmissionService, StudentService, AssignmentService
+from app.core.dependencies import get_db, PermissionDependency, UserIsStudentPermission, SubmissionCreatePermission, SubmissionListPermission
 
 router = APIRouter()
 
 class SubmissionBody(BaseModel):
-    onyen: str
     assignment_id: int
     commit_id: str
 
-def validate_submission(db: Session, onyen: str, assignment_id: int):
-    student = db.query(StudentModel).filter_by(student_onyen=onyen).first()
-    assignment = db.query(AssignmentModel).filter_by(id=assignment_id).first()
-
-    # TODO: We should validate that the submitted commit id actually exists in gitea before persisting it in the database.
-    # We don't want another component of EduHeLx to assume the commit we return exists and crash when it doesn't.
-    # Alternatively, we could bake this logic into the endpoints to get submissions, rather than into this one.
-    if student is None:
-        raise HTTPException(status_code=404, detail="Student does not exist")
-    if assignment is None:
-        raise HTTPException(status_code=404, detail="Assignment does not exist")
-    if not assignment.get_is_created():
-        raise HTTPException(status_code=403, detail="Assignment has not been released")
-    if not assignment.get_is_available_for_student(db, onyen):
-        raise HTTPException(status_code=403, detail="Assignment has not opened yet")
-    if assignment.get_is_closed_for_student(db, onyen):
-        raise HTTPException(status_code=403, detail="Assignment is closed for submission")
-    
-    return student, assignment
-
 @router.post("/submission/", response_model=SubmissionSchema)
-def create_submission(
+async def create_submission(
     *,
+    request: Request,
     db: Session = Depends(get_db),
+    perm: None = Depends(PermissionDependency(UserIsStudentPermission, SubmissionCreatePermission)),
     submission: SubmissionBody
 ):
-    student, assignment = validate_submission(db, submission.onyen, submission.assignment_id)
-
-    submission = SubmissionModel(
-        student_id=student.id,
-        assignment_id=submission.assignment_id,
+    onyen = request.user.onyen
+    student = await StudentService(db).get_user_by_onyen(onyen)
+    assignment = await AssignmentService(db).get_assignment_by_id(submission.assignment_id)
+    submission = await SubmissionService(db).create_submission(
+        student,
+        assignment,
         commit_id=submission.commit_id
     )
-    
-    db.add(submission)
-    db.commit()
 
     return submission
 
-@router.get("/submission/", response_model=str)
-def get_submission(
+@router.get("/submissions/self", response_model=List[SubmissionSchema])
+async def get_submissions(
+    *,
+    request: Request,
+    db: Session = Depends(get_db),
+    perm: None = Depends(PermissionDependency(UserIsStudentPermission)),
+    assignment_id: int
+):
+    onyen = request.user.onyen
+    student = await StudentService(db).get_user_by_onyen(onyen)
+    assignment = await AssignmentService(db).get_assignment_by_id(assignment_id)
+    submissions = await SubmissionService(db).get_submissions(student, assignment)
+
+    return submissions
+
+@router.get("/latest_submission/", response_model=SubmissionSchema)
+async def get_latest_submission(
     *,
     db: Session = Depends(get_db),
+    perm: None = Depends(PermissionDependency(SubmissionListPermission)),
     onyen: str,
     assignment_id: int
 ):
-    student = db.query(StudentModel).filter_by(student_onyen=onyen).first()
-    assignment = db.query(AssignmentModel).filter_by(id=assignment_id).first()
-    submission_commit_id = db.query(SubmissionModel.commit_id).\
-        filter_by(student_id=student.id, assignment_id=assignment.id).\
-        order_by(desc(SubmissionModel.submission_time)).limit(1).scalar()
-    return submission_commit_id
+    student = await StudentService(db).get_user_by_onyen(onyen)
+    assignment = await AssignmentService(db).get_assignment_by_id(assignment_id)
+    submission = await SubmissionService(db).get_latest_submission(student, assignment)
+
+    return submission

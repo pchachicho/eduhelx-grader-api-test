@@ -1,44 +1,32 @@
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException
-from fastapi_pagination import Page
-from fastapi_pagination.ext.sqlalchemy import paginate
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
-
-from app.models import AssignmentModel, SubmissionModel, StudentModel, ExtraTimeModel
-from app.schemas import StudentAssignmentSchema, SubmissionSchema
-from app.api.deps import get_db
+from app.schemas import StudentAssignmentSchema, AssignmentSchema
+from app.services import AssignmentService, StudentAssignmentService, StudentService
+from app.core.dependencies import get_db, PermissionDependency, UserIsStudentPermission
 
 router = APIRouter()
 
-@router.get("/assignments", response_model=List[StudentAssignmentSchema])
-def get_student_assignments(
+@router.get(
+    "/assignments/self",
+    response_model=List[StudentAssignmentSchema]
+)
+async def get_assignments(
     *,
+    request: Request,
     db: Session = Depends(get_db),
-    onyen: str
+    perm: None = Depends(PermissionDependency(UserIsStudentPermission))
 ):
-    assignments = db.query(AssignmentModel).all()
-    # Go through and add extra time to any assignments, if alloted.
+    onyen = request.user.onyen
+
+    student = await StudentService(db).get_user_by_onyen(onyen)
+    assignments = await AssignmentService(db).get_assignments()
+
+    # Go through and add student-specific info to the assignment.
+    student_assignments = []
     for assignment in assignments:
-        assignment.adjusted_available_date = assignment.get_adjusted_available_date(db, onyen)
-        assignment.adjusted_due_date = assignment.get_adjusted_due_date(db, onyen)
-        assignment.is_deferred = assignment.adjusted_available_date != assignment.available_date
-        assignment.is_extended = assignment.adjusted_due_date != assignment.due_date
-        assignment.is_created = assignment.get_is_created()
-        assignment.is_available = assignment.get_is_available_for_student(db, onyen)
-        assignment.is_closed = assignment.get_is_closed_for_student(db, onyen)
+        student_assignment = await StudentAssignmentService(db, student, assignment).get_student_assignment_schema()
+        student_assignments.append(student_assignment)
+        
 
-    return assignments
-
-@router.get("/assignment/{assignment_id}/submissions", response_model=List[SubmissionSchema])
-def get_assignment_submissions(
-    *,
-    db: Session = Depends(get_db),
-    assignment_id: int,
-    onyen: str
-):
-    return db.query(SubmissionModel) \
-        .filter_by(assignment_id=assignment_id) \
-        .join(StudentModel) \
-        .filter(StudentModel.student_onyen == onyen) \
-        .all()
+    return student_assignments

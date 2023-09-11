@@ -1,6 +1,6 @@
-from .student import StudentSchema
+from .user import StudentSchema, InstructorSchema, UserRoleSchema
 from .submission import SubmissionSchema
 from .assignment import AssignmentSchema, StudentAssignmentSchema
 from .extra_time import ExtraTimeSchema
-from .course import CourseSchema
-from .instructor import InstructorSchema
+from .course import CourseSchema, CourseWithInstructorsSchema
+from .jwt import RefreshTokenSchema

@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 from pydantic import BaseModel
-from .student import StudentSchema
+from .user import StudentSchema
 from .assignment import AssignmentSchema
 
 class ExtraTimeSchema(BaseModel):

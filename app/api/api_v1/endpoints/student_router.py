@@ -1,24 +1,18 @@
-from typing import List
-from fastapi import APIRouter, Depends, HTTPException
-from fastapi_pagination import Page
-from fastapi_pagination.ext.sqlalchemy import paginate
-from sqlalchemy import select
+from fastapi import APIRouter, Request, Depends
 from sqlalchemy.orm import Session
-
-from app.models import StudentModel
 from app.schemas import StudentSchema
-from app.api.deps import get_db
+from app.services import StudentService
+from app.core.dependencies import get_db, PermissionDependency, UserIsStudentPermission
 
 router = APIRouter()
 
-@router.get("/student", response_model=StudentSchema)
-def get_student(
+@router.get("/student/self", response_model=StudentSchema)
+async def get_student(
     *,
+    request: Request,
     db: Session = Depends(get_db),
-    onyen: str
+    perm: None = Depends(PermissionDependency(UserIsStudentPermission))
 ):
-    student = db.query(StudentModel).filter_by(student_onyen=onyen).first()
-    if student is None:
-        raise HTTPException(status_code=404, detail="Student does not exist")
-    
+    onyen = request.user.onyen
+    student = await StudentService(db).get_user_by_onyen(onyen)
     return student
