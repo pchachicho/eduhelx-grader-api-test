@@ -14,7 +14,7 @@ from app.api.deps import get_db
 
 router = APIRouter()
 
-class UpdatedAssignmentBody(BaseModel):
+class UpdateAssignmentBody(BaseModel):
     new_name: str | None
     directory_path: str | None
     available_date: datetime | None
@@ -57,21 +57,22 @@ def update_assignment_fields(
     *,
     db: Session = Depends(get_db),
     assignment_name: str,
-    assignment_body: UpdatedAssignmentBody
+    assignment_body: UpdateAssignmentBody
 ):
     # Assumption that the Name is unique
     assignment = db.query(AssignmentModel).filter_by(name=assignment_name).first()
     if assignment is None:
         raise HTTPException(status_code=404, detail="Assignment does not exist")
+    
+    updated_set_fields = assignment_body.dict(exclude_unset=True)
 
-    if assignment_body.new_name is not None:
-        assignment.name = assignment_body.new_name
-    if assignment_body.directory_path is not None:
-        assignment.directory_path = assignment_body.directory_path
-    if assignment_body.available_date is not None:
-        assignment.available_date = assignment_body.available_date
-    if assignment_body.due_date is not None:
-        assignment.due_date = assignment_body.due_date
+    if updated_set_fields.new_name is not None:
+        assignment.name = updated_set_fields.new_name
+    if updated_set_fields.directory_path is not None:
+        assignment.directory_path = updated_set_fields.directory_path
+        
+    assignment.available_date = updated_set_fields.available_date
+    assignment.due_date = updated_set_fields.due_date
 
     assignment.last_modified_date = datetime.now()
     db.commit()
