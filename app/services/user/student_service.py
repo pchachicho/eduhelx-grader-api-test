@@ -5,6 +5,11 @@ from app.core.exceptions import PasswordDoesNotMatchException, NotAStudentExcept
 from .user_service import UserService
 
 class StudentService(UserService):
+    async def list_students(
+        self,
+    ) -> List[StudentModel]:
+        return self.session.query(StudentModel).all()
+
     async def create_student(
         self,
         onyen: str,
