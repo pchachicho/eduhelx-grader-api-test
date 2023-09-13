@@ -1,4 +1,5 @@
 from typing import List
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 from app.models import CourseModel
@@ -8,6 +9,13 @@ from app.core.exceptions import MultipleCoursesExistException, NoCourseExistsExc
 class CourseService:
     def __init__(self, session: Session):
         self.session = session
+
+    async def update_master_repository_url(self, url: str) -> CourseModel:
+        course = await self.get_course()
+        course.master_remote_url = url
+        
+        self.session.commit()
+        return course
     
     async def get_course(self) -> CourseModel:
         try:
@@ -18,7 +26,7 @@ class CourseService:
             raise NoCourseExistsException()
     
     async def get_course_with_instructors_schema(self) -> CourseWithInstructorsSchema:
-        from .user_service import InstructorService
+        from .user import InstructorService
         
         course = await self.get_course()
         course.instructors = await InstructorService(self.session).list_instructors()

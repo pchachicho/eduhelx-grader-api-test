@@ -16,6 +16,8 @@ class InstructorService(UserService):
         last_name: str,
         email: str
     ) -> InstructorModel:
+        from app.services import GiteaService
+
         try:
             await super().get_user_by_onyen(onyen)
             raise UserAlreadyExistsException()
@@ -38,6 +40,8 @@ class InstructorService(UserService):
         self.session.add(instructor)
         self.session.commit()
 
+        org_name = await self.get_instructor_gitea_organization_name()
+        await GiteaService().add_user_to_organization(org_name, onyen)
         await super().create_user_auto_password_auth(onyen)
 
     async def get_user_by_onyen(self, onyen: str) -> InstructorModel:
@@ -45,3 +49,9 @@ class InstructorService(UserService):
         if not isinstance(user, InstructorModel):
             raise NotAnInstructorException()
         return user
+    
+    async def get_instructor_gitea_organization_name(self) -> str:
+        from app.services import CourseService
+
+        course = await CourseService(self.session).get_course()
+        return f"{ course.name }-instructors"
