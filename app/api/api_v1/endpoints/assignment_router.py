@@ -54,13 +54,14 @@ def update_assignment_fields(
     # Differentiate between fields that are set as None and fields that are not set at all
     updated_set_fields = assignment_body.dict(exclude_unset=True)
 
-    if updated_set_fields.new_name is not None:
-        assignment.name = updated_set_fields.new_name
-    if updated_set_fields.directory_path is not None:
-        assignment.directory_path = updated_set_fields.directory_path
+    # validate the first two fields since they are non nullable in our model, the two date fields are nullable
+    if updated_set_fields["new_name"] is not None:
+        assignment.name = updated_set_fields["new_name"]
+    if updated_set_fields["directory_path"] is not None:
+        assignment.directory_path = updated_set_fields["directory_path"]
 
-    assignment.available_date = updated_set_fields.available_date
-    assignment.due_date = updated_set_fields.due_date
+    assignment.available_date = updated_set_fields["available_date"]
+    assignment.due_date = updated_set_fields["due_date"]
 
     assignment.last_modified_date = datetime.now()
     db.commit()
