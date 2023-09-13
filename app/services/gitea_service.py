@@ -52,3 +52,15 @@ class GiteaService:
             "private": private
         })
         return remote_url
+    
+    async def fork_repository(
+        self,
+        name: str,
+        owner: str,
+        new_owner: str
+    ):
+        await self._post("/forks", json={
+            "name": name,
+            "owner": owner,
+            "newOwner": new_owner
+        })

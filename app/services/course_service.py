@@ -9,13 +9,6 @@ from app.core.exceptions import MultipleCoursesExistException, NoCourseExistsExc
 class CourseService:
     def __init__(self, session: Session):
         self.session = session
-
-    async def update_master_repository_url(self, url: str) -> CourseModel:
-        course = await self.get_course()
-        course.master_remote_url = url
-        
-        self.session.commit()
-        return course
     
     async def get_course(self) -> CourseModel:
         try:
@@ -32,12 +25,26 @@ class CourseService:
         course.instructors = await InstructorService(self.session).list_instructors()
         return CourseWithInstructorsSchema.from_orm(course)
 
-    async def create_course(self, name: str, master_remote_url: str) -> CourseModel:
+    async def create_course(self, name: str) -> CourseModel:
+        from app.services import GiteaService
+
         try:
             self.get_course()
             raise CourseAlreadyExistsException()
         except NoResultFound:
             pass
+
+        gitea_service = GiteaService()
+        master_repository_name = await self.get_master_repository_name()
+        instructor_organization = await self.get_instructor_gitea_organization_name()
+        
+        await gitea_service.create_organization(instructor_organization)
+        master_remote_url = await gitea_service.create_repository(
+            name=master_repository_name,
+            description=f"The class master repository for { name }",
+            owner=instructor_organization,
+            private=False
+        )
 
         course = CourseModel(
             name=name,
@@ -48,3 +55,11 @@ class CourseService:
         self.session.commit()
 
         return course
+    
+    async def get_instructor_gitea_organization_name(self) -> str:
+        course = await self.get_course()
+        return f"{ course.name }-instructors"
+    
+    async def get_master_repository_name(self) -> str:
+        course = await self.get_course()
+        return f"{ course.name }-class-master-repo"
