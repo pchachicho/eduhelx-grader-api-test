@@ -37,6 +37,18 @@ class GiteaService:
     
     async def add_user_to_organization(organization_name: str, onyen: str):
         ...
+
+    async def create_user(
+        self,
+        username: str,
+        email: str,
+        password: str
+    ):
+        await self._post("/users", json={
+            "username": username,
+            "email": email,
+            "password": password
+        })
     
     async def create_repository(
         self,

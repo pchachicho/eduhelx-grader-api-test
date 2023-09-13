@@ -51,7 +51,7 @@ class UserService:
         )
         return response
     
-    async def create_user_auto_password_auth(self, onyen: str):
+    async def create_user_auto_password_auth(self, onyen: str) -> str:
         from app.services import CourseService, KubernetesService
         
         autogen_password = PasswordHelper.generate_password(64)
@@ -72,3 +72,5 @@ class UserService:
             password=autogen_password,
             user_type=user.user_type
         )
+
+        return autogen_password

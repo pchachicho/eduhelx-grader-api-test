@@ -40,9 +40,14 @@ class InstructorService(UserService):
         self.session.add(instructor)
         self.session.commit()
 
-        instructor_org_name = await CourseService(self.session).get_instructor_gitea_organization_name()
-        await GiteaService().add_user_to_organization(instructor_org_name, onyen)
-        await super().create_user_auto_password_auth(onyen)
+        password = await super().create_user_auto_password_auth(onyen)
+
+        gitea_service = GiteaService()
+        course_service = CourseService(self.session)
+
+        instructor_org_name = await course_service.get_instructor_gitea_organization_name()
+        await gitea_service.create_user(onyen, email, password)
+        await gitea_service.add_user_to_organization(instructor_org_name, onyen)
 
     async def get_user_by_onyen(self, onyen: str) -> InstructorModel:
         user = await super().get_user_by_onyen(onyen)
