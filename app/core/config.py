@@ -7,9 +7,13 @@ class DevPhase(str, Enum):
     PROD = "prod"
 
 class Settings(BaseSettings):
+    # General config
     API_V1_STR: str = "/api/v1"
     DEV_PHASE: DevPhase = DevPhase.PROD
     DISABLE_AUTHENTICATION: bool = False
+
+    # Gitea microservice
+    GITEA_ASSIST_API_URL: str
 
     # Authentication
     JWT_SECRET_KEY: str
@@ -17,6 +21,7 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRES_MINUTES: int = 30 # 30 minutes
     REFRESH_TOKEN_EXPIRES_MINUTES: int = 60 * 24 * 30 # 1 month
 
+    # Database
     POSTGRES_HOST: str
     POSTGRES_PORT: str = "5432"
     POSTGRES_DB: str
