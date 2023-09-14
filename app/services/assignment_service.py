@@ -26,8 +26,38 @@ class AssignmentService:
     async def get_assignments(self) -> List[AssignmentModel]:
         return self.session.query(AssignmentModel) \
             .all()
-
-        
+    
+    async def get_assignment_by_name(self, name: str) -> AssignmentModel:
+        assignment = self.session.query(AssignmentModel) \
+            .filter_by(AssignmentModel.name == name) \
+            .first()
+        if assignment is None:
+            raise AssignmentNotFoundException()
+        return assignment
+    
+    async def update_assignment_name(self, assignment: AssignmentModel, new_name: str) -> AssignmentModel:
+        assignment.name = new_name
+        assignment.last_modified_date = func.current_timestamp()
+        self.session.commit()
+        return assignment
+    
+    async def update_assignment_directory_path(self, assignment: AssignmentModel, directory_path: str) -> AssignmentModel:
+        assignment.directory_path = directory_path
+        assignment.last_modified_date = func.current_timestamp()
+        self.session.commit()
+        return assignment
+    
+    async def update_assignment_available_date(self, assignment: AssignmentModel, available_date: datetime) -> AssignmentModel:
+        assignment.available_date = available_date
+        assignment.last_modified_date = func.current_timestamp()
+        self.session.commit()
+        return assignment
+    
+    async def update_assignment_due_date(self, assignment: AssignmentModel, due_date: datetime) -> AssignmentModel:
+        assignment.due_date = due_date
+        assignment.last_modified_date = func.current_timestamp()
+        self.session.commit()
+        return assignment
 
 class StudentAssignmentService(AssignmentService):
     def __init__(self, session: Session, student: StudentModel, assignment: AssignmentModel):
