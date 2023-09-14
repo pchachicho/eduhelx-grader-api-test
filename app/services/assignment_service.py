@@ -37,26 +37,25 @@ class AssignmentService:
     
     async def update_assignment_name(self, assignment: AssignmentModel, new_name: str) -> AssignmentModel:
         assignment.name = new_name
+        assignment.last_modified_date = func.current_timestamp()
         self.session.commit()
         return assignment
     
     async def update_assignment_directory_path(self, assignment: AssignmentModel, directory_path: str) -> AssignmentModel:
         assignment.directory_path = directory_path
+        assignment.last_modified_date = func.current_timestamp()
         self.session.commit()
         return assignment
     
     async def update_assignment_available_date(self, assignment: AssignmentModel, available_date: datetime) -> AssignmentModel:
         assignment.available_date = available_date
+        assignment.last_modified_date = func.current_timestamp()
         self.session.commit()
         return assignment
     
     async def update_assignment_due_date(self, assignment: AssignmentModel, due_date: datetime) -> AssignmentModel:
         assignment.due_date = due_date
-        self.session.commit()
-        return assignment
-    
-    async def update_assignment_last_modified(self, assignment: AssignmentModel, last_modified_date: datetime) -> AssignmentModel:
-        assignment.last_modified_date = last_modified_date
+        assignment.last_modified_date = func.current_timestamp()
         self.session.commit()
         return assignment
 

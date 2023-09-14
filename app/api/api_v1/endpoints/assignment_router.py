@@ -55,15 +55,13 @@ async def update_assignment_fields(
     updated_set_fields = assignment_body.dict(exclude_unset=True)
 
     # validate the first two fields since they are non nullable in our model, the two date fields are nullable
-    if "new_name" in updated_set_fields.keys() and updated_set_fields["new_name"] is not None:
-        await AssignmentService(db).update_assignment_name(assignment, updated_set_fields["new_name"])
-    if "directory_path" in updated_set_fields.keys() and updated_set_fields["directory_path"] is not None:
-        await AssignmentService(db).update_assignment_directory_path(assignment, updated_set_fields["directory_path"])
-    if "available_date" in updated_set_fields.keys():
-        await AssignmentService(db).update_assignment_available_date(assignment, updated_set_fields["available_date"])
-    if "due_date" in updated_set_fields.keys():
-        await AssignmentService(db).update_assignment_due_date(assignment, updated_set_fields["due_date"])
+    if "new_name" in updated_set_fields and updated_set_fields["new_name"] is not None:
+        assignment = await AssignmentService(db).update_assignment_name(assignment, updated_set_fields["new_name"])
+    if "directory_path" in updated_set_fields and updated_set_fields["directory_path"] is not None:
+        assignment = await AssignmentService(db).update_assignment_directory_path(assignment, updated_set_fields["directory_path"])
+    if "available_date" in updated_set_fields:
+        assignment = await AssignmentService(db).update_assignment_available_date(assignment, updated_set_fields["available_date"])
+    if "due_date" in updated_set_fields:
+        assignment = await AssignmentService(db).update_assignment_due_date(assignment, updated_set_fields["due_date"])
     
-    assignment = await AssignmentService(db).update_assignment_last_modified(assignment, datetime.now())
-
     return assignment
