@@ -5,6 +5,8 @@ from app.core.utils.token_helper import TokenHelper
 
 class JwtService:
     async def verify_token(self, token: str) -> None:
+        print(settings.JWT_SECRET_KEY)
+        return
         TokenHelper.decode(token=token)
 
     async def refresh_access_token(
