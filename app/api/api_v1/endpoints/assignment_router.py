@@ -40,14 +40,14 @@ async def get_assignments(
     return student_assignments
 
 @router.patch("/assignment/{assignment_name}", response_model=AssignmentSchema)
-def update_assignment_fields(
+async def update_assignment_fields(
     *,
     db: Session = Depends(get_db),
     assignment_name: str,
     assignment_body: UpdateAssignmentBody
 ):
     # Assumption is that the Name is unique
-    assignment = db.query(AssignmentModel).filter_by(name=assignment_name).first()
+    assignment = await AssignmentService(db).get_assignment_by_name(assignment_name)
     if assignment is None:
         raise HTTPException(status_code=404, detail="Assignment does not exist")
 
@@ -55,15 +55,15 @@ def update_assignment_fields(
     updated_set_fields = assignment_body.dict(exclude_unset=True)
 
     # validate the first two fields since they are non nullable in our model, the two date fields are nullable
-    if updated_set_fields["new_name"] is not None:
-        assignment.name = updated_set_fields["new_name"]
-    if updated_set_fields["directory_path"] is not None:
-        assignment.directory_path = updated_set_fields["directory_path"]
-
-    assignment.available_date = updated_set_fields["available_date"]
-    assignment.due_date = updated_set_fields["due_date"]
-
-    assignment.last_modified_date = datetime.now()
-    db.commit()
+    if "new_name" in updated_set_fields.keys() and updated_set_fields["new_name"] is not None:
+        await AssignmentService(db).update_assignment_name(assignment, updated_set_fields["new_name"])
+    if "directory_path" in updated_set_fields.keys() and updated_set_fields["directory_path"] is not None:
+        await AssignmentService(db).update_assignment_directory_path(assignment, updated_set_fields["directory_path"])
+    if "available_date" in updated_set_fields.keys():
+        await AssignmentService(db).update_assignment_available_date(assignment, updated_set_fields["available_date"])
+    if "due_date" in updated_set_fields.keys():
+        await AssignmentService(db).update_assignment_due_date(assignment, updated_set_fields["due_date"])
+    
+    assignment = await AssignmentService(db).update_assignment_last_modified(assignment, datetime.now())
 
     return assignment
