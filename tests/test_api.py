@@ -10,6 +10,6 @@ def test_readiness(test_client):
 ######################
 # Test course router #
 ######################
-def test_get_course(test_client):
-    response = test_client.get("/api/v1/course")
+def test_get_course(admin_client):
+    response = admin_client.get("/api/v1/course")
     print(response.json())

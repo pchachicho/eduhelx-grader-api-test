@@ -28,7 +28,7 @@ def admin_client(test_client):
     from app.core.middleware.authentication import CurrentUser
     from app.core.utils.token_helper import TokenHelper
 
-    # ID doesn't matter.
+    # ID doesn't matter currently, only onyen is used.
     admin_user = CurrentUser(id=-1, onyen="admin")
     access_token = TokenHelper.encode(payload=admin_user.dict(), expire_period=1E9)
     test_client.headers["Authorization"] = "Bearer " + access_token
