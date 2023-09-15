@@ -2,13 +2,11 @@ import pytest
 import json
 import os
 import sys
+import inspect
 import unittest.mock
 from pathlib import Path
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-
-mock_data_dir = Path(os.path.dirname(__file__)) / "data"
-mock_database_data_dir = mock_data_dir / "database"
 
 @pytest.fixture()
 def test_app(mock_database):
@@ -100,25 +98,13 @@ def mock_database(session_mocker):
     mock_Base.metadata.create_all(mock_engine)
 
     with mock_SessionLocal() as session:
-        mock_data = (
-            (models.CourseModel, mock_database_data_dir / "course.json"),
-            (models.AssignmentModel, mock_database_data_dir / "assignment.json"),
-            (models.ExtraTimeModel, mock_database_data_dir / "extra_time.json"),
-            (models.SubmissionModel, mock_database_data_dir / "submission.json"),
-            (models.StudentModel, mock_database_data_dir / "student.json"),
-            (models.InstructorModel, mock_database_data_dir / "instructor.json")
-        )
-        for (Model, mock_path) in mock_data:
-            with open(mock_path, "r") as mock_file:
-                for row in json.load(mock_file):
-                    model = Model(**row)
-                    session.add(model)
-        
-        session.commit()
+        from .data import database as mock_database
+        mock_database = inspect.getmembers(mock_database, inspect.ismodule)
+        for (module_name, module) in mock_database:
+            for model in module.data:
+                session.add(model)
 
-        # admin = session.query(models.UserModel).filter_by(onyen="admin").first()
-        # admin.role_name = "admin"
-        # session.commit()
+        session.commit()
 
     yield mock_database_module
 

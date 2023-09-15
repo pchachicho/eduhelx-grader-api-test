@@ -32,15 +32,9 @@ class UserPermission(str, Enum):
     SUBMISSION__DELETE = "submission:delete"
 
 class UserRole:
-    Roles = []
     def __init__(self, name: str, permissions: List[UserPermission]):
         self.name = name
         self.permissions = permissions
-
-        if not any([i.name == name for i in UserRole.Roles]):
-            UserRole.Roles.append(self)
-        else:
-            raise ValueError(f"User role { name } already exists")
 
 class UserRoleType(TypeDecorator):
     impl = String(64)
@@ -52,7 +46,7 @@ class UserRoleType(TypeDecorator):
 
     def process_result_value(self, value, dialect) -> UserRole | None:
         if value is not None:
-            for role in UserRole.Roles:
+            for role in roles:
                 if role.name == value: return role
         return None
 
@@ -76,3 +70,4 @@ student_role = UserRole("student", [
     UserPermission.SUBMISSION__CREATE,
     UserPermission.INSTRUCTOR__GET
 ])
+roles = [admin_role, instructor_role, student_role]
