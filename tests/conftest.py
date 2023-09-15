@@ -1,11 +1,13 @@
 import pytest
 import json
 import os
+import sys
+import unittest.mock
 from pathlib import Path
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-mock_data_dir = Path(os.path.dirname(__file__), "data")
+mock_data_dir = Path(os.path.dirname(__file__)) / "data"
 mock_database_data_dir = mock_data_dir / "database"
 
 @pytest.fixture()
@@ -23,13 +25,26 @@ def test_client(test_app):
     
     yield client
 
+@pytest.fixture()
+def admin_client(test_client):
+    from app.core.middleware.authentication import CurrentUser
+    from app.core.utils.token_helper import TokenHelper
+
+    # ID doesn't matter.
+    admin_user = CurrentUser(id=-1, onyen="admin")
+    access_token = TokenHelper.encode(payload=admin_user.dict(), expire_period=1E9)
+    test_client.headers["Authorization"] = "Bearer " + access_token
+
+    yield test_client
+    
+    del test_client.headers["Authorization"]
 
 
 #########################
 #        Mocking        #
 #########################
-@pytest.fixture(autouse=True)
-def mock_settings(mocker):
+@pytest.fixture(scope="session", autouse=True)
+def mock_settings():
     class MockSettings:
         API_V1_STR = "/api/v1"
         DEV_PHASE = "dev"
@@ -47,18 +62,25 @@ def mock_settings(mocker):
         POSTGRES_USER = ""
         POSTGRES_PASSWORD = ""
         SQLALCHEMY_DATABASE_URI = ""
-    
-    mock_settings = MockSettings()
-    mock = mocker.patch('app.core.config.settings', mock_settings)
 
-    yield mock_settings
-    mocker.stop(mock)
+    mock_config_module = unittest.mock.MagicMock()
+    mock_config_module.settings = MockSettings()
+
+    sys.modules["app.core.config"] = mock_config_module
+    
+    yield mock_config_module.settings
+
+    del sys.modules["app.core.config"]
+
+    
 
 @pytest.fixture(scope="session")
 def mock_database(session_mocker):
     from sqlalchemy import create_engine
     from sqlalchemy.pool import StaticPool
     from sqlalchemy.orm import sessionmaker, declarative_base
+
+    mock_database_module = unittest.mock.MagicMock()
     
     mock_engine = create_engine(
         "sqlite:///:memory:",
@@ -68,9 +90,11 @@ def mock_database(session_mocker):
     mock_SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=mock_engine)
     mock_Base = declarative_base()
 
-    mock_engine_mocker = session_mocker.patch('app.database.engine', mock_engine)
-    mock_SessionLocal_mocker = session_mocker.patch('app.database.SessionLocal', mock_SessionLocal)
-    mock_Base_mocker = session_mocker.patch('app.database.Base', mock_Base)
+    mock_database_module.engine = mock_engine
+    mock_database_module.SessionLocal = mock_SessionLocal
+    mock_database_module.Base = mock_Base
+
+    sys.modules["app.database"] = mock_database_module
 
     import app.models as models
     mock_Base.metadata.create_all(mock_engine)
@@ -92,12 +116,10 @@ def mock_database(session_mocker):
         
         session.commit()
 
-    yield (
-        mock_engine,
-        mock_SessionLocal,
-        mock_Base
-    )
+        # admin = session.query(models.UserModel).filter_by(onyen="admin").first()
+        # admin.role_name = "admin"
+        # session.commit()
 
-    session_mocker.stop(mock_engine_mocker)
-    session_mocker.stop(mock_SessionLocal_mocker)
-    session_mocker.stop(mock_Base_mocker)
+    yield mock_database_module
+
+    del sys.modules["app.database"]
