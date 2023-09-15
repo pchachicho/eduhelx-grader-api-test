@@ -3,10 +3,10 @@ from app.models import StudentModel
 from app.core.role_permissions import student_role
 
 basic_student = StudentModel(
-    onyen="teststudent",
-    first_name="Test",
+    onyen="basicstudent",
+    first_name="Basic",
     last_name="Student",
-    email="teststudent@unc.edu",
+    email="basicstudent@unc.edu",
     role=student_role
 )
 

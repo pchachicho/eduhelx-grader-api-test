@@ -1,3 +1,5 @@
+import pytest
+
 #################
 # Miscellaneous #
 #################
@@ -10,6 +12,12 @@ def test_readiness(test_client):
 ######################
 # Test course router #
 ######################
-def test_get_course(admin_client):
-    response = admin_client.get("/api/v1/course")
-    print(response.json())
+@pytest.mark.parametrize("user_client", ["basicstudent", "basicinstructor"], indirect=True)
+def test_get_course(user_client):
+    from .data.database.course import course
+    from .data.database.instructor import data as instructors
+    response = user_client.get("/api/v1/course")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["name"] == course.name
+    assert len(data["instructors"]) == len(instructors)

@@ -1,12 +1,13 @@
+from typing import Union
+from pathlib import Path
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
 import pytest
 import json
 import os
 import sys
 import inspect
 import unittest.mock
-from pathlib import Path
-from fastapi import FastAPI
-from fastapi.testclient import TestClient
 
 @pytest.fixture()
 def test_app(mock_database):
@@ -23,20 +24,35 @@ def test_client(test_app):
     
     yield client
 
-@pytest.fixture()
-def admin_client(test_client):
+# Note: UserModel can't be statically imported at the module scope due to it not being mocked yet.
+def create_user_client(client: TestClient, user: Union[str, "UserModel"]):
+    from app.database import SessionLocal
+    from app.models import UserModel
     from app.core.middleware.authentication import CurrentUser
     from app.core.utils.token_helper import TokenHelper
 
-    # ID doesn't matter currently, only onyen is used.
-    admin_user = CurrentUser(id=-1, onyen="admin")
-    access_token = TokenHelper.encode(payload=admin_user.dict(), expire_period=1E9)
-    test_client.headers["Authorization"] = "Bearer " + access_token
+    if isinstance(user, UserModel):
+        user_model = user
+    else:
+        with SessionLocal() as session:
+            user_model = session.query(UserModel).filter_by(onyen=user).first()
 
-    yield test_client
+    current_user = CurrentUser(id=user_model.id, onyen=user_model.onyen)
+    access_token = TokenHelper.encode(payload=current_user.dict(), expire_period=1E9)
+    client.headers["Authorization"] = "Bearer " + access_token
+
+    yield client
     
-    del test_client.headers["Authorization"]
+    del client.headers["Authorization"]
 
+@pytest.fixture()
+def user_client(test_client, request):
+    yield next(create_user_client(test_client, request.param))
+
+@pytest.fixture()
+def admin_client(test_client):
+    from .data.database.instructor import admin
+    yield next(create_user_client(test_client, admin.onyen))
 
 #########################
 #        Mocking        #
@@ -97,7 +113,7 @@ def mock_database(session_mocker):
     import app.models as models
     mock_Base.metadata.create_all(mock_engine)
 
-    with mock_SessionLocal() as session:
+    with mock_SessionLocal(expire_on_commit=False) as session:
         from .data import database as mock_database
         mock_database = inspect.getmembers(mock_database, inspect.ismodule)
         for (module_name, module) in mock_database:
