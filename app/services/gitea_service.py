@@ -32,11 +32,13 @@ class GiteaService:
     async def _post(self, endpoint: str, **kwargs):
         return await self._make_request("POST", endpoint, **kwargs)
     
-    async def create_organization(organization_name: str):
-        ...
+    async def create_organization(self, organization_name: str):
+        await self._post("/orgs", json={
+            "org_name": organization_name
+        })
     
-    async def add_user_to_organization(organization_name: str, onyen: str):
-        ...
+    async def add_user_to_organization(self, organization_name: str, onyen: str):
+        await self._post(f"/orgs/{organization_name}/members/{onyen}")
 
     async def create_user(
         self,
