@@ -27,7 +27,8 @@ class KubernetesService:
         secret_data = {
             "onyen": onyen,
             "password": password,
-            "user_type": user_type.value
+            "class": course_name,
+            "user_type": user_type.value,
         }
         encoded_secret_data = {
             key: base64.b64encode(value.encode()).decode() for (key, value) in secret_data.items()
