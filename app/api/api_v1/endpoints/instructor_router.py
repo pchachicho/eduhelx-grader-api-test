@@ -33,7 +33,7 @@ async def list_instructor(
     db: Session = Depends(get_db),
     perm: None = Depends(PermissionDependency(InstructorListPermission))
 ):
-    instructor = await InstructorService(db).list_instructors()
+    instructors = await InstructorService(db).list_instructors()
     return instructors
 
 @router.post("/instructor", response_model=InstructorSchema)
