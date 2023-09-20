@@ -1,16 +1,33 @@
 from typing import Optional, Any, Dict, List
 from enum import Enum
-from pydantic import BaseSettings, PostgresDsn, validator, root_validator
+from pydantic import BaseModel, BaseSettings, PostgresDsn, Json, validator, root_validator
 
 class DevPhase(str, Enum):
     DEV = "dev"
     PROD = "prod"
+
+
+class SetupWizardCourse(BaseModel):
+    name: str
+
+class SetupWizardInstructor(BaseModel):
+    onyen: str
+    first_name: str
+    last_name: str
+    email: str
+
+class SetupWizardData(BaseModel):
+    course: SetupWizardCourse
+    instructors: List[SetupWizardInstructor]
 
 class Settings(BaseSettings):
     # General config
     API_V1_STR: str = "/api/v1"
     DEV_PHASE: DevPhase = DevPhase.PROD
     DISABLE_AUTHENTICATION: bool = False
+
+    # Setup wizard (JSON-serialized string)
+    SETUP_WIZARD_DATA: Optional[SetupWizardData] = None
 
     # Gitea microservice
     GITEA_ASSIST_API_URL: str
