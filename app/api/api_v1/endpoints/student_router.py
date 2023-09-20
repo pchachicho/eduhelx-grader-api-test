@@ -15,17 +15,6 @@ class CreateStudentWithoutPasswordBody(BaseModel):
     last_name: str
     email: str
 
-@router.get("/student/self", response_model=StudentSchema)
-async def get_student(
-    *,
-    request: Request,
-    db: Session = Depends(get_db),
-    perm: None = Depends(PermissionDependency(UserIsStudentPermission))
-):
-    onyen = request.user.onyen
-    student = await StudentService(db).get_user_by_onyen(onyen)
-    return student
-
 @router.get("/student/{onyen:str}", response_model=StudentSchema)
 async def get_student(
     *,
