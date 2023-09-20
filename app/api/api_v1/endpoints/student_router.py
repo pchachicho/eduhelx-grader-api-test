@@ -1,3 +1,4 @@
+from typing import List
 from pydantic import BaseModel
 from fastapi import APIRouter, Request, Depends
 from sqlalchemy.orm import Session
@@ -24,6 +25,16 @@ async def get_student(
 ):
     student = await StudentService(db).get_user_by_onyen(onyen)
     return student
+
+@router.get("/students", response_model=List[StudentSchema])
+async def list_students(
+    *,
+    request: Request,
+    db: Session = Depends(get_db),
+    perm: None = Depends(PermissionDependency(StudentListPermission))
+):
+    students = await StudentService(db).list_students()
+    return students
 
 @router.post("/student", response_model=StudentSchema)
 async def create_student_with_autogen_password(

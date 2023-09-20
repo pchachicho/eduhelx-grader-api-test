@@ -1,3 +1,4 @@
+from typing import List
 from pydantic import BaseModel
 from fastapi import APIRouter, Request, Depends
 from sqlalchemy.orm import Session
@@ -24,6 +25,16 @@ async def get_instructor(
 ):
     instructor = await InstructorService(db).get_user_by_onyen(onyen)
     return instructor
+
+@router.get("/instructors", response_model=List[InstructorSchema])
+async def list_instructor(
+    *,
+    request: Request,
+    db: Session = Depends(get_db),
+    perm: None = Depends(PermissionDependency(InstructorListPermission))
+):
+    instructor = await InstructorService(db).list_instructors()
+    return instructors
 
 @router.post("/instructor", response_model=InstructorSchema)
 async def create_instructor_without_password(
