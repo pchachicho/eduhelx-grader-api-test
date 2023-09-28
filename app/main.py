@@ -8,7 +8,12 @@ from starlette.middleware.cors import CORSMiddleware
 from app.api.api_v1 import api_router
 from app.core.config import settings
 from app.core.middleware import AuthenticationMiddleware, AuthBackend
+from app.core.middleware.custom_logging import CustomizeLogger
 from app.core.exceptions import CustomException
+
+import logging
+from pathlib import Path
+from app.core.middleware.loggerMiddleware import LogMiddleware
 
 def init_routers(app: FastAPI):
     app.include_router(api_router, prefix=settings.API_V1_STR)
@@ -34,6 +39,9 @@ def on_auth_error(request: Request, exc: Exception):
 
 def make_middleware() -> List[Middleware]:
     return [
+        # Middleware(
+        #     LogMiddleware
+        # ),
         Middleware(
             CORSMiddleware,
             allow_credentials=True,
@@ -48,11 +56,18 @@ def make_middleware() -> List[Middleware]:
         )
     ]
 
+#2
+logger = logging.getLogger(__name__)
+config_path=Path(__file__).with_name("logging_config.json")
+
 def create_app() -> FastAPI:
     app = FastAPI(
         openapi_url=f"{ settings.API_V1_STR }/openapi.json",
         middleware=make_middleware()
     )
+    logger = CustomizeLogger.make_logger(config_path)
+    app.logger = logger
+    app.add_middleware(LogMiddleware)
     init_routers(app)
     init_listeners(app)
     add_pagination(app)

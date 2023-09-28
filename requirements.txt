@@ -10,3 +10,4 @@ fastapi-pagination==0.12.5
 python-dotenv==1.0.0
 passlib==1.7.4
 PyJWT==2.8.0
+loguru==0.4.1
