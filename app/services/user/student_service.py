@@ -1,5 +1,6 @@
 from typing import List
 from app.models import StudentModel
+from app.core.role_permissions import student_role
 from app.core.utils.auth_helper import PasswordHelper
 from app.core.exceptions import PasswordDoesNotMatchException, NotAStudentException
 from .user_service import UserService
@@ -22,7 +23,7 @@ class StudentService(UserService):
             first_name=first_name,
             last_name=last_name,
             email=email,
-            role_name="student"
+            role=student_role
         )
         self.session.add(student)
         self.session.commit()

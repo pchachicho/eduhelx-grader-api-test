@@ -1,4 +1,4 @@
-from .user import StudentSchema, InstructorSchema, UserRoleSchema
+from .user import StudentSchema, InstructorSchema, UserRoleSchema, UserPermissionSchema
 from .submission import SubmissionSchema
 from .assignment import AssignmentSchema, StudentAssignmentSchema
 from .extra_time import ExtraTimeSchema
