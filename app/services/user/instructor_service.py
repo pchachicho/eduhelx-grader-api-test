@@ -1,7 +1,6 @@
 from typing import List
 from app.models import InstructorModel
-from app.models.user import UserType
-from app.core.utils.auth_helper import PasswordHelper
+from app.core.role_permissions import instructor_role
 from app.core.exceptions import NotAnInstructorException, UserAlreadyExistsException, UserNotFoundException
 from .user_service import UserService
 
@@ -35,7 +34,7 @@ class InstructorService(UserService):
             first_name=first_name,
             last_name=last_name,
             email=email,
-            role_name="instructor"
+            role=instructor_role
         )
         self.session.add(instructor)
         self.session.commit()
