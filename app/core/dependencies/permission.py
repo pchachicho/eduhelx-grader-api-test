@@ -9,12 +9,11 @@ from app.services import UserService
 from app.core.config import settings
 from app.database import SessionLocal
 from app.models import StudentModel, InstructorModel
+from app.core.role_permissions import UserPermission
 from app.core.exceptions import (
     UnauthorizedException, MissingPermissionException, UserNotFoundException,
     NotAStudentException, NotAnInstructorException
 )
-
-ADMIN_ROLE_NAME = "admin"
 
 class BasePermission(ABC):
     def __init__(self, db, user):
@@ -47,66 +46,62 @@ class UserIsInstructorPermission(RequireLoginPermission):
         
 
 class BaseRolePermission(RequireLoginPermission):
-    permission_name: str
+    permission: UserPermission
 
     async def verify_permission(self, request: Request):
         await super().verify_permission(request)
 
-        # Always allow for admin role
-        if self.user.role.name == ADMIN_ROLE_NAME:
-            return
-
         for permission in self.user.role.permissions:
-            if permission.name == self.permission_name:
+            if permission == self.permission:
                 return
                 
-        raise MissingPermissionException(self.permission_name)
+        raise MissingPermissionException(self.permission)
 
 
 class AssignmentListPermission(BaseRolePermission):
-    permission_name = "assignment:get"
+    permission: UserPermission.ASSIGNMENT__GET
 class AssignmentCreatePermission(BaseRolePermission):
-    permission_name = "assignment:create"
+    permission = UserPermission.ASSIGNMENT__CREATE
 class AssignmentModifyPermission(BaseRolePermission):
-    permission_name = "assignment:modify"
+    permission = UserPermission.ASSIGNMENT__MODIFY
 class AssignmentDeletePermission(BaseRolePermission):
-    permission_name = "assignment:delete"
+    permission = UserPermission.ASSIGNMENT__DELETE
 
 class CourseListPermission(BaseRolePermission):
-    permission_name = "course:get"
+    permission = UserPermission.COURSE__GET
 class CourseCreatePermission(BaseRolePermission):
-    permission_name = "course:create"
+    permission = UserPermission.COURSE__CREATE
 class CourseModifyPermission(BaseRolePermission):
-    permission_name = "course:modify"
+    permission = UserPermission.COURSE__MODIFY
 class CourseDeletePermission(BaseRolePermission):
-    permission_name = "course:delete"
+    permission = UserPermission.COURSE__DELETE
 
 class StudentListPermission(BaseRolePermission):
-    permission_name = "student:get"
+    permission = UserPermission.STUDENT__GET
 class StudentCreatePermission(BaseRolePermission):
-    permission_name = "student:create"
+    permission = UserPermission.STUDENT__CREATE
 class StudentModifyPermission(BaseRolePermission):
-    permission_name = "student:modify"
+    permission = UserPermission.STUDENT__MODIFY
 class StudentDeletePermission(BaseRolePermission):
-    permission_name = "student:delete"
+    permission = UserPermission.STUDENT__DELETE
 
 class InstructorListPermission(BaseRolePermission):
-    permission_name = "instructor:get"
+    permission = UserPermission.INSTRUCTOR__GET
 class InstructorCreatePermission(BaseRolePermission):
-    permission_name = "instructor:create"
+    permission = UserPermission.INSTRUCTOR__CREATE
 class InstructorModifyPermission(BaseRolePermission):
-    permission_name = "instructor:modify"
+    permission = UserPermission.INSTRUCTOR__MODIFY
 class InstructorDeletePermission(BaseRolePermission):
-    permission_name = "instructor:delete"
+    permission = UserPermission.INSTRUCTOR__DELETE
 
 class SubmissionListPermission(BaseRolePermission):
-    permission_name = "submission:get"
+    permission = UserPermission.SUBMISSION__GET
 class SubmissionCreatePermission(BaseRolePermission):
-    permission_name = "submission:create"
+    permission = UserPermission.SUBMISSION__CREATE
 class SubmissionModifyPermission(BaseRolePermission):
-    permission_name = "submission:modify"
+    permission = UserPermission.SUBMISSION__MODIFY
 class SubmissionDeletePermission(BaseRolePermission):
-    permission_name = "submission:delete"
+    permission = UserPermission.SUBMISSION__DELETE
 
 
 class PermissionDependency(SecurityBase):
@@ -120,13 +115,12 @@ class PermissionDependency(SecurityBase):
             # If authentication is disabled, we treat the anonymous user as if they have every permission.
             return
 
-        db = SessionLocal()
-        try:
-            user = await UserService(db).get_user_by_onyen(request.user.onyen)
-        except UserNotFoundException:
-            user = None
-        
-        for permission in self.permissions:
-            cls = permission(db, user)
-            await cls.verify_permission(request=request)
-        db.close()
+        with SessionLocal() as session:
+            try:
+                user = await UserService(session).get_user_by_onyen(request.user.onyen)
+            except UserNotFoundException:
+                user = None
+            
+            for permission in self.permissions:
+                cls = permission(session, user)
+                await cls.verify_permission(request=request)

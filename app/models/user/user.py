@@ -2,6 +2,7 @@ import enum
 from sqlalchemy import Column, Sequence, Integer, Text, Enum, ForeignKey
 from sqlalchemy.orm import relationship
 from app.database import Base
+from app.core.role_permissions import UserRoleType
 
 class UserType(enum.Enum):
     STUDENT = "student"
@@ -17,9 +18,8 @@ class UserModel(Base):
     first_name = Column(Text, nullable=False)
     last_name = Column(Text, nullable=False)
     email = Column(Text, nullable=False, unique=True)
-    
-    role_name = Column(Text, ForeignKey("user_role.name"), nullable=False)
-    role = relationship("UserRoleModel", foreign_keys="UserModel.role_name")
+
+    role = Column(UserRoleType, nullable=False)
 
     __mapper_args__ = {
         "polymorphic_on": "user_type",
