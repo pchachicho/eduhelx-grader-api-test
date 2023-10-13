@@ -2,7 +2,7 @@ import json
 import time
 from starlette.middleware.base import BaseHTTPMiddleware
 import json
-from .iterator_wrapper import iterator_wrapper as aiwrap
+from app.core.middleware.iterator_wrapper import iterator_wrapper as aiwrap
 
 class LogMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):

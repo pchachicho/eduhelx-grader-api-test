@@ -13,7 +13,7 @@ from app.core.exceptions import CustomException
 
 import logging
 from pathlib import Path
-from app.core.middleware.loggerMiddleware import LogMiddleware
+from app.core.middleware.logger_middleware import LogMiddleware
 
 def init_routers(app: FastAPI):
     app.include_router(api_router, prefix=settings.API_V1_STR)
