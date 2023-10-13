@@ -44,10 +44,10 @@ def main(host, port, reload):
     command.upgrade(alembic_cfg, "head")
 
     # Start the application
-    # uvicorn_args = ["uvicorn", "app.main:app", "--host", host, "--port", port, log_config=None]
-    # if reload: uvicorn_args.append("--reload")
-    # subprocess.run(uvicorn_args)
-    uvicorn.run(app, host=host, port=int(port), reload=reload)
+    uvicorn_args = ["uvicorn", "app.main:app", "--host", host, "--port", port]
+    if reload: uvicorn_args.append("--reload")
+    subprocess.run(uvicorn_args)
+    # uvicorn.run(app, host=host, port=int(port), reload=reload)
 
 
 if __name__ == "__main__":
