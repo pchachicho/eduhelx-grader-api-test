@@ -38,39 +38,3 @@ class LogMiddleware(BaseHTTPMiddleware):
 
             return response
     
-             # try:
-            #     if(response.status_code <= 400):
-            #         res = {
-            #             "status_code": response.status_code,
-            #             "response_time": f"{round((time.time() - start_time) * 1000)} ms"
-            #         }
-            #     else:
-            #         res = {
-            #             "status_code": response.status_code,
-            #             "response_time": f"{round((time.time() - start_time) * 1000)} ms",
-            #             "error_code": "error"
-            #         }
-
-            # except Exception as e:
-            #     print(e)
-            #     raise e
-            # request.app.logger.info(
-            #     {
-            #         "req": { 
-            #             "method": request.method, 
-            #             "url": str(request.url),
-            #             "body": await request.body(),
-            #             "user": request.user.onyen if hasattr(request.user, "onyen") else None,
-            #         },
-            #         "res": { 
-            #             "status_code": response.status_code,
-            #             "response_time": f"{round((time.time() - start_time) * 1000)} ms"
-            #         }
-            #     }
-            # )
-            # return response
-        
-
-
-# if status code > 400, check the error code + message and add to the res
-# add user id logging and other context from req

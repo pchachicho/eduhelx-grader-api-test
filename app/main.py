@@ -8,7 +8,7 @@ from starlette.middleware.cors import CORSMiddleware
 from app.api.api_v1 import api_router
 from app.core.config import settings
 from app.core.middleware import AuthenticationMiddleware, AuthBackend
-from app.core.middleware.custom_logging import CustomizeLogger
+from eduhelx_utils.custom_logger import CustomizeLogger
 from app.core.exceptions import CustomException
 
 import logging
