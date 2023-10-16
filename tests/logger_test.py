@@ -17,16 +17,23 @@ class MockLogger:
     def info(self, log_data):
         pass
 
-async def mock_call_next(request):
-    return MockResponse()
-
+    def error(self, log_data):
+        pass
+           
 class MockResponse:
     def __init__(self, status_code=200, body=b'{"key": "value"}'):
         self.status_code = status_code
         self.body_iterator = [body]
 
-async def test_log_middleware():
-    request = Request({"type": "http", "method": "GET", "url": "http://mockURL.com"})
+async def mock_call_next(request):
+    return MockResponse()
+
+async def mock_call_next_with_error(request):
+    # Simulate an error scenario
+    raise HTTPException(status_code=500, detail="Internal Server Error")
+
+async def test_successful_request_logging():
+    request = Request({"type": "http", "method": "GET", "url": "http://example.com"})
     middleware = LogMiddleware(MockApp())
 
     response = await middleware.dispatch(request, mock_call_next)
@@ -45,3 +52,28 @@ async def test_log_middleware():
     json.dumps(middleware.log_data)
 
     middleware.log_data = None
+
+async def test_error_logging():
+    request_error = Request({"type": "http", "method": "GET", "url": "http://example.com"})
+    middleware_error = LogMiddleware(MockApp())
+
+    try:
+        await middleware_error.dispatch(request_error, mock_call_next_with_error)
+    except HTTPException:
+        pass  # Expected exception
+
+    # Add assertions for error logging
+    assert isinstance(middleware_error.log_data, dict)
+    assert "req" in middleware_error.log_data
+    assert "res" in middleware_error.log_data
+
+    assert middleware_error.log_data["req"]["method"] == "GET"
+    assert middleware_error.log_data["res"]["status_code"] == 500
+
+    assert "GET" in str(middleware_error.log_data)
+    assert "Internal Server Error" in str(middleware_error.log_data)
+
+    json.dumps(middleware_error.log_data)
+
+    middleware_error.log_data = None
+
