@@ -5,7 +5,8 @@ import sys
 from dotenv import load_dotenv
 from alembic.config import Config
 from alembic import command
-
+from app.main import app
+import uvicorn
 
 def main(host, port, reload):
     # Mapping table for special case filename transformations
@@ -46,6 +47,7 @@ def main(host, port, reload):
     uvicorn_args = ["uvicorn", "app.main:app", "--host", host, "--port", port]
     if reload: uvicorn_args.append("--reload")
     subprocess.run(uvicorn_args)
+    # uvicorn.run(app, host=host, port=int(port), reload=reload)
 
 
 if __name__ == "__main__":
