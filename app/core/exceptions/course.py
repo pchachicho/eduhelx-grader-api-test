@@ -11,6 +11,6 @@ class NoCourseExistsException(CustomException):
     message = "database misconfigured, no course exists in course table"
 
 class CourseAlreadyExistsException(CustomException):
-    code = 403
+    code = 409
     error_code = "COURSE__ALREADY_EXISTS"
     message = "course already exists, try modifying the existing course instead"
