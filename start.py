@@ -2,9 +2,11 @@ import os
 import glob
 import subprocess
 import sys
+import uvicorn
 from dotenv import load_dotenv
 from alembic.config import Config
 from alembic import command
+from app.main import app
 from scripts import setup_wizard
 
 def main(host, port, reload):
