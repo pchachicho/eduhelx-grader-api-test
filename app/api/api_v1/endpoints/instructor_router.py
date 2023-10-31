@@ -10,7 +10,7 @@ from app.core.dependencies import get_db, PermissionDependency, InstructorListPe
 
 router = APIRouter()
 
-class CreateInstructorWithoutPasswordBody(BaseModel):
+class CreateInstructorBody(BaseModel):
     onyen: str
     first_name: str
     last_name: str
@@ -41,7 +41,7 @@ async def create_instructor_without_password(
     *,
     db: Session = Depends(get_db),
     perm: None = Depends(PermissionDependency(InstructorCreatePermission)),
-    instructor_body: CreateInstructorWithoutPasswordBody
+    instructor_body: CreateInstructorBody
 ):
     instructor = await InstructorService(db).create_instructor(
         **instructor_body.dict()

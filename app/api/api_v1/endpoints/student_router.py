@@ -10,7 +10,7 @@ from app.core.utils.auth_helper import PasswordHelper
 
 router = APIRouter()
 
-class CreateStudentWithoutPasswordBody(BaseModel):
+class CreateStudentBody(BaseModel):
     onyen: str
     first_name: str
     last_name: str
@@ -41,7 +41,7 @@ async def create_student_with_autogen_password(
     *,
     db: Session = Depends(get_db),
     perm: None = Depends(PermissionDependency(StudentCreatePermission)),
-    student_body: CreateStudentWithoutPasswordBody
+    student_body: CreateStudentBody
 ):
     student = await StudentService(db).create_student(
         **student_body.dict()
