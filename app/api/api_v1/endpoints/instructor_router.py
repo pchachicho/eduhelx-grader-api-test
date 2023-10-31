@@ -14,7 +14,7 @@ class CreateInstructorBody(BaseModel):
     last_name: str
     email: str
 
-@router.get("/instructor/{onyen:str}", response_model=InstructorSchema)
+@router.get("/instructors/{onyen:str}", response_model=InstructorSchema)
 async def get_instructor(
     *,
     db: Session = Depends(get_db),
@@ -34,7 +34,7 @@ async def list_instructor(
     instructors = await InstructorService(db).list_instructors()
     return instructors
 
-@router.post("/instructor", response_model=InstructorSchema)
+@router.post("/instructors", response_model=InstructorSchema)
 async def create_instructor_without_password(
     *,
     db: Session = Depends(get_db),

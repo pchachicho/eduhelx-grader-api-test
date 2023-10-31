@@ -8,7 +8,7 @@ from app.core.dependencies import get_db
 
 router = APIRouter()
 
-@router.get("/user/self", response_model=StudentSchema | InstructorSchema)
+@router.get("/users/self", response_model=StudentSchema | InstructorSchema)
 async def get_own_user(
     *,
     request: Request,

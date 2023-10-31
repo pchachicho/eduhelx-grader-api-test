@@ -14,7 +14,7 @@ class CreateStudentBody(BaseModel):
     last_name: str
     email: str
 
-@router.get("/student/{onyen:str}", response_model=StudentSchema)
+@router.get("/students/{onyen:str}", response_model=StudentSchema)
 async def get_student(
     *,
     db: Session = Depends(get_db),
@@ -34,7 +34,7 @@ async def list_students(
     students = await StudentService(db).list_students()
     return students
 
-@router.post("/student", response_model=StudentSchema)
+@router.post("/students", response_model=StudentSchema)
 async def create_student_with_autogen_password(
     *,
     db: Session = Depends(get_db),
