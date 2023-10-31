@@ -2,7 +2,7 @@ from typing import List
 from pydantic import BaseModel
 from fastapi import APIRouter, Request, Depends
 from sqlalchemy.orm import Session
-from app.schemas import RefreshTokenSchema, UserRoleSchema
+from app.schemas import RefreshTokenSchema, UserRoleSchema, UserPermissionSchema
 from app.services import UserService, JwtService
 from app.core.dependencies import get_db, PermissionDependency, RequireLoginPermission
 
@@ -43,5 +43,7 @@ async def get_role(
 ):
     onyen = request.user.onyen
     user = await UserService(db).get_user_by_onyen(onyen)
-    return user.role
-    
+    return UserRoleSchema(
+        name=user.role.name,
+        permissions=[UserPermissionSchema(name=p.value) for p in user.role.permissions]
+    )

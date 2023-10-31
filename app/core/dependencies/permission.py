@@ -27,7 +27,7 @@ class BasePermission(ABC):
 # For endpoints that require a user to be logged in, but nothing beyond that.
 class RequireLoginPermission(BasePermission):
     async def verify_permission(self, request: Request):
-        if self.user is None:
+        if self.user is None or self.user.role is None:
             raise UnauthorizedException()
 
 class UserIsStudentPermission(RequireLoginPermission):

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Sequence, Integer, Text, Interval, DateTime, ForeignKey, func
+from sqlalchemy import Column, Integer, Interval, DateTime, ForeignKey, func
 from .user import UserModel, UserType
 
 class StudentModel(UserModel):

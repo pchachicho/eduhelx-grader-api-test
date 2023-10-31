@@ -12,7 +12,7 @@ class SubmissionBody(BaseModel):
     assignment_id: int
     commit_id: str
 
-@router.post("/submission/", response_model=SubmissionSchema)
+@router.post("/submissions", response_model=SubmissionSchema)
 async def create_submission(
     *,
     request: Request,

@@ -5,8 +5,7 @@ import sys
 from dotenv import load_dotenv
 from alembic.config import Config
 from alembic import command
-from app.main import app
-import uvicorn
+from scripts import setup_wizard
 
 def main(host, port, reload):
     # Mapping table for special case filename transformations
@@ -42,6 +41,13 @@ def main(host, port, reload):
     # Run Alembic migrations
     alembic_cfg = Config("alembic.ini")
     command.upgrade(alembic_cfg, "head")
+
+
+    # Run setup wizard, if required
+    try:
+        setup_wizard.run()
+    except ValueError as e:
+        print(str(e))
 
     # Start the application
     uvicorn_args = ["uvicorn", "app.main:app", "--host", host, "--port", port]

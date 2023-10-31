@@ -1,4 +1,3 @@
-from typing import List
 from sqlalchemy.orm import Session
 from app.models import UserModel, AutoPasswordAuthModel
 from app.schemas import RefreshTokenSchema
@@ -28,6 +27,12 @@ class UserService:
             raise UserNotFoundException()
         return user
 
+    async def get_user_by_email(self, email: str) -> UserModel:
+        user = self.session.query(UserModel).filter_by(email=email).first()
+        if user is None:
+            raise UserNotFoundException()
+        return user
+
     async def login(self, onyen: str, autogen_password: str) -> RefreshTokenSchema:
         user = self.session.query(UserModel).filter_by(onyen=onyen).first()
         user_auth = self.session.query(AutoPasswordAuthModel).filter_by(onyen=onyen).first()
@@ -44,14 +49,26 @@ class UserService:
         )
         return response
     
-    async def create_user_auto_password_auth(self, onyen: str):
-        autogen_password = PasswordHelper.generate_password(64)
-        print(autogen_password)
-        autogen_password_hash = PasswordHelper.hash_password(autogen_password)
+    async def create_user_auto_password_auth(self, onyen: str) -> str:
+        from app.services import CourseService, KubernetesService
         
+        autogen_password = PasswordHelper.generate_password(64)
+        autogen_password_hash = PasswordHelper.hash_password(autogen_password)
+
         user_auth = AutoPasswordAuthModel(
             onyen=onyen,
             autogen_password_hash=autogen_password_hash
         )
         self.session.add(user_auth)
         self.session.commit()
+
+        course = await CourseService(self.session).get_course()
+        user = await self.get_user_by_onyen(onyen)
+        KubernetesService().create_credential_secret(
+            course_name=course.name,
+            onyen=onyen,
+            password=autogen_password,
+            user_type=user.user_type
+        )
+
+        return autogen_password

@@ -1,5 +1,10 @@
 from .base import CustomException
 
+class UserAlreadyExistsException(CustomException):
+    code = 409
+    error_code = "USER__ONYEN_OR_EMAIL_ALREADY_EXISTS"
+    message = "onyen or email is already in use by another user"
+
 class PasswordDoesNotMatchException(CustomException):
     code = 401
     error_code = "USER__PASSWORD_DOES_NOT_MATCH"

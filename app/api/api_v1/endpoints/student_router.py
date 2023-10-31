@@ -1,25 +1,31 @@
 from typing import List
+from pydantic import BaseModel
 from fastapi import APIRouter, Request, Depends
 from sqlalchemy.orm import Session
 from app.schemas import StudentSchema
 from app.services import StudentService
-from app.core.dependencies import get_db, PermissionDependency, UserIsStudentPermission, StudentListPermission
+from app.core.dependencies import get_db, PermissionDependency, StudentListPermission, StudentCreatePermission
 
 router = APIRouter()
 
-@router.get("/student/self", response_model=StudentSchema)
+class CreateStudentBody(BaseModel):
+    onyen: str
+    first_name: str
+    last_name: str
+    email: str
+
+@router.get("/students/{onyen:str}", response_model=StudentSchema)
 async def get_student(
     *,
-    request: Request,
     db: Session = Depends(get_db),
-    perm: None = Depends(PermissionDependency(UserIsStudentPermission))
+    perm: None = Depends(PermissionDependency(StudentListPermission)),
+    onyen: str
 ):
-    onyen = request.user.onyen
     student = await StudentService(db).get_user_by_onyen(onyen)
     return student
 
 @router.get("/students", response_model=List[StudentSchema])
-async def get_student_list(
+async def list_students(
     *,
     request: Request,
     db: Session = Depends(get_db),
@@ -27,3 +33,15 @@ async def get_student_list(
 ):
     students = await StudentService(db).list_students()
     return students
+
+@router.post("/students", response_model=StudentSchema)
+async def create_student_with_autogen_password(
+    *,
+    db: Session = Depends(get_db),
+    perm: None = Depends(PermissionDependency(StudentCreatePermission)),
+    student_body: CreateStudentBody
+):
+    student = await StudentService(db).create_student(
+        **student_body.dict()
+    )
+    return student

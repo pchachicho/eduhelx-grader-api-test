@@ -39,7 +39,7 @@ async def get_assignments(
         
     return student_assignments
 
-@router.patch("/assignment/{assignment_name}", response_model=AssignmentSchema)
+@router.patch("/assignments/{assignment_name}", response_model=AssignmentSchema)
 async def update_assignment_fields(
     *,
     db: Session = Depends(get_db),
