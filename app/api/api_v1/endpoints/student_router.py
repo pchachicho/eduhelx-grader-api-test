@@ -3,10 +3,8 @@ from pydantic import BaseModel
 from fastapi import APIRouter, Request, Depends
 from sqlalchemy.orm import Session
 from app.schemas import StudentSchema
-from app.models.user import UserType
-from app.services import StudentService, CourseService, KubernetesService
-from app.core.dependencies import get_db, PermissionDependency, UserIsStudentPermission, StudentListPermission, StudentCreatePermission
-from app.core.utils.auth_helper import PasswordHelper
+from app.services import StudentService
+from app.core.dependencies import get_db, PermissionDependency, StudentListPermission, StudentCreatePermission
 
 router = APIRouter()
 

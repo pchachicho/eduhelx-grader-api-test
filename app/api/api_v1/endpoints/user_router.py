@@ -3,10 +3,8 @@
 from fastapi import APIRouter, Request, Depends
 from sqlalchemy.orm import Session
 from app.schemas import StudentSchema, InstructorSchema
-from app.models.user import UserType
 from app.services import UserService
-from app.core.dependencies import get_db, PermissionDependency, UserIsStudentPermission
-from app.core.utils.auth_helper import PasswordHelper
+from app.core.dependencies import get_db
 
 router = APIRouter()
 
