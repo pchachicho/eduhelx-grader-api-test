@@ -17,6 +17,7 @@ class LDAPService:
             host=settings.LDAP_HOST,
             port=settings.LDAP_PORT,
             get_info=ldap3.ALL,
+            use_ssl=settings.LDAP_PORT == 636,
             connect_timeout=settings.LDAP_TIMEOUT_SECONDS
         )
         try:

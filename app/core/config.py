@@ -40,10 +40,10 @@ class Settings(BaseSettings):
 
     # LDAP
     LDAP_HOST: str
-    LDAP_PORT: str
+    LDAP_PORT: int
     LDAP_SERVICE_ACCOUNT_BIND_DN: str
     LDAP_SERVICE_ACCOUNT_PASSWORD: str
-    LDAP_TIMEOUT_SECONDS: float
+    LDAP_TIMEOUT_SECONDS: int = 5
 
     # Database
     POSTGRES_HOST: str
