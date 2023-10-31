@@ -2,6 +2,7 @@
     "logger": {
       "level": "info",
       "rotation": "20 days",
-      "retention": "12 months"
+      "retention": "12 months",
+      "format": "<level>{level: <8}</level> <green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> request id: {extra[request_id]} - <cyan>{name}</cyan>:<cyan>{function}</cyan> - <level>{message}</level>"
     }
   }
