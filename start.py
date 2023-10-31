@@ -5,6 +5,8 @@ import sys
 from dotenv import load_dotenv
 from alembic.config import Config
 from alembic import command
+import uvicorn
+from app.main import app
 from scripts import setup_wizard
 
 def main(host, port, reload):
