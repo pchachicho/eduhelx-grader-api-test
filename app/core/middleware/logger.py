@@ -5,10 +5,6 @@ import json
 from app.core.middleware.iterator_wrapper import iterator_wrapper as aiwrap
 
 class LogMiddleware(BaseHTTPMiddleware):
-    def __init__(self, app):
-        super().__init__(app)
-        self.log_data = None
-
     async def dispatch(self, request, call_next):
             start_time = time.time()
             response = await call_next(request)
@@ -24,7 +20,8 @@ class LogMiddleware(BaseHTTPMiddleware):
             except:
                 resp_body = str(resp_body)
 
-            self.log_data = {
+            request.app.logger.info(
+                {
                     "req": {
                         "method": request.method, 
                         "url": str(request.url),
@@ -37,8 +34,8 @@ class LogMiddleware(BaseHTTPMiddleware):
                         "body": resp_body
                     }
                 }
+            )
 
-
-            self.app.logger.info(self.log_data)
             return response
+    
     
