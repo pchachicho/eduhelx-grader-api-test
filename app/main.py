@@ -61,12 +61,9 @@ def create_app() -> FastAPI:
         openapi_url=f"{ settings.API_V1_STR }/openapi.json",
         middleware=make_middleware()
     )
-
     logger = CustomizeLogger.make_logger(config_path)
     app.logger = logger
-    logger_middleware = LogMiddleware(app)
-    app.add_middleware(logger_middleware)
-
+    app.add_middleware(LogMiddleware)
     init_routers(app)
     init_listeners(app)
     add_pagination(app)
