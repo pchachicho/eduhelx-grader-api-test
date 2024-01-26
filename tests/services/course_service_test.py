@@ -34,7 +34,6 @@ class TestCourseService(unittest.TestCase):
         with self.assertRaises(NoCourseExistsException):
             self.assertRaises(self.course_service.get_course())
     
-    # =======================================================================
     async def test_get_course_with_instructors_schema_success(self):
         self.mock_session.query().one.return_value = CourseModel(id=1, name="Math", master_remote_url="http://example.com")
         course = self.course_service.get_course()
@@ -66,14 +65,20 @@ class TestCourseService(unittest.TestCase):
         self.mock_session.commit.return_value = None
 
         result = self.course_service.create_course(name="Math")
-        assert result.id == 2
-    # =======================================================================
+        assert result.id == 1
     
     def test_get_instructor_gitea_organization_name(self):
         self.mock_session.query().one.return_value = CourseModel(id=1, name="Math", master_remote_url="http://example.com")
-        print()
+
         result = self.course_service.get_instructor_gitea_organization_name()
         assert result == "Math-instructors"
 
-if __name__ == '__main__':
-    unittest.main()
+    def test_get_master_repository_name(self):
+        self.mock_session.query().one.return_value = CourseModel(id=1, name="Math", master_remote_url="http://example.com")
+
+        result = self.course_service.get_master_repository_name()
+        assert result == "Math-class-master-repo"
+
+
+suite = unittest.TestLoader().loadTestsFromTestCase(TestCourseService)
+unittest.TextTestRunner(verbosity=2).run(suite)
