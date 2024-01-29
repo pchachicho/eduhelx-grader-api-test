@@ -1,12 +1,25 @@
 import json
 import time
+from starlette.types import Message
+from starlette.requests import Request
 from starlette.middleware.base import BaseHTTPMiddleware
-import json
 from app.core.middleware.iterator_wrapper import iterator_wrapper as aiwrap
 
 class LogMiddleware(BaseHTTPMiddleware):
+    # https://github.com/tiangolo/fastapi/issues/394#issuecomment-927272627
+    async def set_body(self, request: Request):
+        receive_ = await request._receive()
+
+        async def receive() -> Message:
+            return receive_
+
+        request._receive = receive
+
     async def dispatch(self, request, call_next):
             start_time = time.time()
+
+            await self.set_body(request)
+            req_body = await request.body()
             response = await call_next(request)
 
             # Consuming FastAPI response and grabbing body here
@@ -25,7 +38,7 @@ class LogMiddleware(BaseHTTPMiddleware):
                     "req": {
                         "method": request.method, 
                         "url": str(request.url),
-                        "body": await request.body(),
+                        "body": req_body,
                         "user": request.user.onyen if hasattr(request.user, "onyen") else None,
                     },
                     "res": {
