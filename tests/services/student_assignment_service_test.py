@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 from sqlalchemy.orm import Session
 from app.services import AssignmentService, StudentAssignmentService
 from app.models import AssignmentModel, StudentModel, ExtraTimeModel
-from app.core.exceptions import AssignmentNotFoundException
+from app.core.exceptions import AssignmentNotFoundException, AssignmentNotOpenException
 from ..data.database.assignment import assignment_data
 
 class TestStudentAssignmentService(unittest.IsolatedAsyncioTestCase):
@@ -73,6 +73,34 @@ class TestStudentAssignmentService(unittest.IsolatedAsyncioTestCase):
         result = student_assignment_service.get_adjusted_due_date()
 
         self.assertEqual(result, datetime(2022, 1, 1))
+
+    async def test_validate_student_can_submit(self):
+        self.mock_assignment.is_created = True
+        self.mock_assignment.available_date = datetime(2022, 1, 1)
+        self.mock_assignment.due_date = datetime(2025, 1, 1)
+        self.mock_session.query().filter().first.return_value = self.mock_extra_time_model
+
+        student_assignment_service = StudentAssignmentService(
+            session=self.mock_session,
+            student=self.mock_student,
+            assignment=self.mock_assignment
+        )
+
+        student_assignment_service.validate_student_can_submit()
+
+    async def test_validate_student_cannot_submit(self):
+        self.mock_assignment.is_created = True
+        self.mock_assignment.available_date = datetime(2022, 1, 1)
+        self.mock_session.query().filter().first.return_value = None
+
+        student_assignment_service = StudentAssignmentService(
+            session=self.mock_session,
+            student=self.mock_student,
+            assignment=self.mock_assignment
+        )
+
+        with self.assertRaises(AssignmentNotOpenException):
+            student_assignment_service.validate_student_can_submit()
 
 
 suite = unittest.TestLoader().loadTestsFromTestCase(TestStudentAssignmentService)
