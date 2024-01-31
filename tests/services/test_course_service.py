@@ -1,15 +1,18 @@
 import unittest
+import httpx
 from unittest.mock import MagicMock
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 from app.services import CourseService
 from app.models import CourseModel, InstructorModel
 from app.services.user import InstructorService
+from app.services import GiteaService
 from ..data.database.course import data
 from app.schemas import CourseWithInstructorsSchema
 from app.core.exceptions import (
     MultipleCoursesExistException,
     NoCourseExistsException,
+    CourseAlreadyExistsException
 )
 
 class TestCourseService(unittest.IsolatedAsyncioTestCase):
@@ -53,27 +56,39 @@ class TestCourseService(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(result, expected_result)
 
-    # def test_create_course_success(self):
+    async def test_get_instructor_gitea_organization_name(self):
+        self.mock_session.query().one.return_value = self.mock_course
 
+        result = await self.course_service.get_instructor_gitea_organization_name()
+        assert result == "COMP 555-instructors"
+
+    async def test_get_master_repository_name(self):
+        self.mock_session.query().one.return_value = self.mock_course
+
+        result = await self.course_service.get_master_repository_name()
+        assert result == "COMP 555-class-master-repo"
+
+    async def test_create_course_fail(self):
+        self.mock_session.query().one.return_value = self.mock_course
+
+        with self.assertRaises(CourseAlreadyExistsException):
+            self.assertRaises(await self.course_service.create_course(name="Math"))
+
+    # async def test_create_course_success(self):
     #     self.mock_session.query().one.side_effect = NoResultFound()
-    #     self.mock_session.add.return_value = CourseModel(id=1, name="Math", master_remote_url="http://example.com")
+    #     self.mock_session.add.return_value = None
     #     self.mock_session.commit.return_value = None
 
-    #     result = self.course_service.create_course(name="Math")
-    #     assert result.id == 1
-    
-    # def test_get_instructor_gitea_organization_name(self):
-    #     self.mock_session.query().one.return_value = CourseModel(id=1, name="Math", master_remote_url="http://example.com")
+    #     mock_gitea_service = MagicMock(spec=GiteaService)
+    #     mock_gitea_service.create_organization.return_value = None
+    #     mock_gitea_service.create_repository.return_value = "http://example.com"
 
-    #     result = self.course_service.get_instructor_gitea_organization_name()
-    #     assert result == "Math-instructors"
+    #     master_repository_name = f"{ self.mock_course.name }-class-master-repo"
+    #     instructor_organization = f"{ self.mock_course.name }-instructors"
 
-    # def test_get_master_repository_name(self):
-    #     self.mock_session.query().one.return_value = CourseModel(id=1, name="Math", master_remote_url="http://example.com")
-
-    #     result = self.course_service.get_master_repository_name()
-    #     assert result == "Math-class-master-repo"
-
+    #     result = await self.course_service.create_course(name=self.mock_course.name)        
+    #     mock_gitea_service.create_organization.assert_called_with(instructor_organization)
+    #     mock_gitea_service.create_repository.assert_called_with(name=master_repository_name, description=f"The class master repository for { self.mock_course.name }", owner=instructor_organization, private=False)
 
 suite = unittest.TestLoader().loadTestsFromTestCase(TestCourseService)
 unittest.TextTestRunner(verbosity=2).run(suite)
