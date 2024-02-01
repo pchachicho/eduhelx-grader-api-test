@@ -110,6 +110,7 @@ class TestStudentAssignmentService(unittest.IsolatedAsyncioTestCase):
         self.mock_assignment.is_created = True
         self.mock_session.query().filter().first.return_value = None
         self.mock_student.base_extra_time = datetime.timedelta(days=0)
+        
         # available_date is in the past, the due_date is in the future, and the scalar is in the middle
         # allows us to test the get_is_available method & the get_adjusted_available_date method at once
         self.mock_assignment.available_date = datetime.datetime(2022, 1, 1)
@@ -128,33 +129,66 @@ class TestStudentAssignmentService(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result_get_is_closed, False)
 
         # available_date is in the future, the due_date is in the past, and the scalar is in the middle
-        # self.mock_assignment.available_date = datetime.datetime(2024, 1, 1)
-        # self.mock_assignment.due_date = datetime.datetime(2023, 1, 2)
-        # self.mock_session.scalar.return_value = datetime.datetime(2023, 1, 2)
+        self.mock_assignment.available_date = datetime.datetime(2024, 1, 1)
+        self.mock_assignment.due_date = datetime.datetime(2022, 1, 2)
+        self.mock_session.scalar.return_value = datetime.datetime(2023, 1, 2)
 
-        # student_assignment_service = StudentAssignmentService(
-        #     session=self.mock_session,
-        #     student=self.mock_student,
-        #     assignment=self.mock_assignment
-        # )
-        # result_get_is_available = student_assignment_service.get_is_available()
-        # result_get_is_closed = student_assignment_service.get_is_closed()
+        result_get_is_available = student_assignment_service.get_is_available()
+        result_get_is_closed = student_assignment_service.get_is_closed()
 
-        # self.assertEqual(result_get_is_available, False)
-        # self.assertEqual(result_get_is_closed, True)
+        self.assertEqual(result_get_is_available, False)
+        self.assertEqual(result_get_is_closed, True)
 
-    # TODO - test_validate_student_can_submit
-    # async def test_validate_student_cannot_submit(self):
-    #     self.mock_assignment.is_created = False
+    def test_validate_student_can_submit(self):
+        self.mock_assignment.is_created = False
 
-    #     student_assignment_service = StudentAssignmentService(
-    #         session=self.mock_session,
-    #         student=self.mock_student,
-    #         assignment=self.mock_assignment
-    #     )
+        student_assignment_service = StudentAssignmentService(
+            session=self.mock_session,
+            student=self.mock_student,
+            assignment=self.mock_assignment
+        )
 
-    #     with self.assertRaises(AssignmentNotCreatedException):
-    #         student_assignment_service.validate_student_can_submit()
+        with self.assertRaises(AssignmentNotCreatedException):
+            student_assignment_service.validate_student_can_submit()
+
+    def test_validate_student_can_submit_not_open(self):
+        self.mock_assignment.is_created = True
+        self.mock_session.query().filter().first.return_value = None
+        self.mock_student.base_extra_time = datetime.timedelta(days=0)
+        
+        # available_date is in the future, the due_date is in the past, and the scalar is in the middle
+        # allows us to test the get_is_available method & the get_adjusted_available_date method at once
+        self.mock_assignment.available_date = datetime.datetime(2024, 1, 1)
+        self.mock_session.scalar.return_value = datetime.datetime(2023, 1, 2)
+
+        student_assignment_service = StudentAssignmentService(
+            session=self.mock_session,
+            student=self.mock_student,
+            assignment=self.mock_assignment
+        )
+
+        with self.assertRaises(AssignmentNotOpenException):
+            student_assignment_service.validate_student_can_submit()
+
+    def test_validate_student_can_submit_closed(self):
+        self.mock_assignment.is_created = True
+        self.mock_session.query().filter().first.return_value = None
+        self.mock_student.base_extra_time = datetime.timedelta(days=0)
+        
+        # available_date is in the past, the due_date is in the past, and the scalar is in the future
+        # allows us to test the get_is_closed method & the get_adjusted_due_date method at once
+        self.mock_assignment.available_date = datetime.datetime(2022, 1, 1)
+        self.mock_assignment.due_date = datetime.datetime(2022, 6, 2)
+        self.mock_session.scalar.return_value = datetime.datetime(2023, 1, 2)
+
+        student_assignment_service = StudentAssignmentService(
+            session=self.mock_session,
+            student=self.mock_student,
+            assignment=self.mock_assignment
+        )
+
+        with self.assertRaises(AssignmentClosedException):
+            student_assignment_service.validate_student_can_submit()
 
 
 suite = unittest.TestLoader().loadTestsFromTestCase(TestStudentAssignmentService)
