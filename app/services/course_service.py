@@ -27,14 +27,14 @@ class CourseService:
         from app.services import GiteaService
 
         try:
-            self.get_course()
+            await self.get_course()
             raise CourseAlreadyExistsException()
-        except NoResultFound:
+        except NoCourseExistsException:
             pass
 
         gitea_service = GiteaService()
-        master_repository_name = await self.get_master_repository_name()
-        instructor_organization = await self.get_instructor_gitea_organization_name()
+        master_repository_name = f"{ name }-class-master-repo"
+        instructor_organization = f"{ name }-instructors"
         
         await gitea_service.create_organization(instructor_organization)
         master_remote_url = await gitea_service.create_repository(

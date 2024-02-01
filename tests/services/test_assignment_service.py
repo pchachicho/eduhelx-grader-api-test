@@ -30,6 +30,7 @@ class TestAssignmentService(unittest.IsolatedAsyncioTestCase):
             "unavialable": created_not_available_assignment,
             "available": available_assignment,
         }
+        
         self.mock_session = MagicMock()
         self.assignment_service = AssignmentService(session=self.mock_session)
 
@@ -61,6 +62,7 @@ class TestAssignmentService(unittest.IsolatedAsyncioTestCase):
         self.mock_session.query().all.return_value = mock_assignments
 
         result = await self.assignment_service.get_assignments()
+        
         self.assertEqual(len(result), len(mock_assignments))
         self.assertEqual(result[0].name, mock_assignments[0].name)
         self.assertEqual(result[1].name, mock_assignments[1].name)
@@ -70,6 +72,7 @@ class TestAssignmentService(unittest.IsolatedAsyncioTestCase):
         self.mock_session.query().filter_by().first.return_value = mock_assignment
 
         result = await self.assignment_service.get_assignment_by_name(name="available")
+        
         self.assertEqual(result.name, mock_assignment.name)
 
     async def test_get_assignment_by_name_not_found(self):
@@ -85,6 +88,7 @@ class TestAssignmentService(unittest.IsolatedAsyncioTestCase):
         mock_current_timestamp.return_value = date.today()
 
         result = await self.assignment_service.update_assignment_name(assignment=mock_assignment, new_name="new_name")
+        
         self.assertEqual(result.name, "new_name")
         self.assertEqual(result.last_modified_date, date.today())
     
@@ -95,6 +99,7 @@ class TestAssignmentService(unittest.IsolatedAsyncioTestCase):
         mock_current_timestamp.return_value = date.today()
 
         result = await self.assignment_service.update_assignment_directory_path(assignment=mock_assignment, directory_path="new/directory/path")
+        
         self.assertEqual(result.directory_path, "new/directory/path")
         self.assertEqual(result.last_modified_date, date.today())
 
@@ -106,6 +111,7 @@ class TestAssignmentService(unittest.IsolatedAsyncioTestCase):
 
         new_date = mock_assignment.available_date + timedelta(hours=3)
         result = await self.assignment_service.update_assignment_available_date(assignment=mock_assignment, available_date=new_date)
+        
         self.assertEqual(result.available_date, new_date)
         self.assertEqual(result.last_modified_date, date.today())
 
@@ -117,6 +123,7 @@ class TestAssignmentService(unittest.IsolatedAsyncioTestCase):
 
         new_date = mock_assignment.due_date + timedelta(hours=3)
         result = await self.assignment_service.update_assignment_due_date(assignment=mock_assignment, due_date=new_date)
+        
         self.assertEqual(result.due_date, new_date)
         self.assertEqual(result.last_modified_date, date.today())
 

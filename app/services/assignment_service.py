@@ -110,10 +110,10 @@ class StudentAssignmentService(AssignmentService):
         current_timestamp = self.session.scalar(func.current_timestamp())
         return current_timestamp > self.get_adjusted_due_date()
 
-    async def validate_student_can_submit(self):
+    def validate_student_can_submit(self):
         if not self.assignment.is_created:
             raise AssignmentNotCreatedException()
-        
+
         if not self.get_is_available():
             raise AssignmentNotOpenException()
 
