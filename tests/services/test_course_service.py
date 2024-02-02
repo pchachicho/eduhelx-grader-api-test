@@ -1,5 +1,4 @@
 import unittest
-import asynctest
 import httpx
 from unittest.mock import patch, AsyncMock, MagicMock
 from sqlalchemy.orm import Session
@@ -83,8 +82,8 @@ class TestCourseService(unittest.IsolatedAsyncioTestCase):
         self.mock_session.commit.return_value = None
 
         with patch('app.services.GiteaService') as mock_gitea_service:
-            mock_gitea_service.return_value.create_organization = asynctest.CoroutineMock()
-            mock_gitea_service.return_value.create_repository = asynctest.CoroutineMock(return_value="http://example.com")
+            mock_gitea_service.return_value.create_organization = AsyncMock()
+            mock_gitea_service.return_value.create_repository = AsyncMock(return_value="http://example.com")
 
             master_repository_name = f"{self.mock_course.name}-class-master-repo"
             instructor_organization = f"{self.mock_course.name}-instructors"
