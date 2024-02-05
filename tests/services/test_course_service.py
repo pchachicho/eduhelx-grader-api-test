@@ -6,7 +6,7 @@ from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 from app.services import CourseService
 from app.models import CourseModel, InstructorModel
 from app.services.user import InstructorService
-from ..data.database.course import data
+from tests.data.database.course import data
 from app.schemas import CourseWithInstructorsSchema
 from app.core.exceptions import (
     MultipleCoursesExistException,
