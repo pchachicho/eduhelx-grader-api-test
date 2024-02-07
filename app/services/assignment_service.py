@@ -4,8 +4,6 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 from app.models import AssignmentModel, StudentModel, ExtraTimeModel
 from app.schemas import AssignmentSchema, StudentAssignmentSchema
-from app.core.config import settings
-from app.core.utils.token_helper import TokenHelper
 from app.core.exceptions import (
     AssignmentNotFoundException,
     AssignmentNotCreatedException,
@@ -18,7 +16,9 @@ class AssignmentService:
         self.session = session
 
     async def get_assignment_by_id(self, id: int) -> AssignmentModel:
-        assignment = self.session.query(AssignmentModel).first()
+        assignment = self.session.query(AssignmentModel) \
+            .filter_by(id=id) \
+            .first()
         if assignment is None:
             raise AssignmentNotFoundException()
         return assignment
@@ -110,10 +110,10 @@ class StudentAssignmentService(AssignmentService):
         current_timestamp = self.session.scalar(func.current_timestamp())
         return current_timestamp > self.get_adjusted_due_date()
 
-    async def validate_student_can_submit(self):
+    def validate_student_can_submit(self):
         if not self.assignment.is_created:
             raise AssignmentNotCreatedException()
-        
+
         if not self.get_is_available():
             raise AssignmentNotOpenException()
 
