@@ -1,5 +1,6 @@
 alembic==1.8.1
 alembic[tz]
+bcrypt==4.0.1
 fastapi==0.99.0
 uvicorn==0.22.0
 SQLAlchemy==2.0.17
