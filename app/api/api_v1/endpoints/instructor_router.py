@@ -27,7 +27,6 @@ async def get_instructor(
 @router.get("/instructors", response_model=List[InstructorSchema])
 async def list_instructor(
     *,
-    request: Request,
     db: Session = Depends(get_db),
     perm: None = Depends(PermissionDependency(InstructorListPermission))
 ):

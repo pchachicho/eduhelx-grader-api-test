@@ -27,7 +27,6 @@ async def get_student(
 @router.get("/students", response_model=List[StudentSchema])
 async def list_students(
     *,
-    request: Request,
     db: Session = Depends(get_db),
     perm: None = Depends(PermissionDependency(StudentListPermission))
 ):
