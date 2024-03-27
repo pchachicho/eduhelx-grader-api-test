@@ -82,7 +82,7 @@ class InstructorAssignmentService(AssignmentService):
         assignment["is_available"] = self.get_is_available()
         assignment["is_closed"] = self.get_is_closed()
 
-        return StudentAssignmentSchema(**assignment)
+        return InstructorAssignmentSchema(**assignment)
 
 class StudentAssignmentService(AssignmentService):
     def __init__(self, session: Session, student: StudentModel, assignment: AssignmentModel):
