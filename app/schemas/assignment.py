@@ -16,6 +16,12 @@ class AssignmentSchema(BaseModel):
     class Config:
         orm_mode = True
 
+# Adds in fields relevant for JLP (tailored to the professor)
+class InstructorAssignmentSchema(AssignmentSchema):
+    is_available: bool
+    is_closed: bool
+
+# Adds in student-specific fields to the assignment (tailored to a particular student)
 class StudentAssignmentSchema(AssignmentSchema):
     adjusted_available_date: datetime | None
     adjusted_due_date: datetime | None

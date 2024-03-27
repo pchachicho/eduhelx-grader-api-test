@@ -70,7 +70,7 @@ class BaseRolePermission(RequireLoginPermission):
 
 
 class AssignmentListPermission(BaseRolePermission):
-    permission: UserPermission.ASSIGNMENT__GET
+    permission = UserPermission.ASSIGNMENT__GET
 class AssignmentCreatePermission(BaseRolePermission):
     permission = UserPermission.ASSIGNMENT__CREATE
 class AssignmentModifyPermission(BaseRolePermission):
