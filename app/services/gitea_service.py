@@ -14,7 +14,7 @@ class GiteaService:
     @property
     def api_url(self) -> str:
         return settings.GITEA_ASSIST_API_URL
-    
+        
     async def _make_request(self, method: str, endpoint: str, headers={}, **kwargs):
         res = await self.client.request(
             method,
@@ -24,7 +24,8 @@ class GiteaService:
             },
             **kwargs
         )
-        return await self._handle_response(res)
+        res.raise_for_status()
+        return res
 
     async def _get(self, endpoint: str, **kwargs):
         return await self._make_request("GET", endpoint, **kwargs)
@@ -59,12 +60,13 @@ class GiteaService:
         owner: str,
         private: bool=False
     ) -> str:
-        remote_url = await self._post("/repos", json={
+        res = await self._post("/repos", json={
             "name": name,
             "description": description,
             "owner": owner,
             "private": private
         })
+        remote_url = await res.text()
         return remote_url
     
     async def fork_repository(
@@ -73,8 +75,10 @@ class GiteaService:
         owner: str,
         new_owner: str
     ):
-        await self._post("/forks", json={
+        res = await self._post("/forks", json={
             "name": name,
             "owner": owner,
             "newOwner": new_owner
         })
+        remote_url = await res.text()
+        return remote_url
