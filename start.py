@@ -3,6 +3,7 @@ import glob
 import subprocess
 import sys
 import uvicorn
+import asyncio
 from app.main import app
 from dotenv import load_dotenv
 from alembic.config import Config
@@ -47,9 +48,9 @@ def main(host, port, reload):
     command.upgrade(alembic_cfg, "head")
 
 
-    # Run setup wizard, if required
+    # Run setup wizard, if required, in the background
     try:
-        setup_wizard.run()
+        asyncio.create_task(setup_wizard.run())
     except ValueError as e:
         print(str(e))
 
