@@ -19,3 +19,8 @@ class AssignmentNotFoundException(CustomException):
     code = 404
     error_code = "ASSIGNMENT__NOT_FOUND"
     message = "assignment not found"
+
+class NoAssignmentFetchedException(CustomException):
+    code = 500
+    error_code = "ASSIGNMENT__NO_ASSIGNMENT_FETCHED"
+    message = "Failed to fetch assignment from LMS"
