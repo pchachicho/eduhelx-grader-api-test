@@ -1,12 +1,12 @@
 from pydantic import BaseModel
 from datetime import datetime
-from typing import List
+from typing import List, Union
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from app.models import AssignmentModel, StudentModel, InstructorModel
 from app.schemas import InstructorAssignmentSchema, StudentAssignmentSchema, AssignmentSchema
 from app.services import AssignmentService, InstructorAssignmentService, StudentAssignmentService, StudentService, UserService
-from app.core.dependencies import get_db, PermissionDependency, AssignmentListPermission, AssignmentModifyPermission
+from app.core.dependencies import get_db, PermissionDependency, RequireLoginPermission, AssignmentModifyPermission
 
 router = APIRouter()
 
@@ -18,13 +18,13 @@ class UpdateAssignmentBody(BaseModel):
 
 @router.get(
     "/assignments/self",
-    response_model=List[AssignmentSchema] | List[StudentAssignmentSchema] | List[InstructorAssignmentSchema]
+    response_model=List[Union[InstructorAssignmentSchema, StudentAssignmentSchema, AssignmentSchema]]
 )
 async def get_assignments(
     *,
     request: Request,
     db: Session = Depends(get_db),
-    perm: None = Depends(PermissionDependency(AssignmentListPermission))
+    perm: None = Depends(PermissionDependency(RequireLoginPermission))
 ):
     onyen = request.user.onyen
 

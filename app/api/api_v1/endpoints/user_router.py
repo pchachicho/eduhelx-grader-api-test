@@ -2,6 +2,7 @@
 
 from fastapi import APIRouter, Request, Depends
 from sqlalchemy.orm import Session
+from typing import Union
 from app.schemas import StudentSchema, InstructorSchema
 from app.services import UserService, LDAPService
 from app.services.ldap_service import LDAPUserInfoSchema
@@ -10,7 +11,7 @@ from app.core.dependencies import get_db, PermissionDependency, UserIsSuperuserP
 
 router = APIRouter()
 
-@router.get("/users/self", response_model=StudentSchema | InstructorSchema)
+@router.get("/users/self", response_model=Union[StudentSchema, InstructorSchema])
 async def get_own_user(
     *,
     request: Request,

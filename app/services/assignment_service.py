@@ -27,9 +27,9 @@ class AssignmentService:
         return self.session.query(AssignmentModel) \
             .all()
     
-    async def get_assignment_by_name(self, name: str) -> AssignmentModel:
+    async def get_assignment_by_name(self, assignment_name: str) -> AssignmentModel:
         assignment = self.session.query(AssignmentModel) \
-            .filter_by(AssignmentModel.name == name) \
+            .filter_by(name=assignment_name) \
             .first()
         if assignment is None:
             raise AssignmentNotFoundException()
