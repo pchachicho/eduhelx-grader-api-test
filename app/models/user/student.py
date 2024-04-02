@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, Text, Interval, DateTime, ForeignKey, func
+from sqlalchemy import Column, Integer, Boolean, Interval, DateTime, ForeignKey, func
 from .user import UserModel, UserType
 
 class StudentModel(UserModel):
@@ -6,7 +6,9 @@ class StudentModel(UserModel):
     __mapper_args__ = {"polymorphic_identity": UserType.STUDENT}
     id = Column(Integer, ForeignKey("user_account.id"), primary_key=True)
 
-    fork_remote_url = Column(Text, nullable=False)
+    # This is just a flag to indicate that the student has cloned their fork,
+    # which let's use deduce that if the directory doesn't exist, they've moved it.
+    fork_cloned = Column(Boolean, server_default="0")
     base_extra_time = Column(Interval, server_default="0")
     join_date = Column(DateTime(timezone=True), server_default=func.current_timestamp())
     exit_date = Column(DateTime(timezone=True))
