@@ -9,4 +9,4 @@ class SyncEvents(Enum):
 class SyncCreateAssignmentEvent(BaseModel):
     __event_name__ = SyncEvents.SYNC_CREATE_ASSIGNMENT
     
-    id: str
+    assignment_id: int
