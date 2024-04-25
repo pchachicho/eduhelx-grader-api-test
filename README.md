@@ -28,6 +28,10 @@ python -m app.main
 uvicorn --reload app.main:app --log-level=info
 ```
 
+### Documentation
+The OpenAPI UI is accessible under /docs. To login, first use the login endpoint to get access/refresh tokens.
+Then, under Authorize (lock icon), set the value to `Bearer {access_token}`.
+
 ## Application Startup
 
 Our application startup is handled by the `start.py` script. This script performs
