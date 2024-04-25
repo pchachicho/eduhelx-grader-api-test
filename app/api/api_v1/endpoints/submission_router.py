@@ -1,4 +1,4 @@
-from typing import List
+from typing import Dict, List
 from pydantic import BaseModel
 from fastapi import APIRouter, Request, Depends
 from sqlalchemy.orm import Session
@@ -31,8 +31,26 @@ async def create_submission(
 
     return submission
 
-@router.get("/submissions/self", response_model=List[SubmissionSchema])
+@router.get("/submissions", response_model=List[SubmissionSchema] | Dict[str, List[SubmissionSchema]])
 async def get_submissions(
+    *,
+    request: Request,
+    db: Session = Depends(get_db),
+    perm: None = Depends(PermissionDependency(SubmissionListPermission)),
+    assignment_id: int,
+    student_onyen: str | None = None
+):
+    onyen = request.user.onyen
+    assignment = await AssignmentService(db).get_assignment_by_id(assignment_id)
+    if student_onyen is None:
+        students = await StudentService(db).list_students()
+        return { student.onyen : await SubmissionService(db).get_submissions(student, assignment) for student in students }
+    else:
+        student = await StudentService(db).get_user_by_onyen(student_onyen)
+        return await SubmissionService(db).get_submissions(student, assignment)
+
+@router.get("/submissions/self", response_model=List[SubmissionSchema])
+async def get_own_submissions(
     *,
     request: Request,
     db: Session = Depends(get_db),

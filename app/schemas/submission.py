@@ -7,8 +7,8 @@ class SubmissionSchema(BaseModel):
     id: int
     commit_id: str
     submission_time: datetime
-    student: StudentSchema
-    assignment: AssignmentSchema
+    # student: StudentSchema
+    # assignment: AssignmentSchema
 
     class Config:
         orm_mode = True
