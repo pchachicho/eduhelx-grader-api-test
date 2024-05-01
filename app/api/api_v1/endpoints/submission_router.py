@@ -93,7 +93,7 @@ async def download_submission(
     course = await course_service.get_course()
     submission = await SubmissionService(db).get_submission_by_id(submission_id)
     student = submission.student
-    student_repo_name = await gitea_service.compute_student_repository_name(course.name, student.onyen)
+    student_repo_name = await course_service.get_student_repository_name(student.onyen)
 
     archive_name = f"assn{ submission.assignment_id }-{ student.onyen }-subm{ submission.id }.zip"
     archive_bytes = await gitea_service.download_repository(student_repo_name, student.onyen, submission.commit_id)
