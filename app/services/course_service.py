@@ -56,8 +56,13 @@ class CourseService:
     
     async def get_instructor_gitea_organization_name(self) -> str:
         course = await self.get_course()
-        return f"{ course.name }-instructors"
+        return f"{ course.name.replace(' ', '_') }-instructors"
     
     async def get_master_repository_name(self) -> str:
         course = await self.get_course()
-        return f"{ course.name }-class-master-repo"
+        # No spaces allowed! (learned the hard way...)
+        return f"{ course.name.replace(' ', '_') }-class-master-repo"        
+    
+    async def get_student_repository_name(self, student_onyen: str) -> str:
+        # Currently, forks are named identically to the parent repository (they are differentiated by user).
+        return await self.get_master_repository_name()
