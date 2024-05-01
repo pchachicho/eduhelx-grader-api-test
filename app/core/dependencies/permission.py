@@ -113,7 +113,8 @@ class SubmissionModifyPermission(BaseRolePermission):
     permission = UserPermission.SUBMISSION__MODIFY
 class SubmissionDeletePermission(BaseRolePermission):
     permission = UserPermission.SUBMISSION__DELETE
-
+class SubmissionDownloadPermission(BaseRolePermission):
+    permission = UserPermission.SUBMISSION__DOWNLOAD
 
 class PermissionDependency(SecurityBase):
     def __init__(self, *permissions: List[Type[BasePermission]]):

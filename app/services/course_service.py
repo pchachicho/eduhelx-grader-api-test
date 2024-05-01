@@ -33,14 +33,14 @@ class CourseService:
             pass
 
         gitea_service = GiteaService()
-        master_repository_name = f"{ name }-class-master-repo"
-        instructor_organization = f"{ name }-instructors"
+        master_repository_name = await gitea_service.compute_master_repository_name(name)
+        instructor_organization_name = await gitea_service.compute_instructor_organization_name(name)
         
-        await gitea_service.create_organization(instructor_organization)
+        await gitea_service.create_organization(instructor_organization_name)
         master_remote_url = await gitea_service.create_repository(
             name=master_repository_name,
             description=f"The class master repository for { name }",
-            owner=instructor_organization,
+            owner=instructor_organization_name,
             private=False
         )
 

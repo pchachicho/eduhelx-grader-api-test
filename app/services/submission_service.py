@@ -32,6 +32,17 @@ class SubmissionService:
         self.session.commit()
 
         return submission
+    
+    async def get_submission_by_id(
+        self,
+        submission_id: int
+    ) -> SubmissionModel:
+        submission = self.session.query(SubmissionModel) \
+            .filter_by(id=submission_id) \
+            .one()
+        if submission is None:
+            raise SubmissionNotFoundException()
+        return submission
 
     async def get_submissions(
         self,

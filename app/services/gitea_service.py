@@ -82,3 +82,31 @@ class GiteaService:
         })
         remote_url = await res.text()
         return remote_url
+    
+    async def download_repository(
+        self,
+        name: str,
+        owner: str,
+        commit: str
+    ) -> bytes:
+        res = await self._get("/repos/download", params={
+            "name": name,
+            "owner": owner,
+            "commit": commit
+        })
+        return await res.content()
+
+
+    #############
+    ## Non-API ##
+    #############
+    """ These could all be static and synchronous but aren't just in case the need arises. """
+    async def compute_master_repository_name(self, course_name: str) -> str:
+        return f"{ course_name }-class-master-repo"
+    
+    async def compute_instructor_organization_name(self, course_name: str) -> str:
+        return f"{ course_name }-instructors"
+    
+    async def compute_student_repository_name(self, course_name: str, student_onyen: str) -> str:
+        # Currently, forks are named identically to the parent repository (they are differentiated by user).
+        return await self.compute_master_repository_name(course_name)
