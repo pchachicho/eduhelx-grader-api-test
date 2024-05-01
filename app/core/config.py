@@ -78,11 +78,11 @@ class Settings(BaseSettings):
         dev_phase = values.get("DEV_PHASE")
         disable_authentication = values.get("DISABLE_AUTHENTICATION")
         impersonate_user = values.get("IMPERSONATE_USER")
-
-        if disable_authentication and dev_phase == "PROD":
+        
+        if disable_authentication and dev_phase == DevPhase.PROD:
             raise ValueError("You cannot use DISABLE_AUTHENTICATION in production mode. Either enable authentication or set DEV_PHASE to DEV.")
 
-        if impersonate_user is not None and dev_phase == "PROD":
+        if impersonate_user is not None and dev_phase == DevPhase.PROD:
             raise ValueError("You cannot use IMPERSONATE_USER in production mode.")
         
         if not disable_authentication and impersonate_user is not None:
