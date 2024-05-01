@@ -18,6 +18,10 @@ class AuthBackend(AuthenticationBackend):
     ) -> Tuple[bool, Optional[CurrentUser]]:
         current_user = CurrentUser()
         authorization: str = conn.headers.get("Authorization")
+        
+        if settings.DISABLE_AUTHENTICATION:
+            return await self.handle_impersonated_auth()
+
         if not authorization:
             return False, current_user
 
@@ -45,6 +49,26 @@ class AuthBackend(AuthenticationBackend):
         current_user.id = id
         current_user.onyen = onyen
         return True, current_user
+    
+    async def handle_impersonated_auth(self):
+        from app.database import SessionLocal
+        from app.services import UserService
+        from app.core.exceptions import UserNotFoundException
+
+        current_user = CurrentUser()
+
+        if settings.IMPERSONATE_USER is None:
+            return False, current_user
+        
+        with SessionLocal() as session:
+            try:
+                user = await UserService(session).get_user_by_onyen(settings.IMPERSONATE_USER)
+                current_user.id = user.id
+                current_user.onyen = user.onyen
+                return True, current_user
+            except UserNotFoundException:
+                return False, current_user
+
 
 
 class AuthenticationMiddleware(BaseAuthenticationMiddleware):

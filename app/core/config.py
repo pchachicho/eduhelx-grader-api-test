@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
     DEV_PHASE: DevPhase = DevPhase.PROD
     DISABLE_AUTHENTICATION: bool = False
+    IMPERSONATE_USER: Optional[str] = None
 
     # Setup wizard (JSON-serialized string)
     SETUP_WIZARD_DATA: Optional[SetupWizardData] = None
@@ -53,6 +54,13 @@ class Settings(BaseSettings):
     POSTGRES_PASSWORD: str
     SQLALCHEMY_DATABASE_URI: Optional[PostgresDsn] = None
 
+
+    @validator("IMPERSONATE_USER", pre=True)
+    def convert_blank_impersonate_user_to_none(cls, v: Optional[str]) -> Any:
+        if v == "":
+            return None
+        return v
+
     @validator("SQLALCHEMY_DATABASE_URI", pre=True)
     def assemble_db_connection(cls, v: Optional[str], values: Dict[str, Any]) -> Any:
         if isinstance(v, str): return v
@@ -69,9 +77,16 @@ class Settings(BaseSettings):
     def validate_mutually_exclusive(cls, values: Dict[str, Any]) -> Any:
         dev_phase = values.get("DEV_PHASE")
         disable_authentication = values.get("DISABLE_AUTHENTICATION")
+        impersonate_user = values.get("IMPERSONATE_USER")
 
         if disable_authentication and dev_phase == "PROD":
             raise ValueError("You cannot use DISABLE_AUTHENTICATION in production mode. Either enable authentication or set DEV_PHASE to DEV.")
+
+        if impersonate_user is not None and dev_phase == "PROD":
+            raise ValueError("You cannot use IMPERSONATE_USER in production mode.")
+        
+        if not disable_authentication and impersonate_user is not None:
+            raise ValueError("You cannot use IMPERSONATE_USER unless DISABLE_AUTHENTICATION is activated.")
 
         return values
 

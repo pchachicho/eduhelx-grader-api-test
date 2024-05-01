@@ -6,7 +6,7 @@ from typing import Union
 from app.schemas import StudentSchema, InstructorSchema
 from app.services import UserService, LDAPService
 from app.services.ldap_service import LDAPUserInfoSchema
-from app.core.dependencies import get_db, PermissionDependency, UserIsSuperuserPermission
+from app.core.dependencies import get_db, PermissionDependency, UserIsSuperuserPermission, RequireLoginPermission
 
 
 router = APIRouter()
@@ -15,7 +15,8 @@ router = APIRouter()
 async def get_own_user(
     *,
     request: Request,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    perm: None = Depends(PermissionDependency(RequireLoginPermission))
 ):
     onyen = request.user.onyen
     user = await UserService(db).get_user_by_onyen(onyen)
