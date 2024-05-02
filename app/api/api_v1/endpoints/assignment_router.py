@@ -18,7 +18,7 @@ class UpdateAssignmentBody(BaseModel):
 
 @router.get(
     "/assignments/self",
-    response_model=List[Union[InstructorAssignmentSchema, StudentAssignmentSchema, AssignmentSchema]]
+    response_model=List[Union[StudentAssignmentSchema, InstructorAssignmentSchema, AssignmentSchema]]
 )
 async def get_assignments(
     *,
@@ -36,7 +36,7 @@ async def get_assignments(
             await InstructorAssignmentService(db, user, assignment).get_instructor_assignment_schema()
             for assignment in assignments
         ]
-    elif isinstance(user, StudentModel):    
+    elif isinstance(user, StudentModel):   
         return [
             await StudentAssignmentService(db, user, assignment).get_student_assignment_schema()
             for assignment in assignments
