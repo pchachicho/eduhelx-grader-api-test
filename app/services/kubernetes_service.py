@@ -22,8 +22,7 @@ class KubernetesService:
     def create_credential_secret(self, course_name: str, onyen: str, password: str, user_type: UserType):
         current_namespace = self.get_current_namespace()
 
-        # Secret names are subject to RFC 1123 meaning they cannot contain uppercase characters or spaces.
-        secret_name = f"{course_name.lower().replace(' ', '-')}-{onyen.lower()}-credential-secret"
+        secret_name = self._compute_credential_secret_name(course_name, onyen)
         secret_data = {
             "onyen": onyen,
             "password": password,
@@ -49,3 +48,17 @@ class KubernetesService:
             namespace=current_namespace,
             body=secret
         )
+
+    def delete_credential_secret(self, course_name: str, onyen: str):
+        current_namespace = self.get_current_namespace()
+
+        secret_name = self._compute_credential_secret_name(course_name, onyen)
+        self.api_instance.delete_namespaced_secret(
+            namespace=current_namespace,
+            name=secret_name
+        )
+
+    @staticmethod
+    def _compute_credential_secret_name(course_name: str, onyen: str) -> str:
+        # Secret names are subject to RFC 1123 meaning they cannot contain uppercase characters, spaces, or underscores.
+        return f"{course_name.lower().replace(' ', '-')}-{onyen.lower()}-credential-secret"

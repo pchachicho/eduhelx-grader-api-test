@@ -8,7 +8,7 @@ async def create_course(name: str):
     course_service = CourseService(session)
 
     await course_service.create_course(
-        name=name
+        course_name=name
     )
 
     session.close()

@@ -74,7 +74,7 @@ class TestCourseService(unittest.IsolatedAsyncioTestCase):
         self.mock_session.query().one.return_value = self.mock_course
 
         with self.assertRaises(CourseAlreadyExistsException):
-            self.assertRaises(await self.course_service.create_course(name="Math"))
+            self.assertRaises(await self.course_service.create_course(course_name="Math"))
 
     async def test_create_course_success(self):
         self.mock_session.query().one.side_effect = NoResultFound()
@@ -88,7 +88,7 @@ class TestCourseService(unittest.IsolatedAsyncioTestCase):
             master_repository_name = f"{self.mock_course.name}-class-master-repo"
             instructor_organization = f"{self.mock_course.name}-instructors"
 
-            result = await self.course_service.create_course(name=self.mock_course.name)        
+            result = await self.course_service.create_course(course_name=self.mock_course.name)        
             mock_gitea_service.return_value.create_organization.assert_called_with(instructor_organization)
             mock_gitea_service.return_value.create_repository.assert_called_with(name=master_repository_name, description=f"The class master repository for {self.mock_course.name}", owner=instructor_organization, private=False)
             

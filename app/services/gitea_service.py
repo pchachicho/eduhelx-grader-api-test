@@ -33,13 +33,19 @@ class GiteaService:
     async def _post(self, endpoint: str, **kwargs):
         return await self._make_request("POST", endpoint, **kwargs)
     
+    async def _put(self, endpoint: str, **kwargs):
+        return await self._make_request("PUT", endpoint, **kwargs)
+    
+    async def _delete(self, endpoint: str, **kwargs):
+        return await self._make_request("DELETE", endpoint, **kwargs)
+    
     async def create_organization(self, organization_name: str):
         await self._post("/orgs", json={
             "org_name": organization_name
         })
     
     async def add_user_to_organization(self, organization_name: str, onyen: str):
-        await self._post(f"/orgs/{organization_name}/members/{onyen}")
+        await self._put(f"/orgs/{organization_name}/members/{onyen}")
 
     async def create_user(
         self,
@@ -51,6 +57,16 @@ class GiteaService:
             "username": username,
             "email": email,
             "password": password
+        })
+
+    async def delete_user(
+        self,
+        username: str,
+        purge: bool=False
+    ):
+        await self._delete("/users", json={
+            "username": username,
+            "purge": purge
         })
     
     async def create_repository(
@@ -66,7 +82,7 @@ class GiteaService:
             "owner": owner,
             "private": private
         })
-        remote_url = await res.text()
+        remote_url = res.text
         return remote_url
     
     async def fork_repository(
@@ -76,11 +92,11 @@ class GiteaService:
         new_owner: str
     ):
         res = await self._post("/forks", json={
-            "name": name,
+            "repo": name,
             "owner": owner,
             "newOwner": new_owner
         })
-        remote_url = await res.text()
+        remote_url = res.text
         return remote_url
     
     async def download_repository(
@@ -94,4 +110,4 @@ class GiteaService:
             "owner": owner,
             "commit": commit
         })
-        return await res.content()
+        return res.content
