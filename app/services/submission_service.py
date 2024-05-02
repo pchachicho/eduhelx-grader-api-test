@@ -20,7 +20,7 @@ class SubmissionService:
         # Alternatively, we could bake this logic into the endpoints to get submissions, rather than into this one.
 
         # Assert the assignment can be submitted to by the student.
-        await StudentAssignmentService(self.session, student, assignment).validate_student_can_submit()
+        StudentAssignmentService(self.session, student, assignment).validate_student_can_submit()
 
         submission = SubmissionModel(
             student_id=student.id,
