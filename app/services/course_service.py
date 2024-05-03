@@ -79,4 +79,4 @@ class CourseService:
     @classmethod
     def _compute_student_repository_name(cls, course_name: str) -> str:
         # Currently, forks are named identically to the parent repository (they are differentiated by user).
-        return cls._compute_instructor_gitea_organization_name(course_name)
+        return cls._compute_master_repository_name(course_name)
