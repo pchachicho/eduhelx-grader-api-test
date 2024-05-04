@@ -1,8 +1,14 @@
 from typing import List
+from enum import Enum
 from io import BytesIO
 from app.core.config import settings
 from app.core.utils.header import parse_content_disposition_header
 import httpx
+
+class CollaboratorPermission(str, Enum):
+    READ = "read"
+    WRITE = "write"
+    ADMIN = "admin"
 
 class GiteaService:
     def __init__(self):
@@ -58,6 +64,35 @@ class GiteaService:
         onyen: str
     ) -> None:
         await self._put(f"/orgs/{organization_name}/members/{onyen}")
+
+    async def add_collaborator_to_repo(
+        self,
+        name: str,
+        owner: str,
+        collaborator_name: str,
+        # Gitea will use WRITE by default if None.
+        # NOTE: case-sensitive.
+        permission: CollaboratorPermission | None = CollaboratorPermission.WRITE
+    ) -> None:
+        await self._put("/repos/collaborators", json={
+            "name": name,
+            "owner": owner,
+            "collaborator_name": collaborator_name,
+            "permission": permission
+        })
+
+    async def remove_collaborator_from_repo(
+        self,
+        name: str,
+        owner: str,
+        collaborator_name: str
+    ) -> None:
+        await self._delete("/repos/collaborators", json={
+            "name": name,
+            "owner": owner,
+            "collaborator_name": collaborator_name
+        })
+        
 
     async def create_user(
         self,
