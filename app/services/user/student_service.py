@@ -47,13 +47,20 @@ class StudentService(UserService):
         course_service = CourseService(self.session)
 
         master_repo_name = await course_service.get_master_repository_name()
+        student_repo_name = await course_service.get_student_repository_name(onyen)
         instructor_organization = await course_service.get_instructor_gitea_organization_name()
         
         await gitea_service.create_user(onyen, email, password)
-        student.fork_remote_url = await gitea_service.fork_repository(
+        await gitea_service.fork_repository(
             name=master_repo_name,
             owner=instructor_organization,
             new_owner=onyen
+        )
+        # The remote is subject to change when renamed, so we don't use the remote returned by fork_repository.
+        student.fork_remote_url = await gitea_service.modify_repository(
+            name=master_repo_name,
+            owner=onyen,
+            new_name=student_repo_name
         )
         self.session.commit()
 

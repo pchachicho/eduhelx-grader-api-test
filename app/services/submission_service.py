@@ -39,7 +39,7 @@ class SubmissionService:
     ) -> SubmissionModel:
         submission = self.session.query(SubmissionModel) \
             .filter_by(id=submission_id) \
-            .one()
+            .first()
         if submission is None:
             raise SubmissionNotFoundException()
         return submission

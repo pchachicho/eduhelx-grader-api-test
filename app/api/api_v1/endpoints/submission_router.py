@@ -1,5 +1,4 @@
 from typing import Dict, List, Optional
-from io import BytesIO
 from pydantic import BaseModel
 from fastapi import APIRouter, Request, Query, Depends
 from fastapi.responses import FileResponse, StreamingResponse
@@ -96,12 +95,16 @@ async def download_submission(
     student_repo_name = await course_service.get_student_repository_name(student.onyen)
 
     archive_name = f"assn{ submission.assignment_id }-{ student.onyen }-subm{ submission.id }.zip"
-    archive_bytes = await gitea_service.download_repository(student_repo_name, student.onyen, submission.commit_id)
-    archive_stream = BytesIO(archive_bytes)
+    archive_stream = await gitea_service.download_repository(
+        name=student_repo_name,
+        owner=student.onyen,
+        treeish_id=submission.commit_id,
+        path=submission.assignment.directory_path
+    )
     return StreamingResponse(
         archive_stream,
         media_type="application/zip",
-        headers={"Content-Disposition": f'attachment; filename="{archive_name}"'}
+        headers={"Content-Disposition": f'attachment; filename="{ archive_name }"'}
     )
 
 @router.get("/submissions/download/active", response_class=FileResponse)

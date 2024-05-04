@@ -16,6 +16,6 @@ class PasswordHelper:
     # Generate a variable-length cryptographically secure password
     @staticmethod
     def generate_password(length: int) -> str:
-        characters = string.ascii_letters + string.digits + string.punctuation
+        characters = string.ascii_letters + string.digits + '+/= '
         password = "".join(secrets.choice(characters) for i in range(length))
         return password

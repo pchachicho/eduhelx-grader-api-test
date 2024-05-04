@@ -1,5 +1,7 @@
 from typing import List
+from io import BytesIO
 from app.core.config import settings
+from app.core.utils.header import parse_content_disposition_header
 import httpx
 
 class GiteaService:
@@ -36,15 +38,25 @@ class GiteaService:
     async def _put(self, endpoint: str, **kwargs):
         return await self._make_request("PUT", endpoint, **kwargs)
     
+    async def _patch(self, endpoint: str, **kwargs):
+        return await self._make_request("PATCH", endpoint, **kwargs)
+    
     async def _delete(self, endpoint: str, **kwargs):
         return await self._make_request("DELETE", endpoint, **kwargs)
     
-    async def create_organization(self, organization_name: str):
+    async def create_organization(
+        self,
+        organization_name: str
+    ) -> None:
         await self._post("/orgs", json={
             "org_name": organization_name
         })
     
-    async def add_user_to_organization(self, organization_name: str, onyen: str):
+    async def add_user_to_organization(
+        self,
+        organization_name: str,
+        onyen: str
+    ) -> None:
         await self._put(f"/orgs/{organization_name}/members/{onyen}")
 
     async def create_user(
@@ -52,7 +64,7 @@ class GiteaService:
         username: str,
         email: str,
         password: str
-    ):
+    ) -> None:
         await self._post("/users", json={
             "username": username,
             "email": email,
@@ -63,12 +75,13 @@ class GiteaService:
         self,
         username: str,
         purge: bool=False
-    ):
+    ) -> None:
         await self._delete("/users", json={
             "username": username,
             "purge": purge
         })
     
+    """ Returns the remote URL of the repository. """
     async def create_repository(
         self,
         name: str,
@@ -85,12 +98,13 @@ class GiteaService:
         remote_url = res.text
         return remote_url
     
+    """ Returns the remote URL of the repository. """
     async def fork_repository(
         self,
         name: str,
         owner: str,
         new_owner: str
-    ):
+    ) -> str:
         res = await self._post("/forks", json={
             "repo": name,
             "owner": owner,
@@ -99,15 +113,42 @@ class GiteaService:
         remote_url = res.text
         return remote_url
     
+    """ Returns the remote URL of the repository (the remote URL is subject to change if repository is renamed). """
+    async def modify_repository(
+        self,
+        name: str,
+        owner: str,
+        new_name: str | None = None,
+        new_description: str | None = None,
+        new_private: bool | None = None
+    ) -> str:
+        data = {}
+        if new_name is not None: data["name"] = new_name
+        if new_description is not None: data["description"] = new_description
+        if new_private is not None: data["private"] = new_private
+        res = await self._patch("/repos", params={
+            "name": name,
+            "owner": owner
+        }, json=data)
+        new_remote_url = res.text
+        return new_remote_url
+    
+    """ Returns a zipped archive of the branch/commit as a byte stream """
     async def download_repository(
         self,
         name: str,
         owner: str,
-        commit: str
-    ) -> bytes:
+        treeish_id: str,
+        path: str | None = None
+    ) -> BytesIO:
         res = await self._get("/repos/download", params={
             "name": name,
             "owner": owner,
-            "commit": commit
+            "treeish_id": treeish_id,
+            "path": path
         })
-        return res.content
+        content_disposition = res.headers.get("Content-Disposition")
+        file_name = parse_content_disposition_header(content_disposition)[1].get("filename")
+        file_stream = BytesIO(res.content)
+        file_stream.name = file_name
+        return file_stream
