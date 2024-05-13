@@ -17,7 +17,7 @@ class StudentService(UserService):
         last_name: str,
         email: str
     ) -> StudentModel:
-        from app.services import GiteaService, CourseService
+        from app.services import GiteaService, CourseService, CollaboratorPermission
 
         try:
             await super().get_user_by_onyen(onyen)
@@ -51,6 +51,12 @@ class StudentService(UserService):
         instructor_organization = await course_service.get_instructor_gitea_organization_name()
         
         await gitea_service.create_user(onyen, email, password)
+        await gitea_service.add_collaborator_to_repo(
+            name=master_repo_name,
+            owner=instructor_organization,
+            collaborator_name=onyen,
+            permission=CollaboratorPermission.READ
+        )
         await gitea_service.fork_repository(
             name=master_repo_name,
             owner=instructor_organization,
@@ -94,3 +100,7 @@ class StudentService(UserService):
         if not isinstance(user, StudentModel):
             raise NotAStudentException()
         return user
+    
+    async def set_fork_cloned(self, student: StudentModel) -> None:
+        student.fork_cloned = True
+        self.session.commit()

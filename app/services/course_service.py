@@ -41,7 +41,7 @@ class CourseService:
             name=master_repository_name,
             description=f"The class master repository for { course_name }",
             owner=instructor_organization_name,
-            private=False
+            private=True
         )
 
         course = CourseModel(
