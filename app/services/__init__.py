@@ -6,3 +6,4 @@ from .assignment_service import *
 from .submission_service import *
 from .course_service import *
 from .gitea_service import *
+from .lms_sync_service import *

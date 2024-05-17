@@ -14,6 +14,28 @@ from app.core.exceptions import (
 class AssignmentService:
     def __init__(self, session: Session):
         self.session = session
+        
+    async def create_assignment(
+        self,
+        id: int,
+        name: str,
+        directory_path: str,
+        available_date: datetime,
+        due_date: datetime
+    ) -> AssignmentModel:
+
+        assignment = AssignmentModel(
+            id=id,
+            name=name,
+            directory_path=directory_path,
+            available_date=available_date,
+            due_date=due_date
+        )
+
+        self.session.add(assignment)
+        self.session.commit()
+        
+        return assignment
 
     async def get_assignment_by_id(self, id: int) -> AssignmentModel:
         assignment = self.session.query(AssignmentModel) \
@@ -56,6 +78,12 @@ class AssignmentService:
     async def update_assignment_due_date(self, assignment: AssignmentModel, due_date: datetime) -> AssignmentModel:
         assignment.due_date = due_date
         assignment.last_modified_date = func.current_timestamp()
+        self.session.commit()
+        return assignment
+    
+    async def delete_assignment(self, id: int):
+        assignment = self.get_assignment_by_id(id)
+        self.session.delete(assignment)
         self.session.commit()
         return assignment
 

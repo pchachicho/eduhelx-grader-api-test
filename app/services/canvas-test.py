@@ -1,3 +1,4 @@
+import json
 from fastapi import FastAPI, HTTPException
 import requests
 
@@ -19,9 +20,9 @@ print(response.json())
 
 # Test the Assignment API
 
-url = f"{CANVAS_API_URL}/courses/1/assignments"
+url = f"{CANVAS_API_URL}/courses/47558/assignments"
 
 response = requests.get(url, headers=headers);
-
+print(json.dumps(response.json(), indent = 4))
 
 

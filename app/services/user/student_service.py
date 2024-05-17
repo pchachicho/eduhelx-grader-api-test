@@ -13,8 +13,7 @@ class StudentService(UserService):
     async def create_student(
         self,
         onyen: str,
-        first_name: str,
-        last_name: str,
+        name: str,
         email: str
     ) -> StudentModel:
         from app.services import GiteaService, CourseService
@@ -33,8 +32,7 @@ class StudentService(UserService):
 
         student = StudentModel(
             onyen=onyen,
-            first_name=first_name,
-            last_name=last_name,
+            name=name,
             email=email,
             role=student_role
         )
@@ -60,3 +58,8 @@ class StudentService(UserService):
         if not isinstance(user, StudentModel):
             raise NotAStudentException()
         return user
+    
+    async def delete_student(self, onyen: str):
+        student = await self.get_user_by_onyen(onyen)
+        self.session.delete(student)
+        self.session.commit()

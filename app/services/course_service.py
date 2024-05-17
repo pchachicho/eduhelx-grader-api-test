@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 from app.models import CourseModel
@@ -23,7 +24,8 @@ class CourseService:
         course.instructors = await InstructorService(self.session).list_instructors()
         return CourseWithInstructorsSchema.from_orm(course)
 
-    async def create_course(self, name: str) -> CourseModel:
+
+    async def create_course(self, name: str, total_students: int, start_at: datetime = None, end_at: datetime = None) -> CourseModel:
         from app.services import GiteaService
 
         try:
@@ -46,7 +48,10 @@ class CourseService:
 
         course = CourseModel(
             name=name,
-            master_remote_url=master_remote_url
+            master_remote_url=master_remote_url,
+            start_at=start_at,
+            end_at=end_at,
+            total_students=total_students
         )
         
         self.session.add(course)
@@ -61,3 +66,17 @@ class CourseService:
     async def get_master_repository_name(self) -> str:
         course = await self.get_course()
         return f"{ course.name }-class-master-repo"
+    
+    async def update_course(self, name: str, total_students: int, start_at: datetime, end_at: datetime) -> CourseModel:
+        print('bar')
+        try:
+            course = await self.get_course()
+            course.name = name
+            course.total_students = total_students
+            course.start_at = start_at
+            course.end_at = end_at
+            self.session.commit()
+            return course
+        except NoCourseExistsException:
+            # Add logic to create the course if it doesn't exist
+            raise NoCourseExistsException()

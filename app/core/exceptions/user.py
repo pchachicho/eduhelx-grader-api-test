@@ -20,6 +20,11 @@ class UserNotFoundException(CustomException):
     error_code = "USER__NOT_FOUND"
     message = "user not found"
 
+class NoStudentsFetchedException(CustomException):
+    code = 404
+    error_code = "USER__NO_STUDENTS_FOUND"
+    message = "no students found"
+
 class NotAStudentException(CustomException):
     code = 403
     error_code = "USER__NOT_A_STUDENT"

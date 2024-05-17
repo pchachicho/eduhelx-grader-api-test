@@ -15,8 +15,7 @@ class UserModel(Base):
     user_type = Column(Enum(UserType), nullable=False)
 
     onyen = Column(Text, nullable=False, unique=True, index=True)
-    first_name = Column(Text, nullable=False)
-    last_name = Column(Text, nullable=False)
+    name = Column(Text, nullable=False)
     email = Column(Text, nullable=False, unique=True)
 
     role = Column(UserRoleType, nullable=False)
