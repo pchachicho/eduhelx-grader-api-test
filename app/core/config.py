@@ -33,6 +33,12 @@ class Settings(BaseSettings):
     # Gitea microservice
     GITEA_ASSIST_API_URL: str
 
+    # Appstore
+    STUDENT_APPSTORE_HOST: str
+    INSTRUCTOR_APPSTORE_HOST: str
+    STUDENT_APPSTORE_API_URL: Optional[str] = None
+    INSTRUCTOR_APPSTORE_API_URL: Optional[str] = None
+
     # Authentication
     JWT_SECRET_KEY: str
     JWT_ALGORITHM: str = "HS256"
@@ -60,6 +66,16 @@ class Settings(BaseSettings):
         if v == "":
             return None
         return v
+
+    @validator("STUDENT_APPSTORE_API_URL", pre=True)
+    def compute_student_appstore_api_url(cls, v: Optional[str], values: Dict[str, Any]) -> Any:
+        if isinstance(v, str): return v
+        return values.get("STUDENT_APPSTORE_HOST") + "/api/v1"
+
+    @validator("INSTRUCTOR_APPSTORE_API_URL", pre=True)
+    def compute_instructor_appstore_api_url(cls, v: Optional[str], values: Dict[str, Any]) -> Any:
+        if isinstance(v, str): return v
+        return values.get("INSTRUCTOR_APPSTORE_HOST") + "/api/v1"
 
     @validator("SQLALCHEMY_DATABASE_URI", pre=True)
     def assemble_db_connection(cls, v: Optional[str], values: Dict[str, Any]) -> Any:

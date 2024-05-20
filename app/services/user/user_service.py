@@ -32,6 +32,15 @@ class UserService:
         if user is None:
             raise UserNotFoundException()
         return user
+    
+    async def _create_user_token(self, user: UserModel) -> RefreshTokenSchema:
+        current_user = CurrentUser(id=user.id, onyen=user.onyen)
+
+        response = RefreshTokenSchema(
+            access_token=TokenHelper.encode(payload=current_user.dict(), expire_period=settings.ACCESS_TOKEN_EXPIRES_MINUTES),
+            refresh_token=TokenHelper.encode(payload={"sub": "refresh", **current_user.dict()}, expire_period=settings.REFRESH_TOKEN_EXPIRES_MINUTES)
+        )
+        return response
 
     async def login(self, onyen: str, autogen_password: str) -> RefreshTokenSchema:
         user = self.session.query(UserModel).filter_by(onyen=onyen).first()
@@ -41,13 +50,7 @@ class UserService:
         if not PasswordHelper.verify_password(autogen_password, user_auth.autogen_password_hash):
             raise PasswordDoesNotMatchException()
 
-        current_user = CurrentUser(id=user.id, onyen=user.onyen)
-
-        response = RefreshTokenSchema(
-            access_token=TokenHelper.encode(payload=current_user.dict(), expire_period=settings.ACCESS_TOKEN_EXPIRES_MINUTES),
-            refresh_token=TokenHelper.encode(payload={"sub": "refresh", **current_user.dict()}, expire_period=settings.REFRESH_TOKEN_EXPIRES_MINUTES)
-        )
-        return response
+        return await self._create_user_token(user)
     
     async def create_user_auto_password_auth(self, onyen: str) -> str:
         from app.services import CourseService, KubernetesService

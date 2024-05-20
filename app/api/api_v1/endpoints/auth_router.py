@@ -1,16 +1,21 @@
-from typing import List
+from typing import List, Annotated
 from pydantic import BaseModel
-from fastapi import APIRouter, Request, Depends
+from fastapi import APIRouter, Request, Depends, Cookie
 from sqlalchemy.orm import Session
 from app.schemas import RefreshTokenSchema, UserRoleSchema, UserPermissionSchema
-from app.services import UserService, JwtService
+from app.services import UserService, JwtService, AppstoreService
+from app.models.user import UserType
 from app.core.dependencies import get_db, PermissionDependency, RequireLoginPermission
+from app.core.exceptions import UserNotFoundException, AppstoreUserDoesNotMatchException
 
 router = APIRouter()
 
 class LoginBody(BaseModel):
     onyen: str
     autogen_password: str
+
+class AppstoreLoginBody(BaseModel):
+    user_type: UserType
 
 class RefreshBody(BaseModel):
     refresh_token: str
@@ -24,6 +29,21 @@ async def login(
 ):
     token = await UserService(db).login(login_body.onyen, login_body.autogen_password)
     return token
+
+@router.post("/login/appstore", response_model=RefreshTokenSchema, description="Authenticate via Appstore session (DOES NOT WORK IN SWAGGER UI)")
+async def appstore_login(
+    *,
+    db: Session = Depends(get_db),
+    sessionid: Annotated[str, Cookie(description="Your sessionid for Appstore")],
+    login_body: AppstoreLoginBody
+):
+    appstore_service = AppstoreService(db, sessionid, login_body.user_type)
+    user = await appstore_service.get_associated_eduhelx_user()
+    # If the user is authenticated in appstore with a corresponding onyen, we can create a token for them.
+    token = await UserService(db)._create_user_token(user)
+    return token
+        
+    
 
 @router.post("/refresh", response_model=str)
 async def refresh(
