@@ -33,8 +33,8 @@ class CourseService:
             pass
 
         gitea_service = GiteaService()
-        master_repository_name = await self._compute_master_repository_name(course_name)
-        instructor_organization_name = await self._compute_instructor_gitea_organization_name(course_name)
+        master_repository_name = self._compute_master_repository_name(course_name)
+        instructor_organization_name = self._compute_instructor_gitea_organization_name(course_name)
         
         await gitea_service.create_organization(instructor_organization_name)
         master_remote_url = await gitea_service.create_repository(
