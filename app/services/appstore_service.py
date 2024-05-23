@@ -48,7 +48,7 @@ class AppstoreService:
     
     async def get_remote_user(self) -> str:
         try:
-            res = await self._get("auth", follow_redirects=False)
+            res = await self._get("auth/", follow_redirects=False)
         except httpx.HTTPStatusError as e:
             # Redirect
             if e.response.status_code >= 300 and e.response.status_code < 400:
