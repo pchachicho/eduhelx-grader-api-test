@@ -188,7 +188,7 @@ class GiteaService:
         file_stream.name = file_name
         return file_stream
     
-    async def set_ssh_token(
+    async def set_ssh_key(
         self,
         username: str,
         name: str,
@@ -197,5 +197,15 @@ class GiteaService:
         res = await self._post("/users/ssh", json={
             "key_name": name,
             "key": key,
+            "username": username
+        })
+    
+    async def remove_ssh_key(
+        self,
+        username: str,
+        key_name: str
+    ):
+        res = await self._delete("/users/ssh", json={
+            "key_name": key_name,
             "username": username
         })

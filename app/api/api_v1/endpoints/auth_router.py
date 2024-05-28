@@ -17,11 +17,14 @@ class LoginBody(BaseModel):
 class AppstoreLoginBody(BaseModel):
     user_type: UserType
 
-class GiteaSSHBody(BaseModel):
+class SetGiteaSSHBody(BaseModel):
     # Name of the key
     name: str
     # Public key
     key: str
+
+class DeleteGiteaSSHBody(BaseModel):
+    name: str
 
 class RefreshBody(BaseModel):
     refresh_token: str
@@ -49,13 +52,21 @@ async def appstore_login(
     token = await UserService(db)._create_user_token(user)
     return token
         
-@router.put("/login/gitea/ssh", description="Set the SSH key for your Gitea user")
+@router.put("/login/gitea/ssh", description="Set an SSH key for your Gitea user")
 async def set_gitea_ssh(
     *,
     request: Request,
-    ssh_body: GiteaSSHBody,
+    ssh_body: SetGiteaSSHBody,
 ):
-    await GiteaService().set_ssh_token(request.user.onyen, ssh_body.name, ssh_body.key)
+    await GiteaService().set_ssh_key(request.user.onyen, ssh_body.name, ssh_body.key)
+
+@router.delete("/logout/gitea/ssh", description="Remove an SSH key for your Gitea user")
+async def set_gitea_ssh(
+    *,
+    request: Request,
+    ssh_body: DeleteGiteaSSHBody,
+):
+    await GiteaService().remove_ssh_key(request.user.onyen, ssh_body.name)
 
 @router.post("/refresh", response_model=str)
 async def refresh(
