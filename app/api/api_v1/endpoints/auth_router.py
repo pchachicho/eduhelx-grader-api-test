@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from fastapi import APIRouter, Request, Depends, Header
 from sqlalchemy.orm import Session
 from app.schemas import RefreshTokenSchema, UserRoleSchema, UserPermissionSchema
-from app.services import UserService, JwtService, AppstoreService
+from app.services import UserService, JwtService, AppstoreService, GiteaService
 from app.models.user import UserType
 from app.core.dependencies import get_db, PermissionDependency, RequireLoginPermission
 from app.core.exceptions import UserNotFoundException, AppstoreUserDoesNotMatchException
@@ -16,6 +16,12 @@ class LoginBody(BaseModel):
 
 class AppstoreLoginBody(BaseModel):
     user_type: UserType
+
+class GiteaSSHBody(BaseModel):
+    # Name of the key
+    name: str
+    # Public key
+    key: str
 
 class RefreshBody(BaseModel):
     refresh_token: str
@@ -43,7 +49,13 @@ async def appstore_login(
     token = await UserService(db)._create_user_token(user)
     return token
         
-    
+@router.put("/login/gitea/ssh", description="Set the SSH key for your Gitea user")
+async def set_gitea_ssh(
+    *,
+    request: Request,
+    ssh_body: GiteaSSHBody,
+):
+    await GiteaService().set_ssh_token(request.user.onyen, ssh_body.name, ssh_body.key)
 
 @router.post("/refresh", response_model=str)
 async def refresh(

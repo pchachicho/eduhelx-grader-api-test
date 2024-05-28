@@ -187,3 +187,15 @@ class GiteaService:
         file_stream = BytesIO(res.content)
         file_stream.name = file_name
         return file_stream
+    
+    async def set_ssh_token(
+        self,
+        username: str,
+        name: str,
+        key: str
+    ):
+        res = await self._post("/users/ssh", json={
+            "key_name": name,
+            "key": key,
+            "username": username
+        })
