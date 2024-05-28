@@ -7,16 +7,14 @@ from app.core.exceptions import AppstoreUserNotFoundException, AppstoreUserDoesN
 import httpx
 
 class AppstoreService:
-    def __init__(self, session: Session, sessionid: str, user_type: UserType):
+    def __init__(self, session: Session, appstore_identity_token: str, user_type: UserType):
         self.session = session
         self.user_type = user_type
         self.client = httpx.AsyncClient(
             base_url=f"{ self.base_url }",
             headers={
                 "User-Agent": f"eduhelx_grader_api",
-            },
-            cookies={
-                "sessionid": sessionid
+                "Authorization": f"Bearer { appstore_identity_token }"
             }
         )
 
@@ -48,14 +46,13 @@ class AppstoreService:
     
     async def get_remote_user(self) -> str:
         try:
-            res = await self._get("auth/", follow_redirects=False)
+            res = await self._get("auth/identity/", follow_redirects=False)
         except httpx.HTTPStatusError as e:
-            # Redirect
-            if e.response.status_code >= 300 and e.response.status_code < 400:
+            if e.response.status_code == 401:
                 raise AppstoreUserNotFoundException()
             else:
                 raise e
-        return res.headers.get("remote_user")
+        return res.headers.get("REMOTE_USER")
     
     async def get_associated_eduhelx_user(self) -> UserModel:
         remote_user = await self.get_remote_user()
