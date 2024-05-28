@@ -1,6 +1,6 @@
 from typing import List, Annotated
 from pydantic import BaseModel
-from fastapi import APIRouter, Request, Depends, Cookie
+from fastapi import APIRouter, Request, Depends, Header
 from sqlalchemy.orm import Session
 from app.schemas import RefreshTokenSchema, UserRoleSchema, UserPermissionSchema
 from app.services import UserService, JwtService, AppstoreService
@@ -34,10 +34,10 @@ async def login(
 async def appstore_login(
     *,
     db: Session = Depends(get_db),
-    sessionid: Annotated[str, Cookie(description="Your sessionid for Appstore")],
+    appstore_access_token: Annotated[str, Header(description="Your sessionid for Appstore")],
     login_body: AppstoreLoginBody
 ):
-    appstore_service = AppstoreService(db, sessionid, login_body.user_type)
+    appstore_service = AppstoreService(db, appstore_access_token, login_body.user_type)
     user = await appstore_service.get_associated_eduhelx_user()
     # If the user is authenticated in appstore with a corresponding onyen, we can create a token for them.
     token = await UserService(db)._create_user_token(user)

@@ -52,7 +52,11 @@ class AppstoreService:
                 raise AppstoreUserNotFoundException()
             else:
                 raise e
-        return res.headers.get("REMOTE_USER")
+        
+        remote_user = res.headers.get("REMOTE_USER")
+        if not remote_user:
+            raise AppstoreUserNotFoundException()
+        return remote_user
     
     async def get_associated_eduhelx_user(self) -> UserModel:
         remote_user = await self.get_remote_user()
