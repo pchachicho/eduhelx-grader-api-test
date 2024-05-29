@@ -1,6 +1,6 @@
 from fastapi import HTTPException
 import requests
-from app.core.exceptions import NoCourseFetchedException, NoAssignmentFetchedException, NoStudentsFetchedException
+from app.core.exceptions import LMSNoCourseFetchedException, LMSNoAssignmentFetchedException, LMSNoStudentsFetchedException
 
 
 # Assuming we'll store our Canvas LMS API key securely, for now I am just hard coding it

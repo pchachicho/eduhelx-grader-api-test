@@ -3,7 +3,7 @@ import json
 from fastapi import Depends, HTTPException
 import requests
 import asyncio
-from app.core.exceptions import NoCourseFetchedException, NoAssignmentFetchedException
+from app.core.exceptions import LMSNoCourseFetchedException, LMSNoAssignmentFetchedException
 from app.core.exceptions.assignment import AssignmentNotFoundException
 from app.core.exceptions.course import NoCourseExistsException
 from app.core.exceptions.user import UserNotFoundException
@@ -133,5 +133,5 @@ from app.database import SessionLocal
 sess = SessionLocal()
 lms = LmsSyncService(47558, sess)
 asyncio.run(lms.sync_course())
-asyncio.run(lms.sync_students())
+# asyncio.run(lms.sync_students())
 
