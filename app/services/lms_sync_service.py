@@ -19,7 +19,7 @@ from app.schemas import CourseWithInstructorsSchema
 
 class LmsSyncService:
     def __init__(self, course_id, session: Session): #, session: Session):
-        self.canvas_service = CanvasService(course_id)
+        self.canvas_service = CanvasService(session, course_id)
         self.course_service = CourseService(session)
         self.assignment_service = AssignmentService(session)
         self.student_service = StudentService(session)
@@ -129,10 +129,10 @@ class LmsSyncService:
 
 
 # Currently only for testing purposes: a script that can be run to sync the LMS with the database
-from app.database import SessionLocal
+# from app.database import SessionLocal
 
-sess = SessionLocal()
-lms = LmsSyncService(47558, sess)
-asyncio.run(lms.sync_course())
-asyncio.run(lms.sync_students())
-
+# sess = SessionLocal()
+# lms = LmsSyncService(sess, 47558)
+# asyncio.run(lms.sync_course())
+# asyncio.run(lms.sync_students())
+# sess.close()

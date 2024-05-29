@@ -6,3 +6,4 @@ from .assignment import *
 from .submission import *
 from .course import *
 from .ldap import *
+from .lms import *

@@ -5,10 +5,7 @@ from sqlalchemy.orm import Session
 from app.services import LmsSyncService
 from app.core.dependencies import (
     get_db, PermissionDependency,
-    StudentListPermission, StudentCreatePermission, 
-    StudentDeletePermission, StudentModifyPermission,
-    AssignmentCreatePermission, AssignmentListPermission, 
-    AssignmentDeletePermission, AssignmentModifyPermission
+    UserIsInstructorPermission
 )
 
 router = APIRouter()
@@ -18,35 +15,24 @@ async def downsync(
     *,
     db: Session = Depends(get_db),
     course_id: int,
-    perm: None = Depends(PermissionDependency(
-        StudentListPermission, StudentCreatePermission,
-        StudentDeletePermission, StudentModifyPermission,
-        AssignmentCreatePermission, AssignmentListPermission,
-        AssignmentDeletePermission, AssignmentModifyPermission
-    ))
+    perm: None = Depends(PermissionDependency(UserIsInstructorPermission))
 ):
-    await LmsSyncService(course_id, db).downsync()
+    await LmsSyncService(db, course_id).downsync()
 
 @router.get("lms/downsync/{course_id}/students")
 async def downsync_students(
     *,
     db: Session = Depends(get_db),
     course_id: int,
-    perm: None = Depends(PermissionDependency(
-        StudentListPermission, StudentCreatePermission,
-        StudentDeletePermission, StudentModifyPermission
-    ))
+    perm: None = Depends(PermissionDependency(UserIsInstructorPermission))
 ):
-    await LmsSyncService(course_id, db).sync_students()
+    await LmsSyncService(db, course_id).sync_students()
 
 @router.get("lms/downsync/{course_id}/assignments")
 async def downsync_assignments(
     *,
     db: Session = Depends(get_db),
     course_id: int,
-    perm: None = Depends(PermissionDependency(
-        AssignmentCreatePermission, AssignmentListPermission,
-        AssignmentDeletePermission, AssignmentModifyPermission
-    ))
+    perm: None = Depends(PermissionDependency(UserIsInstructorPermission))
 ):
-    await LmsSyncService(course_id, db).sync_assignments()
+    await LmsSyncService(db, course_id).sync_assignments()
