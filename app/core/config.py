@@ -32,6 +32,11 @@ class Settings(BaseSettings):
     # Gitea microservice
     GITEA_ASSIST_API_URL: str
 
+    # Canvas
+    CANVAS_API_KEY: str
+    CANVAS_API_URL: str
+    CANVAS_COURSE_ID: str
+
     # Authentication
     JWT_SECRET_KEY: str
     JWT_ALGORITHM: str = "HS256"

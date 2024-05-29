@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from app.models import UserModel, AutoPasswordAuthModel
+from app.models import UserModel, AutoPasswordAuthModel, OnyenPIDModel
 from app.schemas import RefreshTokenSchema
 from app.core.config import settings
 from app.core.utils.token_helper import TokenHelper
