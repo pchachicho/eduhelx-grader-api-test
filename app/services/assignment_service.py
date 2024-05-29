@@ -57,25 +57,29 @@ class AssignmentService:
             raise AssignmentNotFoundException()
         return assignment
     
-    async def update_assignment_name(self, assignment: AssignmentModel, new_name: str) -> AssignmentModel:
+    async def update_assignment_name(self, id: int, new_name: str) -> AssignmentModel:
+        assignment = self.get_assignment_by_id(id)
         assignment.name = new_name
         assignment.last_modified_date = func.current_timestamp()
         self.session.commit()
         return assignment
     
-    async def update_assignment_directory_path(self, assignment: AssignmentModel, directory_path: str) -> AssignmentModel:
+    async def update_assignment_directory_path(self, id: int, directory_path: str) -> AssignmentModel:
+        assignment = self.get_assignment_by_id(id)
         assignment.directory_path = directory_path
         assignment.last_modified_date = func.current_timestamp()
         self.session.commit()
         return assignment
     
-    async def update_assignment_available_date(self, assignment: AssignmentModel, available_date: datetime) -> AssignmentModel:
+    async def update_assignment_available_date(self, id: int, available_date: datetime) -> AssignmentModel:
+        assignment = self.get_assignment_by_id(id)
         assignment.available_date = available_date
         assignment.last_modified_date = func.current_timestamp()
         self.session.commit()
         return assignment
     
-    async def update_assignment_due_date(self, assignment: AssignmentModel, due_date: datetime) -> AssignmentModel:
+    async def update_assignment_due_date(self, id: int, due_date: datetime) -> AssignmentModel:
+        assignment = self.get_assignment_by_id(id)
         assignment.due_date = due_date
         assignment.last_modified_date = func.current_timestamp()
         self.session.commit()

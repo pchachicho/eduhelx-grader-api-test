@@ -67,12 +67,10 @@ class CourseService:
         course = await self.get_course()
         return f"{ course.name }-class-master-repo"
     
-    async def update_course(self, name: str, total_students: int, start_at: datetime, end_at: datetime) -> CourseModel:
-        print('bar')
+    async def update_course(self, name: str, start_at: datetime, end_at: datetime) -> CourseModel:
         try:
             course = await self.get_course()
             course.name = name
-            course.total_students = total_students
             course.start_at = start_at
             course.end_at = end_at
             self.session.commit()

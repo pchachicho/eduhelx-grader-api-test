@@ -9,9 +9,6 @@ from app.core.exceptions import (
     LMSUserNotFoundException, LMSUserPIDAlreadyAssociated
 )
 
-
-# Assuming we'll store our Canvas LMS API key securely, for now I am just hard coding it
-
 class CanvasService:
     def __init__(self, db: Session, course_id: str):
         self.db = db
