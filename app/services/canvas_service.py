@@ -4,7 +4,7 @@ from app.core.exceptions import LMSNoCourseFetchedException, LMSNoAssignmentFetc
 
 
 # Assuming we'll store our Canvas LMS API key securely, for now I am just hard coding it
-CANVAS_API_KEY = "YOUR_API_KEY"
+CANVAS_API_KEY = "YOUR_CANVAS_API_KEY"
 CANVAS_API_URL = "https://uncch.instructure.com/api/v1"
 
 class CanvasService:
@@ -21,7 +21,7 @@ class CanvasService:
             return response.json()
         
         except requests.RequestException as e:
-            raise NoCourseFetchedException()
+            raise LMSNoCourseFetchedException()
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e)
         )
@@ -38,7 +38,7 @@ class CanvasService:
             return response.json()
         
         except requests.RequestException as e:
-            raise NoCourseFetchedException()
+            raise LMSNoCourseFetchedException()
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
     
@@ -51,7 +51,7 @@ class CanvasService:
             return response.json()
         
         except requests.RequestException as e:
-            raise NoAssignmentFetchedException()
+            raise LMSNoAssignmentFetchedException()
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
@@ -63,7 +63,7 @@ class CanvasService:
             return response.json()
         
         except requests.RequestException as e:
-            raise NoAssignmentFetchedException()
+            raise LMSNoAssignmentFetchedException()
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
@@ -80,7 +80,7 @@ class CanvasService:
             return response.json()
         
         except requests.RequestException as e:
-            raise NoStudentsFetchedException()
+            raise LMSNoStudentsFetchedException()
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e)) 
 
