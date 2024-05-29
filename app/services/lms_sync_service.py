@@ -113,6 +113,7 @@ class LmsSyncService:
 
             except UserNotFoundException:
                 #create a new student
+                print('foo')
                 await self.student_service.create_student(
                     onyen=student['sis_user_id'],
                     name=student['name'],

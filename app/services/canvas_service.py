@@ -4,7 +4,7 @@ from app.core.exceptions import LMSNoCourseFetchedException, LMSNoAssignmentFetc
 
 
 # Assuming we'll store our Canvas LMS API key securely, for now I am just hard coding it
-CANVAS_API_KEY = "7006~RMJbYVaRDn3SeKt3kekSHJ1RaVk5oLbmDjkxg650f2rQ6MXwHoeAl3xiWO2rtnzZ"
+CANVAS_API_KEY = "YOUR_API_KEY"
 CANVAS_API_URL = "https://uncch.instructure.com/api/v1"
 
 class CanvasService:
