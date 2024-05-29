@@ -10,5 +10,4 @@ class CourseModel(Base):
     name = Column(Text, nullable=False)
     start_at = Column(DateTime, nullable=False)
     end_at = Column(DateTime, nullable=False)
-    total_students = Column(Integer, nullable=False)
     master_remote_url = Column(Text, nullable=False)

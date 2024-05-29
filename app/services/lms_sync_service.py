@@ -41,16 +41,15 @@ class LmsSyncService:
                 return await self.course_service.update_course(
                     name=canvas_course['name'], 
                     start_at=canvas_course['start_at'], 
-                    end_at=canvas_course['end_at'], 
-                    total_students=canvas_course['total_students']
+                    end_at=canvas_course['end_at']
                 )
 
         except NoCourseExistsException as e:
             return await CourseService(self.session).create_course(
+                id=canvas_course['id'],
                 name=canvas_course['name'], 
                 start_at=canvas_course['start_at'], 
-                end_at=canvas_course['end_at'], 
-                total_students=canvas_course['total_students']
+                end_at=canvas_course['end_at']
             )
 
 
@@ -68,17 +67,17 @@ class LmsSyncService:
                 if(await self.assignment_service.get_assignment_by_id(assignment['id'])):
                     #update the existing assignment
                     await self.assignment_service.update_assignment_name(
-                        assignment_id=assignment['id'], 
+                        id=assignment['id'], 
                         new_name=assignment['name']
                     )
 
                     await self.assignment_service.update_assignment_available_date(
-                        assignment_id=assignment['id'],
+                        id=assignment['id'],
                         available_date=assignment['unlock_at']
                     )
 
                     await self.assignment_service.update_assignment_due_date(
-                        assignment_id=assignment['id'],
+                        id=assignment['id'],
                         due_date=assignment['due_at']
                     )
 
@@ -123,9 +122,9 @@ class LmsSyncService:
         return canvas_students
     
     async def downsync(self):
-        self.sync_course()
-        self.sync_assignments()
-        self.sync_students()
+        await self.sync_course()
+        await self.sync_assignments()
+        await self.sync_students()
 
 
 # Currently only for testing purposes: a script that can be run to sync the LMS with the database

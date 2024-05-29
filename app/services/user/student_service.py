@@ -58,6 +58,9 @@ class StudentService(UserService):
         if not isinstance(user, StudentModel):
             raise NotAStudentException()
         return user
+
+    async def get_total_students(self) -> int:
+        return self.session.query(StudentModel).count()
     
     async def delete_student(self, onyen: str):
         student = await self.get_user_by_onyen(onyen)
