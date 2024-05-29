@@ -3,6 +3,7 @@ import json
 from fastapi import Depends, HTTPException
 import requests
 import asyncio
+from app.core.config import settings
 from app.core.exceptions import NoCourseFetchedException, NoAssignmentFetchedException
 from app.core.exceptions.assignment import AssignmentNotFoundException
 from app.core.exceptions.course import NoCourseExistsException
@@ -18,8 +19,8 @@ from app.schemas import CourseWithInstructorsSchema
 
 
 class LmsSyncService:
-    def __init__(self, course_id, session: Session): #, session: Session):
-        self.canvas_service = CanvasService(session, course_id)
+    def __init__(self, session: Session): #, session: Session):
+        self.canvas_service = CanvasService(session)
         self.course_service = CourseService(session)
         self.assignment_service = AssignmentService(session)
         self.student_service = StudentService(session)
@@ -113,6 +114,7 @@ class LmsSyncService:
 
             except UserNotFoundException:
                 #create a new student
+                print('foo')
                 await self.student_service.create_student(
                     onyen=student['sis_user_id'],
                     name=student['name'],
@@ -127,11 +129,13 @@ class LmsSyncService:
         await self.sync_students()
 
 
-# Currently only for testing purposes: a script that can be run to sync the LMS with the database
-# from app.database import SessionLocal
 
-# sess = SessionLocal()
-# lms = LmsSyncService(sess, 47558)
-# asyncio.run(lms.sync_course())
-# asyncio.run(lms.sync_students())
-# sess.close()
+if __name__ == "__main__" or True:
+    # Currently only for testing purposes: a script that can be run to sync the LMS with the database
+    # from app.database import SessionLocal
+    from app.database import SessionLocal
+
+    sess = SessionLocal()
+    lms = LmsSyncService(sess)
+    asyncio.run(lms.sync_course())
+    sess.close()

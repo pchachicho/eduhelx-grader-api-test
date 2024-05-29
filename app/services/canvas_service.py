@@ -10,11 +10,10 @@ from app.core.exceptions import (
 )
 
 class CanvasService:
-    def __init__(self, db: Session, course_id: str):
+    def __init__(self, db: Session):
         self.db = db
         self.session = requests.Session()
         self.session.headers.update({"Authorization": f"Bearer {settings.CANVAS_API_KEY}"})
-        self.course_id = course_id
 
     async def get_courses(self):
         try:
@@ -31,7 +30,7 @@ class CanvasService:
 
     async def get_course(self, additional_params=None):
         try:
-            url = f"{settings.CANVAS_API_URL}/courses/{self.course_id}"
+            url = f"{settings.CANVAS_API_URL}/courses/{settings.CANVAS_COURSE_ID}"
             
             if additional_params:
                 # Append additional parameters to the URL
@@ -48,7 +47,7 @@ class CanvasService:
     # returns a dictionary of assignments for a course
     async def get_assignments(self):
         try:
-            url = f"{settings.CANVAS_API_URL}/courses/{self.course_id}/assignments"
+            url = f"{settings.CANVAS_API_URL}/courses/{settings.CANVAS_COURSE_ID}/assignments"
             response = self.session.get(url)
             response.raise_for_status()
             return response.json()
@@ -60,7 +59,7 @@ class CanvasService:
 
     async def get_assignment(self, assignment_id):
         try:
-            url = f"{settings.CANVAS_API_URL}/courses/{self.course_id}/assignments/{assignment_id}"
+            url = f"{settings.CANVAS_API_URL}/courses/{settings.CANVAS_COURSE_ID}/assignments/{assignment_id}"
             response = self.session.get(url)
             response.raise_for_status()
             return response.json()
@@ -72,7 +71,7 @@ class CanvasService:
 
     async def get_students(self, additional_params=None):
         try:
-            url = f"{settings.CANVAS_API_URL}/courses/{self.course_id}/users"
+            url = f"{settings.CANVAS_API_URL}/courses/{settings.CANVAS_COURSE_ID}/users"
 
             if additional_params:
                 # Append additional parameters to the URL

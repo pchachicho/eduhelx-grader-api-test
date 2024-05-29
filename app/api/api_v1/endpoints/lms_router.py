@@ -10,29 +10,26 @@ from app.core.dependencies import (
 
 router = APIRouter()
 
-@router.get("lms/downsync/{course_id}")
+@router.get("lms/downsync")
 async def downsync(
     *,
     db: Session = Depends(get_db),
-    course_id: int,
     perm: None = Depends(PermissionDependency(UserIsInstructorPermission))
 ):
-    await LmsSyncService(db, course_id).downsync()
+    await LmsSyncService(db).downsync()
 
-@router.get("lms/downsync/{course_id}/students")
+@router.get("lms/downsync/students")
 async def downsync_students(
     *,
     db: Session = Depends(get_db),
-    course_id: int,
     perm: None = Depends(PermissionDependency(UserIsInstructorPermission))
 ):
-    await LmsSyncService(db, course_id).sync_students()
+    await LmsSyncService(db).sync_students()
 
-@router.get("lms/downsync/{course_id}/assignments")
+@router.get("lms/downsync/assignments")
 async def downsync_assignments(
     *,
     db: Session = Depends(get_db),
-    course_id: int,
     perm: None = Depends(PermissionDependency(UserIsInstructorPermission))
 ):
-    await LmsSyncService(db, course_id).sync_assignments()
+    await LmsSyncService(db).sync_assignments()
