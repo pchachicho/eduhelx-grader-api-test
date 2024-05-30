@@ -180,13 +180,14 @@ class LmsSyncService:
             "message": "Successfully uploaded grades"
         }
 
-    
     async def downsync(self):
         try:
-            await self.sync_course()
-            await self.sync_assignments()
-            await self.sync_students()
-            await self.sync_instructors()
+            await asyncio.gather(
+                self.sync_course(),
+                self.sync_assignments(),
+                self.sync_students(),
+                self.sync_instructors()
+            )
 
             return {
                 "message": "Successfully synced the LMS with the database"

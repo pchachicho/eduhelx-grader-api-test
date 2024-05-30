@@ -68,13 +68,10 @@ class CourseService:
         return f"{ course.name }-class-master-repo"
     
     async def update_course(self, name: str, start_at: datetime, end_at: datetime) -> CourseModel:
-        try:
-            course = await self.get_course()
-            course.name = name
-            course.start_at = start_at
-            course.end_at = end_at
-            self.session.commit()
-            return course
-        except NoCourseExistsException:
-            # Add logic to create the course if it doesn't exist
-            raise NoCourseExistsException()
+        course = await self.get_course()
+        course.name = name
+        course.start_at = start_at
+        course.end_at = end_at
+        self.session.commit()
+        return course
+        
