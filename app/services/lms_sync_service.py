@@ -5,10 +5,6 @@ import requests
 import pandas as pd
 import asyncio
 from app.core.config import settings
-from app.core.exceptions import NoCourseFetchedException, NoAssignmentFetchedException
-from app.core.exceptions.assignment import AssignmentNotFoundException
-from app.core.exceptions.course import NoCourseExistsException
-from app.core.exceptions.user import UserNotFoundException
 from app.services.canvas_service import CanvasService
 from app.services.course_service import CourseService
 from app.services.ldap_service import LDAPService
@@ -16,10 +12,10 @@ from app.services.assignment_service import AssignmentService
 from app.services.user.student_service import StudentService
 from app.services.user.instructor_service import InstructorService
 from sqlalchemy.orm import Session
-from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
-from app.models import CourseModel
-from app.schemas import CourseWithInstructorsSchema
-
+from app.core.exceptions import (
+    AssignmentNotFoundException, NoCourseExistsException, 
+    UserNotFoundException
+)
 
 class LmsSyncService:
     def __init__(self, session: Session): #, session: Session):
@@ -132,7 +128,6 @@ class LmsSyncService:
 
         return canvas_students
     
-    #instructor
     async def sync_instructors(self):
         canvas_instructors = await self.canvas_service.get_users({
             "enrollment_type": "teacher"
@@ -173,9 +168,10 @@ class LmsSyncService:
         df = pd.read_csv(pd.compat.StringIO(grade_csv.decode("utf-8")))
         for index, row in df.iterrows():
             try:
+                user_pid = await self.canvas_service.get_pid_from_onyen(row['onyen'])
                 #somehow need to get assignment id
                 assignment_id = await self.assignment_service.get_assignment_by_id(row['assignment_id'])
-                await self.canvas_service.upload_grades(assignment_id, row['onyen'], row['grade'])
+                await self.canvas_service.upload_grades(assignment_id, user_pid, row['grade'])
 
             except Exception as e:
                 raise HTTPException(status_code=500, detail=str(e))
@@ -195,9 +191,9 @@ class LmsSyncService:
             return {
                 "message": "Successfully synced the LMS with the database"
             }
+
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
-
 
 
 if __name__ == "__main__" or True:

@@ -61,8 +61,28 @@ class StudentService(UserService):
 
     async def get_total_students(self) -> int:
         return self.session.query(StudentModel).count()
-    
-    async def delete_student(self, onyen: str):
+
+    async def delete_user(
+        self,
+        onyen: str
+    ) -> None:
+        from app.services import SubmissionService, AssignmentService
+        from app.models import ExtraTimeModel
+
+        submission_service = SubmissionService(self.session)
+        assignment_service = AssignmentService(self.session)
+
         student = await self.get_user_by_onyen(onyen)
-        self.session.delete(student)
+        assignments = await assignment_service.get_assignments()
+        for assignment in assignments:
+            submissions = await submission_service.get_submissions(student, assignment)
+            for submission in submissions:
+                self.session.delete(submission)
+
+        extra_times = self.session.query(ExtraTimeModel).filter_by(student_id=student.id)
+        for extra_time in extra_times:
+            self.session.delete(extra_time)
+
         self.session.commit()
+
+        await super().delete_user(onyen)

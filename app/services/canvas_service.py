@@ -5,7 +5,7 @@ from app.core.config import settings
 from app.models import UserModel, OnyenPIDModel
 from app.services import UserService
 from app.core.exceptions import (
-    NoCourseFetchedException, NoAssignmentFetchedException, NoStudentsFetchedException,
+    LMSNoCourseFetchedException, LMSNoAssignmentFetchedException, LMSNoStudentsFetchedException,
     LMSUserNotFoundException, LMSUserPIDAlreadyAssociated
 )
 # # Assuming we'll store our Canvas LMS API key securely, for now I am just hard coding it
@@ -25,7 +25,7 @@ class CanvasService:
             return response.json()
         
         except requests.RequestException as e:
-            raise NoCourseFetchedException()
+            raise LMSNoCourseFetchedException()
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e)
         )
@@ -42,7 +42,7 @@ class CanvasService:
             return response.json()
         
         except requests.RequestException as e:
-            raise NoCourseFetchedException()
+            raise LMSNoCourseFetchedException()
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
     
@@ -55,7 +55,7 @@ class CanvasService:
             return response.json()
         
         except requests.RequestException as e:
-            raise NoAssignmentFetchedException()
+            raise LMSNoAssignmentFetchedException()
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
@@ -67,7 +67,7 @@ class CanvasService:
             return response.json()
         
         except requests.RequestException as e:
-            raise NoAssignmentFetchedException()
+            raise LMSNoAssignmentFetchedException()
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
@@ -84,7 +84,7 @@ class CanvasService:
             return response.json()
         
         except requests.RequestException as e:
-            raise NoStudentsFetchedException()
+            raise LMSNoStudentsFetchedException()
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 

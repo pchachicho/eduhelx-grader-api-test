@@ -11,8 +11,7 @@ class InstructorService(UserService):
     async def create_instructor(
         self,
         onyen: str,
-        first_name: str,
-        last_name: str,
+        name: str,
         email: str
     ) -> InstructorModel:
         from app.services import GiteaService, CourseService
@@ -31,8 +30,7 @@ class InstructorService(UserService):
 
         instructor = InstructorModel(
             onyen=onyen,
-            first_name=first_name,
-            last_name=last_name,
+            name=name,
             email=email,
             role=instructor_role
         )
