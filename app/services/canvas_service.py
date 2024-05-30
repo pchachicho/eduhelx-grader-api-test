@@ -8,7 +8,9 @@ from app.core.exceptions import (
     NoCourseFetchedException, NoAssignmentFetchedException, NoStudentsFetchedException,
     LMSUserNotFoundException, LMSUserPIDAlreadyAssociated
 )
-
+# # Assuming we'll store our Canvas LMS API key securely, for now I am just hard coding it
+# CANVAS_API_KEY = "7006~RMJbYVaRDn3SeKt3kekSHJ1RaVk5oLbmDjkxg650f2rQ6MXwHoeAl3xiWO2rtnzZ"
+# CANVAS_API_URL = "https://uncch.instructure.com/api/v1"
 class CanvasService:
     def __init__(self, db: Session):
         self.db = db
@@ -69,7 +71,7 @@ class CanvasService:
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
-    async def get_students(self, additional_params=None):
+    async def get_users(self, additional_params=None):
         try:
             url = f"{settings.CANVAS_API_URL}/courses/{settings.CANVAS_COURSE_ID}/users"
 
@@ -83,6 +85,18 @@ class CanvasService:
         
         except requests.RequestException as e:
             raise NoStudentsFetchedException()
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    async def upload_grades(self, assignment_id: int, login_id: str, grade: float):
+        try:
+            url = f"{settings.CANVAS_API_URL}/courses/{settings.CANVAS_COURSE_ID}/assignments/{assignment_id}/submissions?login_id={login_id}"
+            response = self.session.put(url, json={"grade": grade})
+            response.raise_for_status()
+            return response.json()
+
+        except requests.RequestException as e:
+            raise HTTPException(status_code=500, detail=str(e))
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e)) 
 
@@ -120,7 +134,7 @@ class CanvasService:
             self.db.add(OnyenPIDModel(onyen=onyen, pid=pid))
             self.db.commit()
         
-    async def unassociate_pid_from_user(self, onyen: str, pid: str) -> None:
+    async def unassociate_pid_from_user(self, onyen: str) -> None:
         pid_onyen = self.db.query(OnyenPIDModel).filter_by(onyen=onyen).first()
         if pid_onyen is None:
             raise LMSUserNotFoundException()
