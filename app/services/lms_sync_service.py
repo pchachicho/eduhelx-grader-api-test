@@ -18,7 +18,7 @@ from app.core.exceptions import (
 )
 
 class LmsSyncService:
-    def __init__(self, session: Session): #, session: Session):
+    def __init__(self, session: Session):
         self.canvas_service = CanvasService(session)
         self.course_service = CourseService(session)
         self.assignment_service = AssignmentService(session)
@@ -48,7 +48,6 @@ class LmsSyncService:
 
         except NoCourseExistsException as e:
             return await CourseService(self.session).create_course(
-                id=canvas_course['id'],
                 name=canvas_course['name'], 
                 start_at=canvas_course['start_at'], 
                 end_at=canvas_course['end_at']
@@ -206,5 +205,6 @@ if __name__ == "__main__" or True:
     lms = LmsSyncService(sess)
     asyncio.run(lms.sync_course())
     # asyncio.run(lms.sync_students())
+    asyncio.run(lms.sync_assignments())
 
     sess.close()

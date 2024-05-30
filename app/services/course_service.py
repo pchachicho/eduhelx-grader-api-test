@@ -25,7 +25,7 @@ class CourseService:
         return CourseWithInstructorsSchema.from_orm(course)
 
 
-    async def create_course(self, name: str, total_students: int, start_at: datetime = None, end_at: datetime = None) -> CourseModel:
+    async def create_course(self, name: str, start_at: datetime = None, end_at: datetime = None) -> CourseModel:
         from app.services import GiteaService
 
         try:
@@ -48,10 +48,9 @@ class CourseService:
 
         course = CourseModel(
             name=name,
-            master_remote_url=master_remote_url,
+            master_remote_url='master_remote_url',
             start_at=start_at,
-            end_at=end_at,
-            total_students=total_students
+            end_at=end_at
         )
         
         self.session.add(course)
