@@ -6,7 +6,7 @@ from app.schemas import SettingsSchema
 
 router = APIRouter()
 
-@router.get("/", response_model=SettingsSchema)
+@router.get("/settings", response_model=SettingsSchema)
 def get_settings(
     *,
     db: Session = Depends(get_db)
