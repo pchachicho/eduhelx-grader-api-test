@@ -1,9 +1,22 @@
-from typing import List
+from typing import List, Optional
 from enum import Enum
 from io import BytesIO
+from pydantic import BaseModel
 from app.core.config import settings
 from app.core.utils.header import parse_content_disposition_header
 import httpx
+import base64
+
+class FileOperationType(str, Enum):
+    CREATE = "create"
+    UPDATE = "update"
+    DELETE = "delete"
+
+class FileOperation(BaseModel):
+    content: str
+    path: str
+    from_path: Optional[str] = None
+    operation: FileOperationType
 
 class CollaboratorPermission(str, Enum):
     READ = "read"
@@ -187,6 +200,28 @@ class GiteaService:
         file_stream = BytesIO(res.content)
         file_stream.name = file_name
         return file_stream
+    
+    async def modify_repository_files(
+        self,
+        name: str,
+        owner: str,
+        branch_name: str,
+        commit_message: str,
+        files: List[FileOperation]
+    ):
+        for file in files:
+            if file.operation == FileOperationType.UPDATE or file.operation == FileOperationType.DELETE:
+                raise NotImplementedError("File modify/delete is not implemented in Gitea Assist yet (requires sha)")
+            # Gitea expects file content to be base64-encoded
+            file.content = base64.b64encode(file.content.encode("utf-8")).decode("utf-8")
+        
+        res = await self._post("/repos/modify", json={
+            "name": name,
+            "owner": owner,
+            "branch": branch_name,
+            "message": commit_message,
+            "files": files
+        })
     
     async def set_ssh_key(
         self,

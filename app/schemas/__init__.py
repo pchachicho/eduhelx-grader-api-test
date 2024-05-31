@@ -4,3 +4,4 @@ from .assignment import AssignmentSchema, InstructorAssignmentSchema, StudentAss
 from .extra_time import ExtraTimeSchema
 from .course import CourseSchema, CourseWithInstructorsSchema
 from .jwt import RefreshTokenSchema
+from .settings import SettingsSchema

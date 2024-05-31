@@ -30,7 +30,8 @@ class Settings(BaseSettings):
     # Setup wizard (JSON-serialized string)
     SETUP_WIZARD_DATA: Optional[SetupWizardData] = None
 
-    # Gitea microservice
+    # Gitea
+    GITEA_SSH_URL: str
     GITEA_ASSIST_API_URL: str
 
     # Appstore
