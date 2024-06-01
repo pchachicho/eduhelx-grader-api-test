@@ -10,7 +10,7 @@ from app.core.dependencies import (
 
 router = APIRouter()
 
-@router.get("lms/downsync")
+@router.get("/lms/downsync")
 async def downsync(
     *,
     db: Session = Depends(get_db),
@@ -18,7 +18,7 @@ async def downsync(
 ):
     return await LmsSyncService(db).downsync()
 
-@router.get("lms/downsync/students")
+@router.get("/lms/downsync/students")
 async def downsync_students(
     *,
     db: Session = Depends(get_db),
@@ -26,7 +26,7 @@ async def downsync_students(
 ):
     return await LmsSyncService(db).sync_students()
 
-@router.get("lms/downsync/assignments")
+@router.get("/lms/downsync/assignments")
 async def downsync_assignments(
     *,
     db: Session = Depends(get_db),
@@ -34,7 +34,7 @@ async def downsync_assignments(
 ):
     return await LmsSyncService(db).sync_assignments()
 
-@router.post("lms/grades")
+@router.post("/lms/grades")
 async def post_grades(
     *,
     db: Session = Depends(get_db),

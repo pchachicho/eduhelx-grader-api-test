@@ -13,7 +13,9 @@ class CanvasService:
     def __init__(self, db: Session):
         self.db = db
         self.session = requests.Session()
-        self.session.headers.update({"Authorization": f"Bearer {settings.CANVAS_API_KEY}"})
+        self.session.headers.update({
+            "Authorization": f"Bearer {settings.CANVAS_API_KEY}"
+        })
 
     async def get_courses(self):
         try:
@@ -86,17 +88,36 @@ class CanvasService:
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
-    async def upload_grades(self, assignment_id: int, login_id: str, grade: float):
+    async def upload_grades(self, assignment_id: int, user_id: int, grade: float):
         try:
-            url = f"{settings.CANVAS_API_URL}/courses/{settings.CANVAS_COURSE_ID}/assignments/{assignment_id}/submissions?login_id={login_id}"
-            response = self.session.put(url, json={"grade": grade})
+            url = f"{settings.CANVAS_API_URL}/courses/{settings.CANVAS_COURSE_ID}/assignments/{assignment_id}/submissions/{user_id}"
+            payload = {
+                "submission": {
+                    "posted_grade": grade
+                }
+            }
+            headers = {
+                **self.session.headers,
+                "Content-Type": "application/json"
+            }
+
+            response = self.session.put(url, headers=headers, json=payload)
             response.raise_for_status()
             return response.json()
 
-        except requests.RequestException as e:
-            raise HTTPException(status_code=500, detail=str(e))
         except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e)) 
+            raise HTTPException(status_code=500, detail=str(e))
+        
+    async def update_assignment(self, assignment_id: int, payload: dict):
+        url = f"{settings.CANVAS_API_URL}/courses/{settings.CANVAS_COURSE_ID}/assignments/{assignment_id}"
+        headers = {
+            **self.session.headers,
+            "Content-Type": "application/json"
+        }
+        response = self.session.put(url, headers=headers, json=payload)
+        
+        response.raise_for_status()
+        return response.json()
 
     async def get_onyen_from_pid(self, pid: str) -> UserModel:
         pid_onyen = self.db.query(OnyenPIDModel).filter_by(pid=pid).first()

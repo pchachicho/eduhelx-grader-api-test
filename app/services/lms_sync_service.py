@@ -3,6 +3,7 @@ import json
 from fastapi import Depends, HTTPException
 import requests
 import pandas as pd
+import io, re
 import asyncio
 from app.core.config import settings
 from app.services.canvas_service import CanvasService
@@ -101,7 +102,7 @@ class LmsSyncService:
         })
         db_students = await self.student_service.list_students()
         
-        if(db_students):
+        if(db_students is not None):
             # Delete students that are in the database but not in Canvas
             for student in db_students:
                 student_pid = await self.canvas_service.get_pid_from_onyen(student.onyen)
@@ -111,19 +112,19 @@ class LmsSyncService:
        
         for student in canvas_students:
             pid = student['sis_user_id']
+            user_info = self.ldap_service.get_user_info(pid)
+
             try:
-                onyen = self.ldap_service.get_user_info(pid).onyen
-                await self.student_service.get_user_by_onyen(onyen)
+                await self.student_service.get_user_by_onyen(user_info.onyen)
 
             except UserNotFoundException:
                 #create a new student
-                user_info = self.ldap_service.get_user_info(pid)
-                await self.canvas_service.associate_pid_to_user(user_info.onyen, pid)
                 await self.student_service.create_student(
                     onyen=user_info.onyen,
                     name=student['name'],
                     email=student['email']
                 )
+                await self.canvas_service.associate_pid_to_user(user_info.onyen, pid)
 
         return canvas_students
     
@@ -133,7 +134,7 @@ class LmsSyncService:
         })
         db_instructors = await self.instructor_service.list_instructors()
        
-        if(db_instructors):       
+        if(db_instructors is not None):       
             # Delete instructors that are in the database but not in Canvas
             for instructor in db_instructors:
                 instructor_pid = await self.canvas_service.get_pid_from_onyen(instructor.onyen)
@@ -141,36 +142,37 @@ class LmsSyncService:
                     await self.canvas_service.unassociate_pid_from_user(instructor.onyen)
                     await self.instructor_service.delete_user(instructor.onyen)
         
-        
         for instructor in canvas_instructors:
             pid = instructor['sis_user_id']
+            user_info = self.ldap_service.get_user_info(pid)
+
             try:
-                user_info = self.ldap_service.get_user_info(pid)
                 await self.instructor_service.get_user_by_onyen(user_info.onyen)
 
             except UserNotFoundException:
                 #create a new instructor
-                user_info = self.ldap_service.get_user_info(pid)
-                await self.canvas_service.associate_pid_to_user(user_info.onyen, pid)
                 await self.instructor_service.create_instructor(
                     onyen=user_info.onyen,
                     name=instructor['name'],
                     email=instructor['email']
                 )
+                await self.canvas_service.associate_pid_to_user(user_info.onyen, pid)
 
         return canvas_instructors
 
-
     async def upload_grades_from_csv(self, grade_csv):
-    #     # assignment id = 425660
-    #     # sis user id = 720185731
-        df = pd.read_csv(pd.compat.StringIO(grade_csv.decode("utf-8")))
+        df = pd.read_csv(io.StringIO(grade_csv.decode("utf-8")))
+        
         for index, row in df.iterrows():
             try:
+                assignment_id = self._extract_id(row['file'])
                 user_pid = await self.canvas_service.get_pid_from_onyen(row['onyen'])
-                #somehow need to get assignment id
-                assignment_id = await self.assignment_service.get_assignment_by_id(row['assignment_id'])
-                await self.canvas_service.upload_grades(assignment_id, user_pid, row['grade'])
+                students = await self.canvas_service.get_users({
+                    "enrollment_type": "student"
+                })
+                student = next((student for student in students if student['sis_user_id'] == user_pid), None)
+
+                await self.canvas_service.upload_grades(assignment_id, student["id"], row['percent_correct'])
 
             except Exception as e:
                 raise HTTPException(status_code=500, detail=str(e))
@@ -179,32 +181,59 @@ class LmsSyncService:
             "message": "Successfully uploaded grades"
         }
 
-    async def downsync(self):
+    async def upsync_assignment(self, assignment):
+        unlock_date = assignment.available_date.strftime("%Y-%m-%dT%H:%M:%S")
+        due_date = assignment.due_date.strftime("%Y-%m-%dT%H:%M:%S")
         try:
-            await asyncio.gather(
-                self.sync_course(),
-                self.sync_assignments(),
-                self.sync_students(),
-                self.sync_instructors()
-            )
-
-            return {
-                "message": "Successfully synced the LMS with the database"
-            }
-
+            await self.canvas_service.update_assignment(assignment.id,
+            {
+                "assignment": {
+                    "unlock_at": unlock_date,
+                    "due_at": due_date
+                }
+            })
+        
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
+        
+        return {
+            "message": "Successfully updated assignment"
+        }
 
 
-if __name__ == "__main__" or True:
-    # Currently only for testing purposes: a script that can be run to sync the LMS with the database
-    # from app.database import SessionLocal
-    from app.database import SessionLocal
+    async def downsync(self):
+        await asyncio.gather(
+            self.sync_course(),
+            self.sync_assignments(),
+            self.sync_students(),
+            self.sync_instructors()
+        )
 
-    sess = SessionLocal()
-    lms = LmsSyncService(sess)
-    asyncio.run(lms.sync_course())
-    # asyncio.run(lms.sync_students())
-    asyncio.run(lms.sync_assignments())
+        return {
+            "message": "Successfully synced the LMS with the database"
+        }
+    
+    def _extract_id(self, filename: str):
+        pattern = r"_(\d+)/"
+        match = re.search(pattern, filename)
+        
+        # Check if a match is found
+        if match:
+            # Extract the first captured group (the digits)
+            extracted_id = match.group(1)
+            return extracted_id
+        else:
+            return None
 
-    sess.close()
+# if True:
+# #     # Currently only for testing purposes: a script that can be run to sync the LMS with the database
+#     from app.database import SessionLocal
+
+#     sess = SessionLocal()
+#     lms = LmsSyncService(sess)
+#     # asyncio.run(lms.sync_course())
+#     # asyncio.run(lms.sync_students())
+#     # asyncio.run(lms.sync_assignments())
+#     asyncio.run(lms.downsync())
+
+#     sess.close()
