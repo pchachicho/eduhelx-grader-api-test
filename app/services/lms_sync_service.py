@@ -225,6 +225,8 @@ class LmsSyncService:
         else:
             return None
 
+# Delete below before merge
+# 
 # if True:
 # #     # Currently only for testing purposes: a script that can be run to sync the LMS with the database
 #     from app.database import SessionLocal
