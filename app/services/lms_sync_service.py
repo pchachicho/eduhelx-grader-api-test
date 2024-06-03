@@ -15,7 +15,7 @@ from app.services.user.instructor_service import InstructorService
 from sqlalchemy.orm import Session
 from app.core.exceptions import (
     AssignmentNotFoundException, NoCourseExistsException, 
-    UserNotFoundException
+    UserNotFoundException, LMSServiceException
 )
 
 class LmsSyncService:
@@ -32,20 +32,12 @@ class LmsSyncService:
         try:
             canvas_course = await self.canvas_service.get_course({"include[]": "total_students"})
 
-            # Remove this after deciding what to do about null start/end dates
-            if canvas_course['start_at'] is None:
-                canvas_course['start_at'] = datetime(2000, 1, 1)
-            if canvas_course['end_at'] is None:
-                canvas_course['end_at'] = datetime.now() + timedelta(days=365*100)
-
             # Check if a course already exists in the database
             if(await self.course_service.get_course()):
                 #update the existing course
-                return await self.course_service.update_course(
-                    name=canvas_course['name'], 
-                    start_at=canvas_course['start_at'], 
-                    end_at=canvas_course['end_at']
-                )
+                await self.course_service.update_course_name(canvas_course['name'])
+                await self.course_service.update_course_start_at(canvas_course['start_at'])
+                await self.course_service.update_course_end_at(canvas_course['end_at'])
 
         except NoCourseExistsException as e:
             return await CourseService(self.session).create_course(
@@ -160,27 +152,22 @@ class LmsSyncService:
 
         return canvas_instructors
 
-    async def upload_grades_from_csv(self, grade_csv):
+    async def upload_grades_from_csv(self, assignment_id: int, grade_csv):
         df = pd.read_csv(io.StringIO(grade_csv.decode("utf-8")))
         
         for index, row in df.iterrows():
             try:
-                assignment_id = self._extract_id(row['file'])
                 user_pid = await self.canvas_service.get_pid_from_onyen(row['onyen'])
                 students = await self.canvas_service.get_users({
                     "enrollment_type": "student"
                 })
                 student = next((student for student in students if student['sis_user_id'] == user_pid), None)
 
-                await self.canvas_service.upload_grades(assignment_id, student["id"], row['percent_correct'])
+                await self.canvas_service.upload_grade(assignment_id, student["id"], row['percent_correct'])
 
             except Exception as e:
-                raise HTTPException(status_code=500, detail=str(e))
+                raise LMSServiceException("An error occurred while uploading grades to the LMS")
             
-        return {
-            "message": "Successfully uploaded grades"
-        }
-
     async def upsync_assignment(self, assignment):
         unlock_date = assignment.available_date.strftime("%Y-%m-%dT%H:%M:%S")
         due_date = assignment.due_date.strftime("%Y-%m-%dT%H:%M:%S")
@@ -188,18 +175,15 @@ class LmsSyncService:
             await self.canvas_service.update_assignment(assignment.id,
             {
                 "assignment": {
+                    "name": assignment.name,
                     "unlock_at": unlock_date,
                     "due_at": due_date
                 }
             })
         
         except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
+            raise LMSServiceException("An error occurred while updating the assignment in the LMS")
         
-        return {
-            "message": "Successfully updated assignment"
-        }
-
 
     async def downsync(self):
         await asyncio.gather(
@@ -213,17 +197,6 @@ class LmsSyncService:
             "message": "Successfully synced the LMS with the database"
         }
     
-    def _extract_id(self, filename: str):
-        pattern = r"_(\d+)/"
-        match = re.search(pattern, filename)
-        
-        # Check if a match is found
-        if match:
-            # Extract the first captured group (the digits)
-            extracted_id = match.group(1)
-            return extracted_id
-        else:
-            return None
 
 # Delete below before merge
 # 

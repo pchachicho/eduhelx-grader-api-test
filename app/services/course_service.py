@@ -66,10 +66,23 @@ class CourseService:
         course = await self.get_course()
         return f"{ course.name }-class-master-repo"
     
-    async def update_course(self, name: str, start_at: datetime, end_at: datetime) -> CourseModel:
+    async def get_main_branch_name(self) -> str:
+        return "master"
+    
+    async def update_course_name(self, name: str) -> CourseModel:
         course = await self.get_course()
         course.name = name
+        self.session.commit()
+        return course
+    
+    async def update_course_start_at(self, start_at: datetime) -> CourseModel:
+        course = await self.get_course()
         course.start_at = start_at
+        self.session.commit()
+        return course
+    
+    async def update_course_end_at(self, end_at: datetime) -> CourseModel:
+        course = await self.get_course()
         course.end_at = end_at
         self.session.commit()
         return course

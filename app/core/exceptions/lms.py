@@ -24,3 +24,10 @@ class LMSUserPIDAlreadyAssociated(CustomException):
     code = 409
     error_code = "LMS__USER_PID_ALREADY_ASSOCIATED"
     message = "LMS PID is already associated with a different Eduhelx user's onyen"
+
+class LMSServiceException(CustomException):
+    code = 500
+    error_code = "LMS__SERVICE_EXCEPTION"
+
+    def __init__(self, message: str = "An error occurred while interacting with the LMS"):
+        super().__init__(message)

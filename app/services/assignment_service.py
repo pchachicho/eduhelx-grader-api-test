@@ -40,21 +40,23 @@ class AssignmentService:
         self.session.add(assignment)
         self.session.commit()
 
-        assignment_folder = f"{ name }_{ id }-dist"
+        dist_folder = f"{ name }-dist"
         master_notebook = f"{ name }-prof.ipynb"
         master_repository_name = await course_service.get_master_repository_name()
         owner = await course_service.get_instructor_gitea_organization_name()
+        branch_name = course_service.get_main_branch_name()
 
         files_to_modify = [
-            FileOperation(content="", path=f"{ assignment_folder }/{ master_notebook }", operation=FileOperationType.CREATE),
-            FileOperation(content=f"*grades.csv \n { master_notebook }", path=f"{ assignment_folder }/.gitignore", operation=FileOperationType.CREATE),
+            FileOperation(content="{\n \"cells\": [],\n \"metadata\": {},\n \"nbformat\": 4,\n \"nbformat_minor\": 5\n}", path=f"{ directory_path }/{ master_notebook }", operation=FileOperationType.CREATE),
+            FileOperation(content=f"*grades.csv\n{ master_notebook }", path=f"{ directory_path }/.gitignore", operation=FileOperationType.CREATE),
+            FileOperation(content="", path=f"{ directory_path }/{ dist_folder }/README.md", operation=FileOperationType.CREATE)
         ]
 
         await gitea_service.modify_repository_files(
             name=master_repository_name,
             owner=owner,
-            branch_name="master",
-            commit_message=f"Create assignment { name }",
+            branch_name=branch_name,
+            commit_message="Initialize assignment",
             files=files_to_modify
         )
 
@@ -111,17 +113,17 @@ class AssignmentService:
 
         master_repository_name = await course_service.get_master_repository_name()
         owner = await course_service.get_instructor_gitea_organization_name()
-        assignment_folder = f"{ assignment.name }_{ assignment.id }-dist"
+        directory_path = assignment.directory_path
 
         files_to_modify = [
-            FileOperation(content="", path=f"{ assignment_folder }", operation=FileOperationType.DELETE)
+            FileOperation(content="", path=f"{ directory_path }", operation=FileOperationType.DELETE)
         ]
 
         await gitea_service.modify_repository_files(
             name=master_repository_name,
             owner=owner,
             branch_name="master",
-            commit_message=f"Delete assignment {assignment.name }",
+            commit_message=f"Delete assignment",
             files=files_to_modify
         )
 

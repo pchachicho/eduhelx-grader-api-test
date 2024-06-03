@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.models import AssignmentModel
 from app.schemas import StudentAssignmentSchema, AssignmentSchema
 from app.services import AssignmentService, StudentAssignmentService, StudentService, LmsSyncService
-from app.core.dependencies import get_db, PermissionDependency, UserIsStudentPermission, UserIsInstructorPermission
+from app.core.dependencies import get_db, PermissionDependency, UserIsStudentPermission, AssignmentModifyPermission
 
 router = APIRouter()
 
@@ -22,7 +22,7 @@ async def update_assignment_fields(
     db: Session = Depends(get_db),
     assignment_name: str,
     assignment_body: UpdateAssignmentBody,
-    perm: None = Depends(PermissionDependency(UserIsInstructorPermission))
+    perm: None = Depends(PermissionDependency(AssignmentModifyPermission))
 ):
     # Assumption is that the Name is unique
     assignment = await AssignmentService(db).get_assignment_by_name(assignment_name)
@@ -41,10 +41,9 @@ async def update_assignment_fields(
         assignment = await AssignmentService(db).update_assignment_available_date(assignment, updated_set_fields["available_date"])
     if "due_date" in updated_set_fields:
         assignment = await AssignmentService(db).update_assignment_due_date(assignment, updated_set_fields["due_date"])
-    if "available_date" in updated_set_fields or "due_date" in updated_set_fields:
-        await LmsSyncService(db).upsync_assignment(assignment)
-        
     
+    await LmsSyncService(db).upsync_assignment(assignment)
+
     return assignment
 
 @router.get(

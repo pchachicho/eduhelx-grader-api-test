@@ -34,12 +34,13 @@ async def downsync_assignments(
 ):
     return await LmsSyncService(db).sync_assignments()
 
-@router.post("/lms/grades")
+@router.post("/lms/grades/{assignment_id}")
 async def post_grades(
     *,
     db: Session = Depends(get_db),
+    assignment_id: int,
     perm: None = Depends(PermissionDependency(UserIsInstructorPermission)),
     file: UploadFile = File(...)
 ):
     contents = await file.read()
-    return await LmsSyncService(db).upload_grades_from_csv(contents)
+    return await LmsSyncService(db).upload_grades_from_csv(assignment_id, contents)

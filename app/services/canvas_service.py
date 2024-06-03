@@ -88,7 +88,7 @@ class CanvasService:
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
-    async def upload_grades(self, assignment_id: int, user_id: int, grade: float):
+    async def upload_grade(self, assignment_id: int, user_id: int, grade: float):
         try:
             url = f"{settings.CANVAS_API_URL}/courses/{settings.CANVAS_COURSE_ID}/assignments/{assignment_id}/submissions/{user_id}"
             payload = {
@@ -108,13 +108,13 @@ class CanvasService:
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
         
-    async def update_assignment(self, assignment_id: int, payload: dict):
+    async def update_assignment(self, assignment_id: int, assignment_body: dict):
         url = f"{settings.CANVAS_API_URL}/courses/{settings.CANVAS_COURSE_ID}/assignments/{assignment_id}"
         headers = {
             **self.session.headers,
             "Content-Type": "application/json"
         }
-        response = self.session.put(url, headers=headers, json=payload)
+        response = self.session.put(url, headers=headers, json=assignment_body)
         
         response.raise_for_status()
         return response.json()
