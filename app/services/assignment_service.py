@@ -47,7 +47,7 @@ class AssignmentService:
 
         files_to_modify = [
             FileOperation(content="", path=f"{ assignment_folder }/{ master_notebook }", operation=FileOperationType.CREATE),
-            FileOperation(content="", path=f"{ assignment_folder }/.gitignore", operation=FileOperationType.CREATE),
+            FileOperation(content=f"*grades.csv \n { master_notebook }", path=f"{ assignment_folder }/.gitignore", operation=FileOperationType.CREATE),
         ]
 
         await gitea_service.modify_repository_files(
