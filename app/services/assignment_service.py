@@ -24,6 +24,11 @@ class AssignmentService:
         due_date: datetime
     ) -> AssignmentModel:
 
+        from app.services import GiteaService, FileOperation, FileOperationType, CourseService
+
+        gitea_service = GiteaService()
+        course_service = CourseService(self.session)
+
         assignment = AssignmentModel(
             id=id,
             name=name,
@@ -34,7 +39,25 @@ class AssignmentService:
 
         self.session.add(assignment)
         self.session.commit()
-        
+
+        assignment_folder = f"{ name }_{ id }-dist"
+        master_notebook = f"{ name }-prof.ipynb"
+        master_repository_name = await course_service.get_master_repository_name()
+        owner = await course_service.get_instructor_gitea_organization_name()
+
+        files_to_modify = [
+            FileOperation(content="", path=f"{ assignment_folder }/{ master_notebook }", operation=FileOperationType.CREATE),
+            FileOperation(content="", path=f"{ assignment_folder }/.gitignore", operation=FileOperationType.CREATE),
+        ]
+
+        await gitea_service.modify_repository_files(
+            name=master_repository_name,
+            owner=owner,
+            branch_name="master",
+            commit_message=f"Create assignment { name }",
+            files=files_to_modify
+        )
+
         return assignment
 
     async def get_assignment_by_id(self, id: int) -> AssignmentModel:
@@ -51,7 +74,7 @@ class AssignmentService:
     
     async def get_assignment_by_name(self, name: str) -> AssignmentModel:
         assignment = self.session.query(AssignmentModel) \
-            .filter_by(AssignmentModel.name == name) \
+            .filter_by(name=name) \
             .first()
         if assignment is None:
             raise AssignmentNotFoundException()
@@ -81,11 +104,30 @@ class AssignmentService:
         self.session.commit()
         return assignment
     
-    async def delete_assignment(self, id: int):
-        assignment = self.get_assignment_by_id(id)
+    async def delete_assignment(self, assignment: AssignmentModel):
+        from app.services import GiteaService, CourseService, FileOperation, FileOperationType
+        gitea_service = GiteaService()
+        course_service = CourseService(self.session)
+
+        master_repository_name = await course_service.get_master_repository_name()
+        owner = await course_service.get_instructor_gitea_organization_name()
+        assignment_folder = f"{ assignment.name }_{ assignment.id }-dist"
+
+        files_to_modify = [
+            FileOperation(content="", path=f"{ assignment_folder }", operation=FileOperationType.DELETE)
+        ]
+
+        await gitea_service.modify_repository_files(
+            name=master_repository_name,
+            owner=owner,
+            branch_name="master",
+            commit_message=f"Delete assignment {assignment.name }",
+            files=files_to_modify
+        )
+
         self.session.delete(assignment)
         self.session.commit()
-        return assignment
+
 
 class StudentAssignmentService(AssignmentService):
     def __init__(self, session: Session, student: StudentModel, assignment: AssignmentModel):

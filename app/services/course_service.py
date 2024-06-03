@@ -48,7 +48,7 @@ class CourseService:
 
         course = CourseModel(
             name=name,
-            master_remote_url='master_remote_url',
+            master_remote_url=master_remote_url,
             start_at=start_at,
             end_at=end_at
         )

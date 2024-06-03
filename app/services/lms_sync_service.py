@@ -62,7 +62,7 @@ class LmsSyncService:
         # Delete assignments that are in the database but not in Canvas
         for assignment in db_assignments:
             if assignment.id not in [a['id'] for a in canvas_assignments]:
-                await self.assignment_service.delete_assignment(assignment.id)
+                await self.assignment_service.delete_assignment(assignment)
 
         for assignment in canvas_assignments:
             try:
