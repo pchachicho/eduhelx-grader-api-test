@@ -45,7 +45,7 @@ def main(host, port, reload):
     command.upgrade(alembic_cfg, "head")
 
 
-    # Run setup wizard, if required
+    # Run setup wizard, if required, in the background
     try:
         with SessionLocal() as session:
             lms_sync_service = LmsSyncService(session)
