@@ -1,17 +1,15 @@
 import os
 import glob
-import subprocess
-import sys
 import uvicorn
 from app.main import app
 from dotenv import load_dotenv
 from alembic.config import Config
 from alembic import command
-import uvicorn
-from app.main import app
-from scripts import setup_wizard
+from app.services import LmsSyncService
+from app.database import SessionLocal
+import asyncio
 
-def main(host, port, reload):
+async def main(host, port, reload):
     # Mapping table for special case filename transformations
     special_cases = {
         "postgres-password": "POSTGRES_PASSWORD"
@@ -49,7 +47,10 @@ def main(host, port, reload):
 
     # Run setup wizard, if required
     try:
-        setup_wizard.run()
+        session = SessionLocal()
+        lms_sync_service = LmsSyncService(session)
+        await lms_sync_service.downsync()
+        session.close()
     except ValueError as e:
         print(str(e))
 
@@ -71,4 +72,4 @@ if __name__ == "__main__":
     host = args.host
     port = args.port
     reload = args.reload
-    main(host, port, reload)
+    asyncio.run(main(host, port, reload))
