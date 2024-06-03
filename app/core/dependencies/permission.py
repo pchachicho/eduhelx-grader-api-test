@@ -70,7 +70,7 @@ class BaseRolePermission(RequireLoginPermission):
 
 
 class AssignmentListPermission(BaseRolePermission):
-    permission: UserPermission.ASSIGNMENT__GET
+    permission = UserPermission.ASSIGNMENT__GET
 class AssignmentCreatePermission(BaseRolePermission):
     permission = UserPermission.ASSIGNMENT__CREATE
 class AssignmentModifyPermission(BaseRolePermission):
@@ -113,7 +113,8 @@ class SubmissionModifyPermission(BaseRolePermission):
     permission = UserPermission.SUBMISSION__MODIFY
 class SubmissionDeletePermission(BaseRolePermission):
     permission = UserPermission.SUBMISSION__DELETE
-
+class SubmissionDownloadPermission(BaseRolePermission):
+    permission = UserPermission.SUBMISSION__DOWNLOAD
 
 class PermissionDependency(SecurityBase):
     def __init__(self, *permissions: List[Type[BasePermission]]):
@@ -122,7 +123,10 @@ class PermissionDependency(SecurityBase):
         self.scheme_name = self.__class__.__name__
 
     async def __call__(self, request: Request):
-        if settings.DISABLE_AUTHENTICATION:
+        if settings.DISABLE_AUTHENTICATION and settings.IMPERSONATE_USER is not None:
+            if request.user.onyen is None:
+                raise UserNotFoundException(f'The impersonated user "{ settings.IMPERSONATE_USER }" does not exist.')
+        elif settings.DISABLE_AUTHENTICATION and settings.IMPERSONATE_USER is None:
             # If authentication is disabled, we treat the anonymous user as if they have every permission.
             return
 

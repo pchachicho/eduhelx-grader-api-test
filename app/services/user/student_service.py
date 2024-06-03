@@ -17,7 +17,7 @@ class StudentService(UserService):
         last_name: str,
         email: str
     ) -> StudentModel:
-        from app.services import GiteaService, CourseService
+        from app.services import GiteaService, CourseService, CollaboratorPermission
 
         try:
             await super().get_user_by_onyen(onyen)
@@ -47,16 +47,60 @@ class StudentService(UserService):
         course_service = CourseService(self.session)
 
         master_repo_name = await course_service.get_master_repository_name()
+        student_repo_name = await course_service.get_student_repository_name(onyen)
         instructor_organization = await course_service.get_instructor_gitea_organization_name()
+        
         await gitea_service.create_user(onyen, email, password)
+        await gitea_service.add_collaborator_to_repo(
+            name=master_repo_name,
+            owner=instructor_organization,
+            collaborator_name=onyen,
+            permission=CollaboratorPermission.READ
+        )
         await gitea_service.fork_repository(
             name=master_repo_name,
             owner=instructor_organization,
             new_owner=onyen
         )
+        # The remote is subject to change when renamed, so we don't use the remote returned by fork_repository.
+        student.fork_remote_url = await gitea_service.modify_repository(
+            name=master_repo_name,
+            owner=onyen,
+            new_name=student_repo_name
+        )
+        self.session.commit()
+
+    async def delete_user(
+        self,
+        onyen: str
+    ) -> None:
+        from app.services import SubmissionService, AssignmentService
+        from app.models import ExtraTimeModel
+
+        submission_service = SubmissionService(self.session)
+        assignment_service = AssignmentService(self.session)
+
+        student = await self.get_user_by_onyen(onyen)
+        assignments = await assignment_service.get_assignments()
+        for assignment in assignments:
+            submissions = await submission_service.get_submissions(student, assignment)
+            for submission in submissions:
+                self.session.delete(submission)
+        
+        extra_times = self.session.query(ExtraTimeModel).filter_by(student_id=student.id)
+        for extra_time in extra_times:
+            self.session.delete(extra_time)
+
+        self.session.commit()
+        
+        await super().delete_user(onyen)
 
     async def get_user_by_onyen(self, onyen: str) -> StudentModel:
         user = await super().get_user_by_onyen(onyen)
         if not isinstance(user, StudentModel):
             raise NotAStudentException()
         return user
+    
+    async def set_fork_cloned(self, student: StudentModel) -> None:
+        student.fork_cloned = True
+        self.session.commit()

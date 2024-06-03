@@ -2,8 +2,8 @@ from typing import List
 from datetime import datetime, timedelta
 from sqlalchemy import func
 from sqlalchemy.orm import Session
-from app.models import AssignmentModel, StudentModel, ExtraTimeModel
-from app.schemas import AssignmentSchema, StudentAssignmentSchema
+from app.models import AssignmentModel, InstructorModel, StudentModel, ExtraTimeModel
+from app.schemas import AssignmentSchema, InstructorAssignmentSchema, StudentAssignmentSchema
 from app.core.exceptions import (
     AssignmentNotFoundException,
     AssignmentNotCreatedException,
@@ -27,9 +27,9 @@ class AssignmentService:
         return self.session.query(AssignmentModel) \
             .all()
     
-    async def get_assignment_by_name(self, name: str) -> AssignmentModel:
+    async def get_assignment_by_name(self, assignment_name: str) -> AssignmentModel:
         assignment = self.session.query(AssignmentModel) \
-            .filter_by(AssignmentModel.name == name) \
+            .filter_by(name=assignment_name) \
             .first()
         if assignment is None:
             raise AssignmentNotFoundException()
@@ -58,6 +58,31 @@ class AssignmentService:
         assignment.last_modified_date = func.current_timestamp()
         self.session.commit()
         return assignment
+    
+class InstructorAssignmentService(AssignmentService):
+    def __init__(self, session: Session, instructor: InstructorModel, assignment: AssignmentModel):
+        super().__init__(session)
+        self.instructor = instructor
+        self.assignment = assignment
+
+    def get_is_available(self) -> bool:
+        if not self.assignment.is_created: return False
+
+        current_timestamp = self.session.scalar(func.current_timestamp())
+        return current_timestamp >= self.assignment.available_date
+    
+    def get_is_closed(self) -> bool:
+        if not self.assignment.is_created: return False
+
+        current_timestamp = self.session.scalar(func.current_timestamp())
+        return current_timestamp > self.assignment.due_date
+    
+    async def get_instructor_assignment_schema(self) -> InstructorAssignmentSchema:
+        assignment = AssignmentSchema.from_orm(self.assignment).dict()
+        assignment["is_available"] = self.get_is_available()
+        assignment["is_closed"] = self.get_is_closed()
+
+        return InstructorAssignmentSchema(**assignment)
 
 class StudentAssignmentService(AssignmentService):
     def __init__(self, session: Session, student: StudentModel, assignment: AssignmentModel):
@@ -130,3 +155,5 @@ class StudentAssignmentService(AssignmentService):
         assignment["is_extended"] = assignment["adjusted_due_date"] != assignment["due_date"]
 
         return StudentAssignmentSchema(**assignment)
+    
+    

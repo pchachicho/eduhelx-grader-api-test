@@ -30,6 +30,9 @@ class UserPermission(str, Enum):
     SUBMISSION__CREATE = "submission:create"
     SUBMISSION__MODIFY = "submission:modify"
     SUBMISSION__DELETE = "submission:delete"
+    # You can download a submission from a student repository in Gitea
+    # Note that you still need to be able to access the submission in order to download it.
+    SUBMISSION__DOWNLOAD = "submission:download"
 
 class UserRole:
     def __init__(self, name: str, permissions: List[UserPermission]):
@@ -63,7 +66,8 @@ instructor_role = UserRole("instructor", [
     UserPermission.STUDENT__CREATE,
     UserPermission.STUDENT__MODIFY,
     UserPermission.INSTRUCTOR__GET,
-    UserPermission.SUBMISSION__GET
+    UserPermission.SUBMISSION__GET,
+    UserPermission.SUBMISSION__DOWNLOAD
 ])
 student_role = UserRole("student", [
     UserPermission.COURSE__GET,

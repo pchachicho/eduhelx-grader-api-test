@@ -8,7 +8,7 @@ from fastapi_events.handlers.local import local_handler
 from starlette.middleware.cors import CORSMiddleware
 
 from app.api.api_v1 import api_router
-from app.core.config import settings
+from app.core.config import settings, DevPhase
 from app.core.middleware import AuthenticationMiddleware, AuthBackend, LogMiddleware
 from eduhelx_utils.custom_logger import CustomizeLogger
 from app.core.exceptions import CustomException
@@ -40,13 +40,13 @@ def on_auth_error(request: Request, exc: Exception):
 
 def make_middleware() -> List[Middleware]:
     return [
-        Middleware(
+        *([Middleware(
             CORSMiddleware,
             allow_credentials=True,
             allow_origins=["*"],
             allow_methods=["*"],
             allow_headers=["*"]
-        ),
+        )] if settings.DEV_PHASE == DevPhase.DEV else []),
         Middleware(
             AuthenticationMiddleware,
             backend=AuthBackend(),

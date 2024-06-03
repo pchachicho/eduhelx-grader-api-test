@@ -23,7 +23,7 @@ class CourseService:
         course.instructors = await InstructorService(self.session).list_instructors()
         return CourseWithInstructorsSchema.from_orm(course)
 
-    async def create_course(self, name: str) -> CourseModel:
+    async def create_course(self, course_name: str) -> CourseModel:
         from app.services import GiteaService
 
         try:
@@ -33,19 +33,19 @@ class CourseService:
             pass
 
         gitea_service = GiteaService()
-        master_repository_name = f"{ name }-class-master-repo"
-        instructor_organization = f"{ name }-instructors"
+        master_repository_name = self._compute_master_repository_name(course_name)
+        instructor_organization_name = self._compute_instructor_gitea_organization_name(course_name)
         
-        await gitea_service.create_organization(instructor_organization)
+        await gitea_service.create_organization(instructor_organization_name)
         master_remote_url = await gitea_service.create_repository(
             name=master_repository_name,
-            description=f"The class master repository for { name }",
-            owner=instructor_organization,
-            private=False
+            description=f"The class master repository for { course_name }",
+            owner=instructor_organization_name,
+            private=True
         )
 
         course = CourseModel(
-            name=name,
+            name=course_name,
             master_remote_url=master_remote_url
         )
         
@@ -53,11 +53,29 @@ class CourseService:
         self.session.commit()
 
         return course
-    
+
     async def get_instructor_gitea_organization_name(self) -> str:
         course = await self.get_course()
-        return f"{ course.name }-instructors"
+        return self._compute_instructor_gitea_organization_name(course.name)
     
     async def get_master_repository_name(self) -> str:
         course = await self.get_course()
-        return f"{ course.name }-class-master-repo"
+        # No spaces allowed! (learned the hard way...)
+        return self._compute_master_repository_name(course.name)
+        
+    async def get_student_repository_name(self, student_onyen: str) -> str:
+        course = await self.get_course()
+        return self._compute_student_repository_name(course.name)
+    
+
+    @staticmethod
+    def _compute_instructor_gitea_organization_name(course_name: str) -> str:
+        return f"{ course_name.replace(' ', '_') }-instructors"
+    
+    @staticmethod
+    def _compute_master_repository_name(course_name: str) -> str:
+        return f"{ course_name.replace(' ', '_') }-class-master-repo"
+    
+    @classmethod
+    def _compute_student_repository_name(cls, course_name: str) -> str:
+        return f"{ course_name.replace(' ', '_') }-student-repo"

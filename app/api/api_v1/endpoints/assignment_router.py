@@ -1,12 +1,12 @@
 from pydantic import BaseModel
 from datetime import datetime
-from typing import List
+from typing import List, Union
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
-from app.models import AssignmentModel
-from app.schemas import StudentAssignmentSchema, AssignmentSchema
-from app.services import AssignmentService, StudentAssignmentService, StudentService
-from app.core.dependencies import get_db, PermissionDependency, UserIsStudentPermission
+from app.models import AssignmentModel, StudentModel, InstructorModel
+from app.schemas import InstructorAssignmentSchema, StudentAssignmentSchema, AssignmentSchema
+from app.services import AssignmentService, InstructorAssignmentService, StudentAssignmentService, StudentService, UserService
+from app.core.dependencies import get_db, PermissionDependency, RequireLoginPermission, AssignmentModifyPermission
 
 router = APIRouter()
 
@@ -18,33 +18,39 @@ class UpdateAssignmentBody(BaseModel):
 
 @router.get(
     "/assignments/self",
-    response_model=List[StudentAssignmentSchema]
+    response_model=List[Union[StudentAssignmentSchema, InstructorAssignmentSchema, AssignmentSchema]]
 )
 async def get_assignments(
     *,
     request: Request,
     db: Session = Depends(get_db),
-    perm: None = Depends(PermissionDependency(UserIsStudentPermission))
+    perm: None = Depends(PermissionDependency(RequireLoginPermission))
 ):
     onyen = request.user.onyen
 
-    student = await StudentService(db).get_user_by_onyen(onyen)
+    user = await UserService(db).get_user_by_onyen(onyen)
     assignments = await AssignmentService(db).get_assignments()
 
-    # Go through and add student-specific info to the assignment.
-    student_assignments = []
-    for assignment in assignments:
-        student_assignment = await StudentAssignmentService(db, student, assignment).get_student_assignment_schema()
-        student_assignments.append(student_assignment)
-        
-    return student_assignments
+    if isinstance(user, InstructorModel):
+        return [
+            await InstructorAssignmentService(db, user, assignment).get_instructor_assignment_schema()
+            for assignment in assignments
+        ]
+    elif isinstance(user, StudentModel):   
+        return [
+            await StudentAssignmentService(db, user, assignment).get_student_assignment_schema()
+            for assignment in assignments
+        ]
+    else:
+        return assignments
 
 @router.patch("/assignments/{assignment_name}", response_model=AssignmentSchema)
 async def update_assignment_fields(
     *,
     db: Session = Depends(get_db),
     assignment_name: str,
-    assignment_body: UpdateAssignmentBody
+    assignment_body: UpdateAssignmentBody,
+    perm: None = Depends(PermissionDependency(AssignmentModifyPermission))
 ):
     # Assumption is that the Name is unique
     assignment = await AssignmentService(db).get_assignment_by_name(assignment_name)
