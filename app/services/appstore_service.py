@@ -15,7 +15,8 @@ class AppstoreService:
             headers={
                 "User-Agent": f"eduhelx_grader_api",
                 "Authorization": f"Bearer { appstore_identity_token }"
-            }
+            },
+            timeout=httpx.Timeout(10)
         )
 
     @property
