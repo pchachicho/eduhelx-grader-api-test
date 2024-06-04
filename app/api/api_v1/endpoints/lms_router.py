@@ -2,13 +2,20 @@ from typing import List
 from pydantic import BaseModel
 from fastapi import APIRouter, Request, Depends, UploadFile, File
 from sqlalchemy.orm import Session
-from app.services import LmsSyncService
+from app.services import LmsSyncService, AssignmentService
 from app.core.dependencies import (
     get_db, PermissionDependency,
     UserIsInstructorPermission
 )
 
 router = APIRouter()
+
+class GradeUpload(BaseModel):
+    onyen: str
+    percent_correct: int
+
+class UploadGradesBody(BaseModel):
+    grades: List[GradeUpload]
 
 @router.get("/lms/downsync")
 async def downsync(
@@ -40,7 +47,8 @@ async def post_grades(
     db: Session = Depends(get_db),
     assignment_id: int,
     perm: None = Depends(PermissionDependency(UserIsInstructorPermission)),
-    file: UploadFile = File(...)
+    body: UploadGradesBody
 ):
-    contents = await file.read()
-    return await LmsSyncService(db).upload_grades_from_csv(assignment_id, contents)
+    # Validate the assignment exists
+    await AssignmentService(db).get_assignment_by_id(assignment_id)
+    return await LmsSyncService(db).upload_grades(assignment_id, [grade.dict() for grade in body.grades])

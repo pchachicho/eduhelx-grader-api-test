@@ -1,5 +1,3 @@
-import pandas as pd
-import io
 import asyncio
 from app.core.config import settings
 from app.services.canvas_service import CanvasService
@@ -11,7 +9,7 @@ from app.services.user.instructor_service import InstructorService
 from sqlalchemy.orm import Session
 from app.core.exceptions import (
     AssignmentNotFoundException, NoCourseExistsException, 
-    UserNotFoundException, LMSBackendException
+    UserNotFoundException, LMSUserNotFoundException
 )
 
 class LmsSyncService:
@@ -148,37 +146,28 @@ class LmsSyncService:
 
         return canvas_instructors
 
-    async def upload_grades_from_csv(self, assignment_id: int, grade_csv):
-        df = pd.read_csv(io.StringIO(grade_csv.decode("utf-8")))
-        
-        for index, row in df.iterrows():
-            try:
-                user_pid = await self.canvas_service.get_pid_from_onyen(row['onyen'])
-                students = await self.canvas_service.get_users({
-                    "enrollment_type": "student"
-                })
-                student = next((student for student in students if student['sis_user_id'] == user_pid), None)
-
-                await self.canvas_service.upload_grade(assignment_id, student["id"], row['percent_correct'])
-
-            except Exception as e:
-                raise LMSBackendException("An error occurred while uploading grades to the LMS")
+    async def upload_grades(self, assignment_id: int, grades: list[dict]):
+        for row in grades:
+            user_pid = await self.canvas_service.get_pid_from_onyen(row['onyen'])
+            students = await self.canvas_service.get_users({
+                "enrollment_type": "student"
+            })
+            
+            student = next((student for student in students if student['sis_user_id'] == user_pid), None)
+            if student is None:
+                raise LMSUserNotFoundException()
+            await self.canvas_service.upload_grade(assignment_id, student["id"], row['percent_correct'])
             
     async def upsync_assignment(self, assignment):
         unlock_date = assignment.available_date.strftime("%Y-%m-%dT%H:%M:%S")
         due_date = assignment.due_date.strftime("%Y-%m-%dT%H:%M:%S")
-        try:
-            await self.canvas_service.update_assignment(assignment.id,
-            {
-                "assignment": {
-                    "name": assignment.name,
-                    "unlock_at": unlock_date,
-                    "due_at": due_date
-                }
-            })
-        
-        except Exception as e:
-            raise LMSBackendException("An error occurred while updating the assignment in the LMS")
+        await self.canvas_service.update_assignment(assignment.id, {
+            "assignment": {
+                "name": assignment.name,
+                "unlock_at": unlock_date,
+                "due_at": due_date
+            }
+        })
         
 
     async def downsync(self):
