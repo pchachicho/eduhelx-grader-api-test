@@ -1,9 +1,5 @@
-from datetime import datetime, timedelta
-import json
-from fastapi import Depends, HTTPException
-import requests
 import pandas as pd
-import io, re
+import io
 import asyncio
 from app.core.config import settings
 from app.services.canvas_service import CanvasService
@@ -15,7 +11,7 @@ from app.services.user.instructor_service import InstructorService
 from sqlalchemy.orm import Session
 from app.core.exceptions import (
     AssignmentNotFoundException, NoCourseExistsException, 
-    UserNotFoundException, LMSServiceException
+    UserNotFoundException, LMSBackendException
 )
 
 class LmsSyncService:
@@ -166,7 +162,7 @@ class LmsSyncService:
                 await self.canvas_service.upload_grade(assignment_id, student["id"], row['percent_correct'])
 
             except Exception as e:
-                raise LMSServiceException("An error occurred while uploading grades to the LMS")
+                raise LMSBackendException("An error occurred while uploading grades to the LMS")
             
     async def upsync_assignment(self, assignment):
         unlock_date = assignment.available_date.strftime("%Y-%m-%dT%H:%M:%S")
@@ -182,12 +178,12 @@ class LmsSyncService:
             })
         
         except Exception as e:
-            raise LMSServiceException("An error occurred while updating the assignment in the LMS")
+            raise LMSBackendException("An error occurred while updating the assignment in the LMS")
         
 
     async def downsync(self):
+        await self.sync_course()
         await asyncio.gather(
-            self.sync_course(),
             self.sync_assignments(),
             self.sync_students(),
             self.sync_instructors()

@@ -6,7 +6,7 @@ from app.models import UserModel, OnyenPIDModel
 from app.services import UserService
 from app.core.exceptions import (
     LMSNoCourseFetchedException, LMSNoAssignmentFetchedException, LMSNoStudentsFetchedException,
-    LMSUserNotFoundException, LMSUserPIDAlreadyAssociated
+    LMSUserNotFoundException, LMSUserPIDAlreadyAssociatedException, LMSBackendException
 )
 
 class CanvasService:
@@ -27,8 +27,7 @@ class CanvasService:
         except requests.RequestException as e:
             raise LMSNoCourseFetchedException()
         except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e)
-        )
+            raise LMSBackendException from e
 
     async def get_course(self, additional_params=None):
         try:
@@ -44,7 +43,7 @@ class CanvasService:
         except requests.RequestException as e:
             raise LMSNoCourseFetchedException()
         except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
+            raise LMSBackendException from e
     
     # returns a dictionary of assignments for a course
     async def get_assignments(self):
@@ -57,7 +56,7 @@ class CanvasService:
         except requests.RequestException as e:
             raise LMSNoAssignmentFetchedException()
         except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
+            raise LMSBackendException from e
 
     async def get_assignment(self, assignment_id):
         try:
@@ -69,7 +68,7 @@ class CanvasService:
         except requests.RequestException as e:
             raise LMSNoAssignmentFetchedException()
         except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
+            raise LMSBackendException from e
 
     async def get_users(self, additional_params=None):
         try:
@@ -86,7 +85,7 @@ class CanvasService:
         except requests.RequestException as e:
             raise LMSNoStudentsFetchedException()
         except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
+            raise LMSBackendException from e
 
     async def upload_grade(self, assignment_id: int, user_id: int, grade: float):
         try:
@@ -106,7 +105,7 @@ class CanvasService:
             return response.json()
 
         except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
+            raise LMSBackendException from e
         
     async def update_assignment(self, assignment_id: int, assignment_body: dict):
         url = f"{settings.CANVAS_API_URL}/courses/{settings.CANVAS_COURSE_ID}/assignments/{assignment_id}"
@@ -148,7 +147,7 @@ class CanvasService:
             elif existing_mapping.pid == pid:
                 # This PID is already associated with a different Eduhelx user.
                 # We don't want to assume it's okay to unassociate them, that's the caller's job. 
-                raise LMSUserPIDAlreadyAssociated()
+                raise LMSUserPIDAlreadyAssociatedException()
         else:
             self.db.add(OnyenPIDModel(onyen=onyen, pid=pid))
             self.db.commit()
