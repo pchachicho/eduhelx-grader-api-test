@@ -37,8 +37,15 @@ class Settings(BaseSettings):
     # Appstore
     STUDENT_APPSTORE_HOST: str
     INSTRUCTOR_APPSTORE_HOST: str
-    STUDENT_APPSTORE_API_URL: Optional[str] = None
-    INSTRUCTOR_APPSTORE_API_URL: Optional[str] = None
+    # Computed from host
+    STUDENT_APPSTORE_API_URL: str = ""
+    # Computed from host
+    INSTRUCTOR_APPSTORE_API_URL: str = ""
+    
+    # Canvas
+    CANVAS_API_KEY: str
+    CANVAS_API_URL: str
+    CANVAS_COURSE_ID: str
 
     # Authentication
     JWT_SECRET_KEY: str

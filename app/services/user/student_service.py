@@ -13,8 +13,7 @@ class StudentService(UserService):
     async def create_student(
         self,
         onyen: str,
-        first_name: str,
-        last_name: str,
+        name: str,
         email: str
     ) -> StudentModel:
         from app.services import GiteaService, CourseService, CollaboratorPermission
@@ -33,8 +32,7 @@ class StudentService(UserService):
 
         student = StudentModel(
             onyen=onyen,
-            first_name=first_name,
-            last_name=last_name,
+            name=name,
             email=email,
             role=student_role
         )
@@ -104,3 +102,6 @@ class StudentService(UserService):
     async def set_fork_cloned(self, student: StudentModel) -> None:
         student.fork_cloned = True
         self.session.commit()
+
+    async def get_total_students(self) -> int:
+        return self.session.query(StudentModel).count()

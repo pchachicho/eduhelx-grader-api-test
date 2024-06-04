@@ -14,6 +14,89 @@ from app.core.exceptions import (
 class AssignmentService:
     def __init__(self, session: Session):
         self.session = session
+        
+    async def create_assignment(
+        self,
+        id: int,
+        name: str,
+        directory_path: str,
+        available_date: datetime | None,
+        due_date: datetime | None
+    ) -> AssignmentModel:
+        from app.services import GiteaService, FileOperation, FileOperationType, CourseService
+
+        gitea_service = GiteaService()
+        course_service = CourseService(self.session)
+
+        assignment = AssignmentModel(
+            id=id,
+            name=name,
+            directory_path=directory_path,
+            available_date=available_date,
+            due_date=due_date
+        )
+
+        self.session.add(assignment)
+        self.session.commit()
+
+        master_repository_name = await course_service.get_master_repository_name()
+        owner = await course_service.get_instructor_gitea_organization_name()
+        branch_name = await course_service.get_master_branch_name()
+
+        master_notebook_name = f"{ name }-prof.ipynb"
+        master_notebook_path = f"{ directory_path }/{ master_notebook_name }"
+        master_notebook_content = "{\n \"cells\": [],\n \"metadata\": {},\n \"nbformat\": 4,\n \"nbformat_minor\": 5\n}"
+
+        gitignore_path = f"{ directory_path }/.gitignore"
+        gitignore_content = \
+            "*grades.csv\n" \
+            f"{ master_notebook_name }\n" \
+            f"{ name }-dist"
+        
+        readme_path = f"{ directory_path }/README.md"
+        readme_content = f"# { name }"
+
+        files_to_modify = [
+            FileOperation(content=master_notebook_content, path=master_notebook_path, operation=FileOperationType.CREATE),
+            FileOperation(content=gitignore_content, path=gitignore_path, operation=FileOperationType.CREATE),
+            FileOperation(content=readme_content, path=readme_path, operation=FileOperationType.CREATE)
+        ]
+
+        await gitea_service.modify_repository_files(
+            name=master_repository_name,
+            owner=owner,
+            branch_name=branch_name,
+            commit_message="Initialize assignment",
+            files=files_to_modify
+        )
+
+        return assignment
+    
+    async def delete_assignment(self, assignment: AssignmentModel) -> None:
+        from app.services import GiteaService, CourseService, FileOperation, FileOperationType
+
+        gitea_service = GiteaService()
+        course_service = CourseService(self.session)
+
+        master_repository_name = await course_service.get_master_repository_name()
+        owner = await course_service.get_instructor_gitea_organization_name()
+        branch_name = await course_service.get_master_branch_name()
+        directory_path = assignment.directory_path
+
+        files_to_modify = [
+            FileOperation(content="", path=f"{ directory_path }", operation=FileOperationType.DELETE)
+        ]
+
+        await gitea_service.modify_repository_files(
+            name=master_repository_name,
+            owner=owner,
+            branch_name=branch_name,
+            commit_message=f"Delete assignment",
+            files=files_to_modify
+        )
+
+        self.session.delete(assignment)
+        self.session.commit()
 
     async def get_assignment_by_id(self, id: int) -> AssignmentModel:
         assignment = self.session.query(AssignmentModel) \
@@ -27,9 +110,9 @@ class AssignmentService:
         return self.session.query(AssignmentModel) \
             .all()
     
-    async def get_assignment_by_name(self, assignment_name: str) -> AssignmentModel:
+    async def get_assignment_by_name(self, name: str) -> AssignmentModel:
         assignment = self.session.query(AssignmentModel) \
-            .filter_by(name=assignment_name) \
+            .filter_by(name=name) \
             .first()
         if assignment is None:
             raise AssignmentNotFoundException()
@@ -58,7 +141,7 @@ class AssignmentService:
         assignment.last_modified_date = func.current_timestamp()
         self.session.commit()
         return assignment
-    
+
 class InstructorAssignmentService(AssignmentService):
     def __init__(self, session: Session, instructor: InstructorModel, assignment: AssignmentModel):
         super().__init__(session)
@@ -83,7 +166,7 @@ class InstructorAssignmentService(AssignmentService):
         assignment["is_closed"] = self.get_is_closed()
 
         return InstructorAssignmentSchema(**assignment)
-
+    
 class StudentAssignmentService(AssignmentService):
     def __init__(self, session: Session, student: StudentModel, assignment: AssignmentModel):
         super().__init__(session)
@@ -155,5 +238,3 @@ class StudentAssignmentService(AssignmentService):
         assignment["is_extended"] = assignment["adjusted_due_date"] != assignment["due_date"]
 
         return StudentAssignmentSchema(**assignment)
-    
-    

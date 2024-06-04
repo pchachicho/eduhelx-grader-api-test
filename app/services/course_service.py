@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 from app.models import CourseModel
@@ -23,7 +24,7 @@ class CourseService:
         course.instructors = await InstructorService(self.session).list_instructors()
         return CourseWithInstructorsSchema.from_orm(course)
 
-    async def create_course(self, course_name: str) -> CourseModel:
+    async def create_course(self, name: str, start_at: datetime = None, end_at: datetime = None) -> CourseModel:
         from app.services import GiteaService
 
         try:
@@ -33,27 +34,48 @@ class CourseService:
             pass
 
         gitea_service = GiteaService()
-        master_repository_name = self._compute_master_repository_name(course_name)
-        instructor_organization_name = self._compute_instructor_gitea_organization_name(course_name)
+        master_repository_name = self._compute_master_repository_name(name)
+        instructor_organization_name = self._compute_instructor_gitea_organization_name(name)
         
         await gitea_service.create_organization(instructor_organization_name)
         master_remote_url = await gitea_service.create_repository(
             name=master_repository_name,
-            description=f"The class master repository for { course_name }",
+            description=f"The class master repository for { name }",
             owner=instructor_organization_name,
             private=True
         )
 
         course = CourseModel(
-            name=course_name,
-            master_remote_url=master_remote_url
+            name=name,
+            master_remote_url=master_remote_url,
+            start_at=start_at,
+            end_at=end_at
         )
         
         self.session.add(course)
         self.session.commit()
 
         return course
-
+    
+    async def update_course_name(self, name: str) -> CourseModel:
+        course = await self.get_course()
+        course.name = name
+        self.session.commit()
+        return course
+    
+    async def update_course_start_at(self, start_at: datetime | None) -> CourseModel:
+        course = await self.get_course()
+        course.start_at = start_at
+        self.session.commit()
+        return course
+    
+    async def update_course_end_at(self, end_at: datetime | None) -> CourseModel:
+        course = await self.get_course()
+        course.end_at = end_at
+        self.session.commit()
+        return course
+    
+        
     async def get_instructor_gitea_organization_name(self) -> str:
         course = await self.get_course()
         return self._compute_instructor_gitea_organization_name(course.name)
@@ -67,6 +89,8 @@ class CourseService:
         course = await self.get_course()
         return self._compute_student_repository_name(course.name)
     
+    async def get_master_branch_name(self) -> str:
+        return self._compute_master_branch_name()
 
     @staticmethod
     def _compute_instructor_gitea_organization_name(course_name: str) -> str:
@@ -79,3 +103,8 @@ class CourseService:
     @classmethod
     def _compute_student_repository_name(cls, course_name: str) -> str:
         return f"{ course_name.replace(' ', '_') }-student-repo"
+        return f"{ course.name }-class-master-repo"
+    
+    @classmethod
+    def _compute_master_branch_name(cls) -> str:
+        return "main"

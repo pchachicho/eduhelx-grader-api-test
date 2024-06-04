@@ -6,6 +6,7 @@ from app.core.config import settings
 from app.core.utils.header import parse_content_disposition_header
 import httpx
 import base64
+from pydantic import BaseModel
 
 class FileOperationType(str, Enum):
     CREATE = "create"
@@ -32,7 +33,8 @@ class GiteaService:
             base_url=f"{ self.api_url }",
             headers={
                 "User-Agent": f"eduhelx_grader_api"
-            }
+            },
+            timeout=httpx.Timeout(10)
         )
 
     @property
@@ -225,7 +227,8 @@ class GiteaService:
             "branch": branch_name,
             "message": commit_message,
             "files": files
-        })
+            # This endpoint takes particularly long, do not want it to timeout.
+        }, timeout=httpx.Timeout(30))
     
     async def set_ssh_key(
         self,
