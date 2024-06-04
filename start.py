@@ -1,16 +1,13 @@
 import os
 import glob
-import subprocess
-import sys
 import uvicorn
 import asyncio
 from app.main import app
 from dotenv import load_dotenv
 from alembic.config import Config
 from alembic import command
-import uvicorn
-from app.main import app
-from scripts import setup_wizard
+from app.services import LmsSyncService
+from app.database import SessionLocal
 
 def main(host, port, reload):
     # Mapping table for special case filename transformations
@@ -50,8 +47,9 @@ def main(host, port, reload):
 
     # Run setup wizard, if required.
     try:
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(setup_wizard.run())
+        with SessionLocal() as session:
+            lms_sync_service = LmsSyncService(session)
+            asyncio.run(lms_sync_service.downsync())
     except ValueError as e:
         print(str(e))
 

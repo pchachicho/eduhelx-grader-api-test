@@ -91,10 +91,16 @@ class UserService:
         self,
         onyen: str
     ) -> None:
-        from app.services import GiteaService, KubernetesService, CourseService
+        from app.services import GiteaService, KubernetesService, CourseService, CanvasService
         
         await self.delete_user_auto_password_auth(onyen)
-        
+        try:
+            # MARKED FOR REMOVAL AFTER HLXK-232
+            await CanvasService(self.session).unassociate_pid_from_user(onyen)
+        except:
+            # If it's already been unassociated or never was associated, don't care.
+            pass
+
         user = await self.get_user_by_onyen(onyen)
         self.session.delete(user)
         self.session.commit()

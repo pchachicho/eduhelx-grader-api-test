@@ -6,6 +6,7 @@ from app.core.config import settings
 from app.core.utils.header import parse_content_disposition_header
 import httpx
 import base64
+from pydantic import BaseModel
 
 class FileOperationType(str, Enum):
     CREATE = "create"

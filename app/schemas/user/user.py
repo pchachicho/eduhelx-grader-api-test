@@ -5,8 +5,7 @@ class UserSchema(BaseModel):
     id: int
     user_type: UserType
     onyen: str
-    first_name: str
-    last_name: str
+    name: str
     email: str
 
     class Config:

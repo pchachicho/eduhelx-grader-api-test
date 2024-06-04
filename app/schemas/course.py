@@ -6,6 +6,8 @@ from .user import InstructorSchema
 class CourseSchema(BaseModel):
     id: int
     name: str
+    start_at: datetime | None
+    end_at: datetime | None
     master_remote_url: str
 
     class Config:
