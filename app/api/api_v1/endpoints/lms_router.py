@@ -17,7 +17,7 @@ class GradeUpload(BaseModel):
 class UploadGradesBody(BaseModel):
     grades: List[GradeUpload]
 
-@router.get("/lms/downsync")
+@router.post("/lms/downsync")
 async def downsync(
     *,
     db: Session = Depends(get_db),
@@ -25,7 +25,7 @@ async def downsync(
 ):
     return await LmsSyncService(db).downsync()
 
-@router.get("/lms/downsync/students")
+@router.post("/lms/downsync/students")
 async def downsync_students(
     *,
     db: Session = Depends(get_db),
@@ -33,7 +33,7 @@ async def downsync_students(
 ):
     return await LmsSyncService(db).sync_students()
 
-@router.get("/lms/downsync/assignments")
+@router.post("/lms/downsync/assignments")
 async def downsync_assignments(
     *,
     db: Session = Depends(get_db),
