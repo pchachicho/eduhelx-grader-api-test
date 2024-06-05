@@ -121,11 +121,12 @@ class CanvasService:
         url = f"courses/{ settings.CANVAS_COURSE_ID }/assignments/{ assignment_id }"
         payload = body.dict(exclude_unset=True)
         if "available_date" in payload:
-            payload["unlock_at"] = payload.pop("available_date")
+            unlock_at = payload.pop("available_date")
+            payload["unlock_at"] = unlock_at.isoformat() if unlock_at is not None else None
         if "due_date" in payload:
-            payload["due_at"] = payload.pop("due_date")
-
-        return self._put(url, json={
+            due_at = payload.pop("due_date")
+            payload["due_at"] = due_at.isoformat() if due_at is not None else None
+        return await self._put(url, json={
             "assignment": payload
         })
 
