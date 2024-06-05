@@ -2,7 +2,7 @@ from typing import List
 from pydantic import BaseModel
 from fastapi import APIRouter, Request, Depends, UploadFile, File
 from sqlalchemy.orm import Session
-from app.services import LmsSyncService
+from app.services import LmsSyncService, AssignmentService
 from app.core.dependencies import (
     get_db, PermissionDependency,
     UserIsInstructorPermission
@@ -10,7 +10,14 @@ from app.core.dependencies import (
 
 router = APIRouter()
 
-@router.get("/lms/downsync")
+class GradeUpload(BaseModel):
+    onyen: str
+    percent_correct: int
+
+class UploadGradesBody(BaseModel):
+    grades: List[GradeUpload]
+
+@router.post("/lms/downsync")
 async def downsync(
     *,
     db: Session = Depends(get_db),
@@ -18,7 +25,7 @@ async def downsync(
 ):
     return await LmsSyncService(db).downsync()
 
-@router.get("/lms/downsync/students")
+@router.post("/lms/downsync/students")
 async def downsync_students(
     *,
     db: Session = Depends(get_db),
@@ -26,7 +33,7 @@ async def downsync_students(
 ):
     return await LmsSyncService(db).sync_students()
 
-@router.get("/lms/downsync/assignments")
+@router.post("/lms/downsync/assignments")
 async def downsync_assignments(
     *,
     db: Session = Depends(get_db),
@@ -40,7 +47,8 @@ async def post_grades(
     db: Session = Depends(get_db),
     assignment_id: int,
     perm: None = Depends(PermissionDependency(UserIsInstructorPermission)),
-    file: UploadFile = File(...)
+    body: UploadGradesBody
 ):
-    contents = await file.read()
-    return await LmsSyncService(db).upload_grades_from_csv(assignment_id, contents)
+    # Validate the assignment exists
+    await AssignmentService(db).get_assignment_by_id(assignment_id)
+    return await LmsSyncService(db).upload_grades(assignment_id, [grade.dict() for grade in body.grades])
