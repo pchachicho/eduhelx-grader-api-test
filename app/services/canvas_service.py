@@ -1,13 +1,21 @@
 import requests
+import httpx
+from pydantic import BaseModel
+from datetime import datetime
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.models import UserModel, OnyenPIDModel
-from app.services import UserService
+from app.services import UserService, UserType
 from app.core.exceptions import (
     LMSNoCourseFetchedException, LMSNoAssignmentFetchedException, LMSNoStudentsFetchedException,
     LMSUserNotFoundException, LMSUserPIDAlreadyAssociatedException, LMSBackendException
 )
+
+class UpdateCanvasAssignmentBody(BaseModel):
+    name: str | None
+    available_date: datetime | None
+    due_date: datetime | None
 
 class CanvasService:
     def __init__(self, db: Session):
@@ -16,107 +24,109 @@ class CanvasService:
         self.session.headers.update({
             "Authorization": f"Bearer {settings.CANVAS_API_KEY}"
         })
+        self.client = httpx.AsyncClient(
+            base_url=f"{ self.api_url }",
+            headers={
+                "User-Agent": f"eduhelx_grader_api"
+            },
+            timeout=httpx.Timeout(10)
+        )
+
+    @property
+    def api_url(self) -> str:
+        return settings.CANVAS_API_URL + ("/" if not settings.CANVAS_API_URL.endswith("/") else "")
+    
+    async def _make_request(self, method: str, endpoint: str, headers={}, **kwargs):
+        res = await self.client.request(
+            method,
+            endpoint,
+            headers={
+                **headers
+            },
+            **kwargs
+        )
+        try:
+            res.raise_for_status()
+        except Exception as e:
+            raise LMSBackendException(str(e)) from e
+        return res
+    
+    async def _get(self, endpoint: str, **kwargs):
+        return await self._make_request("GET", endpoint, **kwargs)
+
+    async def _post(self, endpoint: str, **kwargs):
+        return await self._make_request("POST", endpoint, **kwargs)
+    
+    async def _put(self, endpoint: str, **kwargs):
+        return await self._make_request("PUT", endpoint, **kwargs)
+    
+    async def _patch(self, endpoint: str, **kwargs):
+        return await self._make_request("PATCH", endpoint, **kwargs)
+    
+    async def _delete(self, endpoint: str, **kwargs):
+        return await self._make_request("DELETE", endpoint, **kwargs)
 
     async def get_courses(self):
-        try:
-            url = f"{settings.CANVAS_API_URL}/courses"
-            response = self.session.get(url)
-            response.raise_for_status()
-            return response.json()
-        
-        except requests.RequestException as e:
-            raise LMSNoCourseFetchedException()
-        except Exception as e:
-            raise LMSBackendException from e
+        return await self._get("courses")
 
-    async def get_course(self, additional_params=None):
-        try:
-            url = f"{settings.CANVAS_API_URL}/courses/{settings.CANVAS_COURSE_ID}"
-            
-            if additional_params:
-                # Append additional parameters to the URL
-                url += "?" + "&".join([f"{key}={value}" for key, value in additional_params.items()])
-            response = self.session.get(url)
-            response.raise_for_status()
-            return response.json()
-        
-        except requests.RequestException as e:
-            raise LMSNoCourseFetchedException()
-        except Exception as e:
-            raise LMSBackendException from e
+    async def get_course(self):
+        return await self._get(f"courses/{ settings.CANVAS_COURSE_ID }")
     
     # returns a dictionary of assignments for a course
     async def get_assignments(self):
-        try:
-            url = f"{settings.CANVAS_API_URL}/courses/{settings.CANVAS_COURSE_ID}/assignments"
-            response = self.session.get(url)
-            response.raise_for_status()
-            return response.json()
-        
-        except requests.RequestException as e:
-            raise LMSNoAssignmentFetchedException()
-        except Exception as e:
-            raise LMSBackendException from e
+        return await self._get(f"courses/{ settings.CANVAS_COURSE_ID }/assignments")
 
     async def get_assignment(self, assignment_id):
-        try:
-            url = f"{settings.CANVAS_API_URL}/courses/{settings.CANVAS_COURSE_ID}/assignments/{assignment_id}"
-            response = self.session.get(url)
-            response.raise_for_status()
-            return response.json()
-        
-        except requests.RequestException as e:
-            raise LMSNoAssignmentFetchedException()
-        except Exception as e:
-            raise LMSBackendException from e
+        return await self._get(f"courses/{ settings.CANVAS_COURSE_ID }/assignments/{ assignment_id }")
+    
+    async def get_students(self):
+        return await self.get_users(user_type=UserType.STUDENT)
 
-    async def get_users(self, additional_params=None):
-        try:
-            url = f"{settings.CANVAS_API_URL}/courses/{settings.CANVAS_COURSE_ID}/users"
+    async def get_instructors(self):
+        return await self.get_users(user_type=UserType.INSTRUCTOR)
+    
+    async def get_student_by_pid(self, pid: str):
+        return await self.get_user_by_pid(pid, UserType.STUDENT)
+    
+    async def get_instructor_by_pid(self, pid: str):
+        return await self.get_user_by_pid(pid, UserType.INSTRUCTOR)
+    
+    async def get_user_by_pid(self, pid: str, user_type: UserType):
+        users = await self.get_users(user_type)
+        for user in users:
+            if user["sis_user_id"] == pid: return user
+        raise LMSUserNotFoundException()
 
-            if additional_params:
-                # Append additional parameters to the URL
-                url += "?" + "&".join([f"{key}={value}" for key, value in additional_params.items()])
-
-            response = self.session.get(url)
-            response.raise_for_status()
-            return response.json()
-        
-        except requests.RequestException as e:
-            raise LMSNoStudentsFetchedException()
-        except Exception as e:
-            raise LMSBackendException from e
-
+    async def get_users(self, user_type: UserType):
+        if user_type == UserType.STUDENT:
+            enrollment_type = "student"
+        elif user_type == UserType.INSTRUCTOR:
+            enrollment_type = "teacher"
+        else:
+            raise ValueError("You can only get student and instructor users from this endpoint")
+        return await self._get(f"courses/{ settings.CANVAS_COURSE_ID }/users", params={
+            "enrollment_type": enrollment_type
+        })
+    
     async def upload_grade(self, assignment_id: int, user_id: int, grade: float):
-        try:
-            url = f"{settings.CANVAS_API_URL}/courses/{settings.CANVAS_COURSE_ID}/assignments/{assignment_id}/submissions/{user_id}"
-            payload = {
-                "submission": {
-                    "posted_grade": grade
-                }
+        url = f"courses/{ settings.CANVAS_COURSE_ID }/assignments/{ assignment_id }/submissions/{ user_id }"
+        return await self._put(url, json={
+            "submission": {
+                "posted_grade": grade
             }
-            headers = {
-                **self.session.headers,
-                "Content-Type": "application/json"
-            }
+        })
 
-            response = self.session.put(url, headers=headers, json=payload)
-            response.raise_for_status()
-            return response.json()
+    async def update_assignment(self, assignment_id: int, body: UpdateCanvasAssignmentBody):
+        url = f"courses/{ settings.CANVAS_COURSE_ID }/assignments/{ assignment_id }"
+        payload = body.dict(exclude_unset=True)
+        if "available_date" in payload:
+            payload["unlock_at"] = payload.pop("available_date")
+        if "due_date" in payload:
+            payload["due_at"] = payload.pop("due_date")
 
-        except Exception as e:
-            raise LMSBackendException from e
-        
-    async def update_assignment(self, assignment_id: int, assignment_body: dict):
-        url = f"{settings.CANVAS_API_URL}/courses/{settings.CANVAS_COURSE_ID}/assignments/{assignment_id}"
-        headers = {
-            **self.session.headers,
-            "Content-Type": "application/json"
-        }
-        response = self.session.put(url, headers=headers, json=assignment_body)
-        
-        response.raise_for_status()
-        return response.json()
+        return self._put(url, json={
+            "assignment": payload
+        })
 
     async def get_onyen_from_pid(self, pid: str) -> UserModel:
         pid_onyen = self.db.query(OnyenPIDModel).filter_by(pid=pid).first()
