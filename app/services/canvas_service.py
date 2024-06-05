@@ -27,7 +27,8 @@ class CanvasService:
         self.client = httpx.AsyncClient(
             base_url=f"{ self.api_url }",
             headers={
-                "User-Agent": f"eduhelx_grader_api"
+                "User-Agent": f"eduhelx_grader_api",
+                "Authorization": f"Bearer { settings.CANVAS_API_KEY }"
             },
             timeout=httpx.Timeout(10)
         )
@@ -49,7 +50,7 @@ class CanvasService:
             res.raise_for_status()
         except Exception as e:
             raise LMSBackendException(str(e)) from e
-        return res
+        return res.json()
     
     async def _get(self, endpoint: str, **kwargs):
         return await self._make_request("GET", endpoint, **kwargs)

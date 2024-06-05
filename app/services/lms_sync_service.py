@@ -155,7 +155,7 @@ class LmsSyncService:
     async def upsync_assignment(self, assignment):
         await self.canvas_service.update_assignment(assignment.id, UpdateCanvasAssignmentBody(
             name=assignment.name,
-            unlock_date=assignment.available_date,
+            available_date=assignment.available_date,
             due_date=assignment.due_date
         ))
         
