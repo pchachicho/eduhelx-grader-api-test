@@ -167,10 +167,6 @@ class LmsSyncService:
             self.sync_students(),
             self.sync_instructors()
         )
-
-        return {
-            "message": "Successfully synced the LMS with the database"
-        }
     
 
 # Delete below before merge

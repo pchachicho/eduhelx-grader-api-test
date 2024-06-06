@@ -18,7 +18,7 @@ class ExtraTimeModel(Base):
     student_id = Column(Integer, ForeignKey("student.id"), nullable=False)
     assignment_id = Column(Integer, ForeignKey("assignment.id"), nullable=False)
 
-    student = relationship("StudentModel", foreign_keys="ExtraTimeModel.student_id")
+    student = relationship("StudentModel", foreign_keys="ExtraTimeModel.student_id", back_populates="extra_times")
     assignment = relationship("AssignmentModel", foreign_keys="ExtraTimeModel.assignment_id")
 
     # Ensures multiple extra_time rows can't exist with the same student_id AND assignment_id.

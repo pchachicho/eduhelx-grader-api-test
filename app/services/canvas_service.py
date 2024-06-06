@@ -133,13 +133,13 @@ class CanvasService:
     async def get_onyen_from_pid(self, pid: str) -> UserModel:
         pid_onyen = self.db.query(OnyenPIDModel).filter_by(pid=pid).first()
         if pid_onyen is None:
-            raise LMSUserNotFoundException()
+            raise LMSUserNotFoundException(f'LMS user with pid "{ pid }" does not exist')
         return await UserService(self.db).get_user_by_onyen(pid_onyen.onyen)
 
     async def get_pid_from_onyen(self, onyen: str) -> str:
         pid_onyen = self.db.query(OnyenPIDModel).filter_by(onyen=onyen).first()
         if pid_onyen is None:
-            raise LMSUserNotFoundException()
+            raise LMSUserNotFoundException(f'LMS user with onyen "{ onyen }" does not exist')
         return pid_onyen.pid
     
     """ NOTE: Although you can modify an existing mapping directly via this method,

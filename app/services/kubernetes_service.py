@@ -63,10 +63,16 @@ class KubernetesService:
         current_namespace = self.get_current_namespace()
 
         secret_name = self._compute_credential_secret_name(course_name, onyen)
-        self.api_instance.delete_namespaced_secret(
-            namespace=current_namespace,
-            name=secret_name
-        )
+        try:
+            self.api_instance.delete_namespaced_secret(
+                namespace=current_namespace,
+                name=secret_name
+            )
+        except client.ApiException as e:
+            # Don't error if the secret doesn't exist
+            if e.status == 404:
+                return
+            raise e
 
     @staticmethod
     def _compute_credential_secret_name(course_name: str, onyen: str) -> str:
