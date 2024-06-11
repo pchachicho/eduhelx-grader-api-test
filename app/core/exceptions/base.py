@@ -1,3 +1,4 @@
+import traceback
 from http import HTTPStatus
 
 class CustomException(Exception):
@@ -8,6 +9,8 @@ class CustomException(Exception):
     def __init__(self, message=None):
         if message:
             self.message = message
+        
+        self.stack = "".join(traceback.format_stack())
 
 class BadRequestException(CustomException):
     code = HTTPStatus.BAD_REQUEST

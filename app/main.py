@@ -22,16 +22,19 @@ def init_routers(app: FastAPI):
 def init_listeners(app: FastAPI):
     @app.exception_handler(CustomException)
     async def custom_exception_handler(request: Request, exc: CustomException):
+        content = { "error_code": exc.error_code, "message": exc.message }
+        if settings.DEV_PHASE == DevPhase.DEV:
+            content["stack"] = exc.stack
         return JSONResponse(
             status_code=exc.code,
-            content={"error_code": exc.error_code, "message": exc.message},
+            content=content,
         )
     
 def init_monkeypatch():
     ### Monkey patch serializers for custom types
     from pydantic.json import ENCODERS_BY_TYPE
     from app.schemas._unset import _UNSET
-    ENCODERS_BY_TYPE[_UNSET] = lambda _: "UNSET"
+    ENCODERS_BY_TYPE[_UNSET] = lambda _: None
 
 def on_auth_error(request: Request, exc: Exception):
     status_code, error_code, message = 401, None, str(exc)

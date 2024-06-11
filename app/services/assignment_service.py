@@ -11,6 +11,7 @@ from app.core.exceptions import (
     AssignmentNotCreatedException,
     AssignmentNotOpenException,
     AssignmentClosedException,
+    AssignmentDueBeforeOpenException
 )
 
 class AssignmentService:
@@ -26,6 +27,9 @@ class AssignmentService:
         due_date: datetime | None
     ) -> AssignmentModel:
         from app.services import GiteaService, FileOperation, FileOperationType, CourseService
+
+        if available_date >= due_date:
+            raise AssignmentDueBeforeOpenException
 
         gitea_service = GiteaService(self.session)
         course_service = CourseService(self.session)
@@ -53,7 +57,8 @@ class AssignmentService:
         gitignore_content = \
             "*grades.csv\n" \
             f"{ master_notebook_name }\n" \
-            f"{ name }-dist"
+            f"{ name }-dist\n" \
+            ".ssh\n"
         
         readme_path = f"{ directory_path }/README.md"
         readme_content = f"# { name }"
@@ -131,7 +136,7 @@ class AssignmentService:
     
     async def update_assignment(self, assignment: AssignmentModel, update_assignment: UpdateAssignmentSchema) -> AssignmentModel:
         update_fields = update_assignment.dict(exclude_unset=True)
-
+        
         if "name" in update_fields:
             assignment.name = update_fields["name"]
 
@@ -143,6 +148,9 @@ class AssignmentService:
         
         if "due_date" in update_fields:
             assignment.due_date = update_fields["due_date"]
+
+        if assignment.available_date >= assignment.due_date:
+            raise AssignmentDueBeforeOpenException
 
         self.session.commit()
 
