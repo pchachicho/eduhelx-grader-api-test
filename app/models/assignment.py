@@ -9,6 +9,7 @@ from sqlalchemy.orm import relationship, Session
 from sqlalchemy.ext.hybrid import hybrid_property
 from app.database import Base
 from .user import StudentModel
+from app.core.exceptions import AssignmentDueBeforeOpenException
 from .extra_time import ExtraTimeModel
 
 class AssignmentModel(Base):

@@ -19,7 +19,7 @@ async def handle_sync_create_assignment(event: ModifyAssignmentCrudEvent, sessio
     from app.services import GiteaService, StudentService, CourseService
     
     event_name, payload = event
-    assignment = payload.assignment
+    assignment = payload["assignment"]
 
     student_service = StudentService(session)
     course_service = CourseService(session)

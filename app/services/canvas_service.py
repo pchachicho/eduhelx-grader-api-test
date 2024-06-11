@@ -49,6 +49,8 @@ class CanvasService:
         try:
             res.raise_for_status()
         except Exception as e:
+            if hasattr(e, "response"):
+                raise LMSBackendException(e.response.text) from e
             raise LMSBackendException(str(e)) from e
         return res.json()
     
