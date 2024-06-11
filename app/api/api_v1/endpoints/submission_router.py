@@ -86,7 +86,7 @@ async def download_submission(
     perm: None = Depends(PermissionDependency(SubmissionListPermission, SubmissionDownloadPermission)),
     submission_id: Optional[int] = Query(default=None, description="Submission ID. Downloads the latest submission if omitted")
 ):
-    gitea_service = GiteaService()
+    gitea_service = GiteaService(db)
     course_service = CourseService(db)
 
     course = await course_service.get_course()

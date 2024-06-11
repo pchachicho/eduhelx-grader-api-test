@@ -6,6 +6,8 @@ from app.services.ldap_service import LDAPService
 from app.services.assignment_service import AssignmentService
 from app.services.user.student_service import StudentService
 from app.services.user.instructor_service import InstructorService
+from app.schemas.course import UpdateCourseSchema
+from app.schemas.assignment import UpdateAssignmentSchema
 from sqlalchemy.orm import Session
 from app.core.exceptions import (
     AssignmentNotFoundException, NoCourseExistsException, 
@@ -29,9 +31,11 @@ class LmsSyncService:
             # Check if a course already exists in the database
             if(await self.course_service.get_course()):
                 #update the existing course
-                await self.course_service.update_course_name(canvas_course['name'])
-                await self.course_service.update_course_start_at(canvas_course['start_at'])
-                await self.course_service.update_course_end_at(canvas_course['end_at'])
+                await self.course_service.update_course(UpdateCourseSchema(
+                    name=canvas_course["name"],
+                    start_at=canvas_course["start_at"],
+                    end_at=canvas_course["end_at"]
+                ))
 
         except NoCourseExistsException as e:
             return await CourseService(self.session).create_course(
@@ -53,21 +57,12 @@ class LmsSyncService:
         for assignment in canvas_assignments:
             try:
                 db_assignment = await self.assignment_service.get_assignment_by_id(assignment['id'])
-                
-                #update the existing assignment
-                await self.assignment_service.update_assignment_name(
-                    assignment=db_assignment, 
-                    new_name=assignment['name']
-                )
 
-                await self.assignment_service.update_assignment_available_date(
+                await self.assignment_service.update_assignment(
                     assignment=db_assignment,
-                    available_date=assignment['unlock_at']
-                )
-
-                await self.assignment_service.update_assignment_due_date(
-                    assignment=db_assignment,
-                    due_date=assignment['due_at']
+                    name=assignment["name"],
+                    available_date=assignment["unlock_at"],
+                    due_date=assignment["due_at"]
                 )
 
             except AssignmentNotFoundException as e:

@@ -1,5 +1,7 @@
 from sqlalchemy.orm import Session
+from fastapi_events.dispatcher import dispatch
 from app.models import UserModel, AutoPasswordAuthModel
+from app.events import DeleteUserCrudEvent
 from app.schemas import RefreshTokenSchema
 from app.core.config import settings
 from app.core.utils.token_helper import TokenHelper
@@ -105,5 +107,7 @@ class UserService:
         self.session.delete(user)
         self.session.commit()
 
-        gitea_service = GiteaService()
+        gitea_service = GiteaService(self.session)
         await gitea_service.delete_user(onyen, purge=True)
+
+        dispatch(DeleteUserCrudEvent(user=user))

@@ -1,5 +1,7 @@
 from typing import List
+from fastapi_events.dispatcher import dispatch
 from app.models import StudentModel
+from app.events import CreateUserCrudEvent
 from app.core.role_permissions import student_role
 from app.core.exceptions import NotAStudentException, UserAlreadyExistsException, UserNotFoundException
 from .user_service import UserService
@@ -41,7 +43,7 @@ class StudentService(UserService):
 
         password = await super().create_user_auto_password_auth(onyen)
 
-        gitea_service = GiteaService()
+        gitea_service = GiteaService(self.session)
         course_service = CourseService(self.session)
 
         master_repo_name = await course_service.get_master_repository_name()
@@ -66,7 +68,15 @@ class StudentService(UserService):
             owner=onyen,
             new_name=student_repo_name
         )
+        await gitea_service.set_git_hook(
+            repository_name=student_repo_name,
+            owner=onyen,
+            hook_id="pre-receive",
+            hook_content=await gitea_service.get_merge_control_hook()
+        )
         self.session.commit()
+
+        dispatch(CreateUserCrudEvent(user=student))
 
     async def delete_user(
         self,

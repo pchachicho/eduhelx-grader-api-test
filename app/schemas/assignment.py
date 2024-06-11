@@ -1,6 +1,7 @@
 from typing import List
 from datetime import datetime, timedelta
 from pydantic import BaseModel
+from ._unset import UNSET
 
 class AssignmentSchema(BaseModel):
     id: int
@@ -15,6 +16,12 @@ class AssignmentSchema(BaseModel):
 
     class Config:
         orm_mode = True
+
+class UpdateAssignmentSchema(BaseModel):
+    name: str = UNSET
+    directory_path: str = UNSET
+    available_date: datetime | None
+    due_date: datetime | None
 
 # Adds in fields relevant for JLP (tailored to the professor)
 class InstructorAssignmentSchema(AssignmentSchema):

@@ -1,8 +1,10 @@
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
+from fastapi_events.dispatcher import dispatch
 from app.models import CourseModel
-from app.schemas import CourseWithInstructorsSchema
+from app.schemas import CourseWithInstructorsSchema, UpdateCourseSchema
+from app.events import CreateCourseCrudEvent, ModifyCourseCrudEvent, DeleteCourseCrudEvent
 from app.core.exceptions import MultipleCoursesExistException, NoCourseExistsException, CourseAlreadyExistsException
 
 class CourseService:
@@ -24,6 +26,7 @@ class CourseService:
         course.instructors = await InstructorService(self.session).list_instructors()
         return CourseWithInstructorsSchema.from_orm(course)
 
+    
     async def create_course(self, name: str, start_at: datetime = None, end_at: datetime = None) -> CourseModel:
         from app.services import GiteaService
 
@@ -33,7 +36,7 @@ class CourseService:
         except NoCourseExistsException:
             pass
 
-        gitea_service = GiteaService()
+        gitea_service = GiteaService(self.session)
         master_repository_name = self._compute_master_repository_name(name)
         instructor_organization_name = self._compute_instructor_gitea_organization_name(name)
         
@@ -43,6 +46,12 @@ class CourseService:
             description=f"The class master repository for { name }",
             owner=instructor_organization_name,
             private=True
+        )
+        await gitea_service.set_git_hook(
+            repository_name=master_repository_name,
+            owner=instructor_organization_name,
+            hook_id="pre-receive",
+            hook_content=await gitea_service.get_merge_control_hook()
         )
 
         course = CourseModel(
@@ -55,27 +64,32 @@ class CourseService:
         self.session.add(course)
         self.session.commit()
 
+        dispatch(CreateCourseCrudEvent(course=course))
+
         return course
     
-    async def update_course_name(self, name: str) -> CourseModel:
+    async def update_course(self, update_course: UpdateCourseSchema) -> CourseModel:
         course = await self.get_course()
-        course.name = name
-        self.session.commit()
-        return course
-    
-    async def update_course_start_at(self, start_at: datetime | None) -> CourseModel:
-        course = await self.get_course()
-        course.start_at = start_at
-        self.session.commit()
-        return course
-    
-    async def update_course_end_at(self, end_at: datetime | None) -> CourseModel:
-        course = await self.get_course()
-        course.end_at = end_at
-        self.session.commit()
-        return course
-    
+        update_fields = update_course.dict(exclude_unset=True)
+
+        if "name" in update_fields:
+            course.name = update_fields["name"]
         
+        if "start_at" in update_fields:
+            course.start_at = update_fields["start_at"]
+
+        if "end_at" in update_fields:
+            course.end_at = update_fields["end_at"]
+        
+        if "master_remote_url" in update_fields:
+            course.master_remote_url = update_fields["master_remote_url"]
+
+        self.session.commit()
+
+        dispatch(ModifyCourseCrudEvent(course=course, modified_fields=update_fields.keys()))
+
+        return course
+
     async def get_instructor_gitea_organization_name(self) -> str:
         course = await self.get_course()
         return self._compute_instructor_gitea_organization_name(course.name)
