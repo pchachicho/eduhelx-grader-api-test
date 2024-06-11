@@ -17,8 +17,8 @@ router = APIRouter()
 # Note: we don't want to reuse UpdateAssignmentSchema here because it is
 # intended for internal use only, and may have private values in the future.
 class UpdateAssignmentBody(BaseModel):
-    new_name: str | None = UNSET
-    directory_path: str | None = UNSET
+    name: str = UNSET
+    directory_path: str = UNSET
     available_date: datetime | None
     due_date: datetime | None
 
