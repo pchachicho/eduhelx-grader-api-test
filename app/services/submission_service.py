@@ -5,7 +5,7 @@ from fastapi_events.dispatcher import dispatch
 from app.models import StudentModel, AssignmentModel, SubmissionModel
 from app.core.exceptions import SubmissionNotFoundException
 from app.services import StudentService, StudentAssignmentService
-from app.schemas import CreateSubmissionCrudEvent, ModifySubmissionCrudEvent, DeleteSubmissionCrudEvent
+from app.events import CreateSubmissionCrudEvent, ModifySubmissionCrudEvent, DeleteSubmissionCrudEvent
 
 class SubmissionService:
     def __init__(self, session: Session):

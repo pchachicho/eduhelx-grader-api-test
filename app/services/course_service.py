@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 from fastapi_events.dispatcher import dispatch
 from app.models import CourseModel
-from app.schemas import CourseWithInstructorsSchema, UpdateCourseSchema
+from app.schemas import CourseWithInstructorsSchema, CourseSchema, UpdateCourseSchema
 from app.events import CreateCourseCrudEvent, ModifyCourseCrudEvent, DeleteCourseCrudEvent
 from app.core.exceptions import MultipleCoursesExistException, NoCourseExistsException, CourseAlreadyExistsException
 
@@ -19,6 +19,10 @@ class CourseService:
         except NoResultFound as e:
             raise NoCourseExistsException()
     
+    async def get_course_schema(self) -> CourseSchema:
+        course = await self.get_course()
+        return CourseSchema.from_orm(course)
+    
     async def get_course_with_instructors_schema(self) -> CourseWithInstructorsSchema:
         from .user import InstructorService
         
@@ -28,31 +32,13 @@ class CourseService:
 
     
     async def create_course(self, name: str, start_at: datetime = None, end_at: datetime = None) -> CourseModel:
-        from app.services import GiteaService
+        from app.services import GiteaService, CleanupService
 
         try:
             await self.get_course()
             raise CourseAlreadyExistsException()
         except NoCourseExistsException:
             pass
-
-        gitea_service = GiteaService(self.session)
-        master_repository_name = self._compute_master_repository_name(name)
-        instructor_organization_name = self._compute_instructor_gitea_organization_name(name)
-        
-        await gitea_service.create_organization(instructor_organization_name)
-        master_remote_url = await gitea_service.create_repository(
-            name=master_repository_name,
-            description=f"The class master repository for { name }",
-            owner=instructor_organization_name,
-            private=True
-        )
-        await gitea_service.set_git_hook(
-            repository_name=master_repository_name,
-            owner=instructor_organization_name,
-            hook_id="pre-receive",
-            hook_content=await gitea_service.get_merge_control_hook()
-        )
 
         course = CourseModel(
             name=name,
@@ -63,6 +49,35 @@ class CourseService:
         
         self.session.add(course)
         self.session.commit()
+
+        gitea_service = GiteaService(self.session)
+        cleanup_service = CleanupService.Course(self.session)
+
+        master_repository_name = self._compute_master_repository_name(name)
+        instructor_organization_name = self._compute_instructor_gitea_organization_name(name)
+        
+        try:
+            await gitea_service.create_organization(instructor_organization_name)
+        except Exception as e:
+            await cleanup_service.undo_create_course(delete_database_course=True)
+            raise e
+        
+        try:
+            master_remote_url = await gitea_service.create_repository(
+                name=master_repository_name,
+                description=f"The class master repository for { name }",
+                owner=instructor_organization_name,
+                private=True
+            )
+            await gitea_service.set_git_hook(
+                repository_name=master_repository_name,
+                owner=instructor_organization_name,
+                hook_id="pre-receive",
+                hook_content=await gitea_service.get_merge_control_hook()
+            )
+        except Exception as e:
+            await cleanup_service.undo_create_course(delete_database_course=True, delete_gitea_organization=True)
+            raise e
 
         dispatch(CreateCourseCrudEvent(course=course))
 

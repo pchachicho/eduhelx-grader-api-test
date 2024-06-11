@@ -38,6 +38,8 @@ class CrudEvent(BaseModel):
     def resource_type(self):
         return self.__event_name__.split("_")[1]
 
+    class Config:
+        arbitrary_types_allowed = True
 
 class CourseCrudEvent(CrudEvent):
     course: CourseModel

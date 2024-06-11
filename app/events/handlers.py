@@ -6,7 +6,6 @@ from sqlalchemy.orm import Session
 from .schemas import SyncEvents
 from app.models import AssignmentModel
 from app.events import ModifyAssignmentCrudEvent
-from app.services import GiteaService, StudentService, CourseService
 from app.core.dependencies import get_db_persistent
 
 """
@@ -17,6 +16,8 @@ You MUST call Session.close() once you are done with the database session.
 
 @local_handler.register(event_name=ModifyAssignmentCrudEvent.__event_name__)
 async def handle_sync_create_assignment(event: ModifyAssignmentCrudEvent, session: Session = Depends(get_db_persistent)):
+    from app.services import GiteaService, StudentService, CourseService
+    
     event_name, payload = event
     assignment = payload.assignment
 

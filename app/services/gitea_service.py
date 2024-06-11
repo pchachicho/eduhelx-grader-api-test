@@ -78,6 +78,16 @@ class GiteaService:
         await self._post("/orgs", json={
             "org_name": organization_name
         })
+
+    async def delete_organization(
+        self,
+        organization_name: str,
+        purge: bool=False
+    ) -> None:
+        await self._delete("/orgs", params={
+            "org_name": organization_name,
+            "purge": purge
+        })
     
     async def add_user_to_organization(
         self,
