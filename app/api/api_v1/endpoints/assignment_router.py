@@ -36,7 +36,7 @@ async def update_assignment_fields(
     # Differentiate between fields that are set as None and fields that are not set at all
     updated_set_fields = assignment_body.dict(exclude_unset=True)
     update_schema = UpdateAssignmentSchema(**updated_set_fields)
-    assignment = await AssignmentService(db).update_assignment(update_schema)
+    assignment = await AssignmentService(db).update_assignment(assignment, update_schema)
 
     await LmsSyncService(db).upsync_assignment(assignment)
 

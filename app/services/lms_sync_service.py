@@ -58,12 +58,11 @@ class LmsSyncService:
             try:
                 db_assignment = await self.assignment_service.get_assignment_by_id(assignment['id'])
 
-                await self.assignment_service.update_assignment(
-                    assignment=db_assignment,
+                await self.assignment_service.update_assignment(db_assignment, UpdateAssignmentSchema(
                     name=assignment["name"],
                     available_date=assignment["unlock_at"],
                     due_date=assignment["due_at"]
-                )
+                ))
 
             except AssignmentNotFoundException as e:
                 #create a new assignment
