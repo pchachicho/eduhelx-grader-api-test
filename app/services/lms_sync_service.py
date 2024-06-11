@@ -1,6 +1,6 @@
 import asyncio
 from app.core.config import settings
-from app.services.canvas_service import CanvasService
+from app.services.canvas_service import CanvasService, UpdateCanvasAssignmentBody
 from app.services.course_service import CourseService
 from app.services.ldap_service import LDAPService
 from app.services.assignment_service import AssignmentService
@@ -26,7 +26,7 @@ class LmsSyncService:
 
     async def sync_course(self):
         try:
-            canvas_course = await self.canvas_service.get_course({"include[]": "total_students"})
+            canvas_course = await self.canvas_service.get_course()
 
             # Check if a course already exists in the database
             if(await self.course_service.get_course()):
@@ -78,18 +78,18 @@ class LmsSyncService:
         return canvas_assignments
 
     async def sync_students(self):
-        canvas_students = await self.canvas_service.get_users({
-            "enrollment_type": "student"
-        })
         db_students = await self.student_service.list_students()
+        canvas_students = await self.canvas_service.get_students()
+        canvas_student_pids = [s["sis_user_id"] for s in canvas_students]
         
         if(db_students is not None):
             # Delete students that are in the database but not in Canvas
             for student in db_students:
                 student_pid = await self.canvas_service.get_pid_from_onyen(student.onyen)
-                if student_pid not in [s['sis_user_id'] for s in canvas_students]:
-                    await self.canvas_service.unassociate_pid_from_user(student.onyen)
+                if student_pid not in canvas_student_pids:
                     await self.student_service.delete_user(student.onyen)
+                    try: await self.canvas_service.unassociate_pid_from_user(student.onyen)
+                    except LMSUserNotFoundException: pass
        
         for student in canvas_students:
             pid = student['sis_user_id']
@@ -110,18 +110,18 @@ class LmsSyncService:
         return canvas_students
     
     async def sync_instructors(self):
-        canvas_instructors = await self.canvas_service.get_users({
-            "enrollment_type": "teacher"
-        })
         db_instructors = await self.instructor_service.list_instructors()
+        canvas_instructors = await self.canvas_service.get_instructors()
+        canvas_instructor_pids = [i["sis_user_id"] for i in canvas_instructors]
        
         if(db_instructors is not None):       
             # Delete instructors that are in the database but not in Canvas
             for instructor in db_instructors:
                 instructor_pid = await self.canvas_service.get_pid_from_onyen(instructor.onyen)
-                if instructor_pid not in [i['sis_user_id'] for i in canvas_instructors]:
-                    await self.canvas_service.unassociate_pid_from_user(instructor.onyen)
+                if instructor_pid not in canvas_instructor_pids:
                     await self.instructor_service.delete_user(instructor.onyen)
+                    try: await self.canvas_service.unassociate_pid_from_user(instructor.onyen)
+                    except LMSUserNotFoundException: pass
         
         for instructor in canvas_instructors:
             pid = instructor['sis_user_id']
@@ -144,25 +144,15 @@ class LmsSyncService:
     async def upload_grades(self, assignment_id: int, grades: list[dict]):
         for row in grades:
             user_pid = await self.canvas_service.get_pid_from_onyen(row['onyen'])
-            students = await self.canvas_service.get_users({
-                "enrollment_type": "student"
-            })
-            
-            student = next((student for student in students if student['sis_user_id'] == user_pid), None)
-            if student is None:
-                raise LMSUserNotFoundException()
+            student = await self.canvas_service.get_student_by_pid(user_pid)
             await self.canvas_service.upload_grade(assignment_id, student["id"], row['percent_correct'])
             
     async def upsync_assignment(self, assignment):
-        unlock_date = assignment.available_date.strftime("%Y-%m-%dT%H:%M:%S")
-        due_date = assignment.due_date.strftime("%Y-%m-%dT%H:%M:%S")
-        await self.canvas_service.update_assignment(assignment.id, {
-            "assignment": {
-                "name": assignment.name,
-                "unlock_at": unlock_date,
-                "due_at": due_date
-            }
-        })
+        await self.canvas_service.update_assignment(assignment.id, UpdateCanvasAssignmentBody(
+            name=assignment.name,
+            available_date=assignment.available_date,
+            due_date=assignment.due_date
+        ))
         
 
     async def downsync(self):
@@ -172,10 +162,6 @@ class LmsSyncService:
             self.sync_students(),
             self.sync_instructors()
         )
-
-        return {
-            "message": "Successfully synced the LMS with the database"
-        }
     
 
 # Delete below before merge

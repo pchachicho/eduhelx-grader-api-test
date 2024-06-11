@@ -77,37 +77,29 @@ class UserService:
         )
 
         return autogen_password
-    
-    async def delete_user_auto_password_auth(self, onyen: str) -> str:
-        from app.services import CourseService, KubernetesService, GiteaService
-
-        course = await CourseService(self.session).get_course()
-        user_auth = self.session.query(AutoPasswordAuthModel).filter_by(onyen=onyen).first()
-
-        KubernetesService().delete_credential_secret(course.name, onyen)
-
-        self.session.delete(user_auth)
-        self.session.commit()
 
     async def delete_user(
         self,
         onyen: str
     ) -> None:
-        from app.services import GiteaService, KubernetesService, CourseService, CanvasService
+        from app.services import GiteaService, KubernetesService, CourseService
         
-        await self.delete_user_auto_password_auth(onyen)
-        try:
-            # MARKED FOR REMOVAL AFTER HLXK-232
-            await CanvasService(self.session).unassociate_pid_from_user(onyen)
-        except:
-            # If it's already been unassociated or never was associated, don't care.
-            pass
-
+        course = await CourseService(self.session).get_course()
         user = await self.get_user_by_onyen(onyen)
+
+        password = KubernetesService().get_autogen_password(course.name, onyen)
+        KubernetesService().delete_credential_secret(course.name, onyen)
+        try:
+            await GiteaService().delete_user(onyen, purge=True)
+        except:
+            KubernetesService().create_credential_secret(
+                course_name=course.name,
+                onyen=onyen,
+                password=password,
+                user_type=user.user_type
+            )
+
         self.session.delete(user)
         self.session.commit()
-
-        gitea_service = GiteaService(self.session)
-        await gitea_service.delete_user(onyen, purge=True)
 
         dispatch(DeleteUserCrudEvent(user=user))

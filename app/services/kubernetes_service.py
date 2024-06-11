@@ -63,10 +63,22 @@ class KubernetesService:
         current_namespace = self.get_current_namespace()
 
         secret_name = self._compute_credential_secret_name(course_name, onyen)
-        self.api_instance.delete_namespaced_secret(
-            namespace=current_namespace,
-            name=secret_name
-        )
+        try:
+            self.api_instance.delete_namespaced_secret(
+                namespace=current_namespace,
+                name=secret_name
+            )
+        except client.ApiException as e:
+            # Don't error if the secret doesn't exist
+            if e.status == 404:
+                return
+            raise e
+        
+    def get_autogen_password(self, course_name: str, onyen: str) -> str:
+        current_namespace = self.get_current_namespace()
+        secret_name = self._compute_credential_secret_name(course_name, onyen)
+        secret = self.api_instance.read_namespaced_secret(secret_name, current_namespace)
+        return base64.decode(secret.data["password"]).decode("utf-8")
 
     @staticmethod
     def _compute_credential_secret_name(course_name: str, onyen: str) -> str:

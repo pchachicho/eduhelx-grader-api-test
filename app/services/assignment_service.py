@@ -64,13 +64,18 @@ class AssignmentService:
             FileOperation(content=readme_content, path=readme_path, operation=FileOperationType.CREATE)
         ]
 
-        await gitea_service.modify_repository_files(
-            name=master_repository_name,
-            owner=owner,
-            branch_name=branch_name,
-            commit_message="Initialize assignment",
-            files=files_to_modify
-        )
+        try:
+            await gitea_service.modify_repository_files(
+                name=master_repository_name,
+                owner=owner,
+                branch_name=branch_name,
+                commit_message="Initialize assignment",
+                files=files_to_modify
+            )
+        except Exception as e:
+            self.session.delete(assignment)
+            self.session.commit()
+            raise e
 
         dispatch(CreateAssignmentCrudEvent(assignment=assignment))
 

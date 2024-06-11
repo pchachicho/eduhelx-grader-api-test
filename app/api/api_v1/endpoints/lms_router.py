@@ -23,7 +23,7 @@ async def downsync(
     db: Session = Depends(get_db),
     perm: None = Depends(PermissionDependency(UserIsInstructorPermission))
 ):
-    return await LmsSyncService(db).downsync()
+    await LmsSyncService(db).downsync()
 
 @router.post("/lms/downsync/students")
 async def downsync_students(

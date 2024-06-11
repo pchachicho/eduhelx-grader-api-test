@@ -16,7 +16,7 @@ class InstructorService(UserService):
         name: str,
         email: str
     ) -> InstructorModel:
-        from app.services import GiteaService, CourseService
+        from app.services import GiteaService, CourseService, CleanupService
 
         try:
             await super().get_user_by_onyen(onyen)
@@ -39,14 +39,29 @@ class InstructorService(UserService):
         self.session.add(instructor)
         self.session.commit()
 
-        password = await super().create_user_auto_password_auth(onyen)
+        cleanup_service = CleanupService.User(self.session, instructor)
+
+        try:
+            password = await super().create_user_auto_password_auth(onyen)
+        except Exception as e:
+            await cleanup_service.undo_create_user(delete_database_user=True)
+            raise e
 
         gitea_service = GiteaService(self.session)
         course_service = CourseService(self.session)
 
         instructor_org_name = await course_service.get_instructor_gitea_organization_name()
-        await gitea_service.create_user(onyen, email, password)
-        await gitea_service.add_user_to_organization(instructor_org_name, onyen)
+        try:
+            await gitea_service.create_user(onyen, email, password)
+        except Exception as e:
+            await cleanup_service.undo_create_user(delete_database_user=True, delete_password_secret=True)
+            raise e
+        
+        try:
+            await gitea_service.add_user_to_organization(instructor_org_name, onyen)
+        except Exception as e:
+            await cleanup_service.undo_create_user(delete_database_user=True, delete_password_secret=True, delete_gitea_user=True)
+            raise e
 
         dispatch(CreateUserCrudEvent(user=instructor))
 
