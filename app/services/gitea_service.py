@@ -293,7 +293,7 @@ class GiteaService:
         init_assignments_assoc = "\n".join(init_assignments_assoc)
         
         return f"""
-#!/bin/sh
+#!/bin/bash
 z40=0000000000000000000000000000000000000000
 # Epoch time
 current_timestamp=$(date -u +%s)
@@ -306,16 +306,16 @@ while read oldrev newrev refname; do
     fi
     # Iterate over files that have been modified between the old and new revisions
     modified_files=$(git diff --name-only --diff-filter=M $oldrev $newrev)
-    for file in $modified_files; do
+    while IFS= read -r file; do
         for directory_path in "${{!assignments[@]}}"; do
             if [[ "${{file}}" == "${{directory_path}}"* ]]; then
                 # Assignment has already opened to some students, so can't modify this file.
                 if [ "${{current_timestamp}}" -gt "${{assignments[$directory_path]}}" ]; then
-                    echo "Sorry! This assignment has already become available for some students, please create new revisions of files that require changes." >&s
+                    echo "ERROR: Sorry! This assignment has already become available for some students, please create new revisions of files that require changes." >&2
                     exit 1
                 fi
             fi
         done
-    done    
+    done <<< "$modified_files  "
 done
 """
