@@ -82,22 +82,20 @@ class UserService:
         self,
         onyen: str
     ) -> None:
-        from app.services import GiteaService, KubernetesService, CourseService
+        from app.services import GiteaService, KubernetesService, CourseService, CleanupService
         
         course = await CourseService(self.session).get_course()
         user = await self.get_user_by_onyen(onyen)
 
         password = KubernetesService().get_autogen_password(course.name, onyen)
+        cleanup_service = CleanupService.User(self.session, user, password)
+
         KubernetesService().delete_credential_secret(course.name, onyen)
         try:
             await GiteaService().delete_user(onyen, purge=True)
-        except:
-            KubernetesService().create_credential_secret(
-                course_name=course.name,
-                onyen=onyen,
-                password=password,
-                user_type=user.user_type
-            )
+        except Exception as e:
+            await cleanup_service.undo_delete_user(create_password_secret=True)
+            raise e
 
         self.session.delete(user)
         self.session.commit()
