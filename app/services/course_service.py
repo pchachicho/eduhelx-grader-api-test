@@ -101,7 +101,7 @@ class CourseService:
 
         self.session.commit()
 
-        dispatch(ModifyCourseCrudEvent(course=course, modified_fields=update_fields.keys()))
+        dispatch(ModifyCourseCrudEvent(course=course, modified_fields=list(update_fields.keys())))
 
         return course
 

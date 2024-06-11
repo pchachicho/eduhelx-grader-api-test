@@ -146,7 +146,7 @@ class AssignmentService:
 
         self.session.commit()
 
-        dispatch(ModifyAssignmentCrudEvent(assignment=assignment, modified_fields=update_fields))
+        dispatch(ModifyAssignmentCrudEvent(assignment=assignment, modified_fields=list(update_fields.keys())))
 
         return assignment
     
