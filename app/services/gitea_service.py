@@ -297,6 +297,7 @@ class GiteaService:
 z40=0000000000000000000000000000000000000000
 # Epoch time
 current_timestamp=$(date -u +%s)
+declare -a violations
 declare -A assignments
 { init_assignments_assoc }
 while read oldrev newrev refname; do
@@ -311,11 +312,18 @@ while read oldrev newrev refname; do
             if [[ "${{file}}" == "${{directory_path}}"* ]]; then
                 # Assignment has already opened to some students, so can't modify this file.
                 if [ "${{current_timestamp}}" -gt "${{assignments[$directory_path]}}" ]; then
-                    echo "ERROR: Sorry! This assignment has already become available for some students, please create new revisions of files that require changes." >&2
-                    exit 1
+                    violations+=("$file")
                 fi
             fi
         done
     done <<< "$modified_files  "
 done
+
+if [ ${{#violations[@]}} -gt 0 ]; then
+    echo "ERROR: Merge control policy violation"
+    for file in "${{violations[@]}}"; do
+        echo "VIOLATION: $file"
+    done
+    exit 1
+fi
 """
