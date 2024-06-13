@@ -80,12 +80,6 @@ class StudentService(UserService):
                 owner=onyen,
                 new_name=student_repo_name
             )
-            await gitea_service.set_git_hook(
-                repository_name=student_repo_name,
-                owner=onyen,
-                hook_id="pre-receive",
-                hook_content=await gitea_service.get_merge_control_hook()
-            )
             self.session.commit()
 
         except Exception as e:
