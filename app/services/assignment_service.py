@@ -49,16 +49,13 @@ class AssignmentService:
         owner = await course_service.get_instructor_gitea_organization_name()
         branch_name = await course_service.get_master_branch_name()
 
-        master_notebook_name = f"{ name }-prof.ipynb"
+        master_notebook_name = await self.get_master_notebook_name(assignment)
         master_notebook_path = f"{ directory_path }/{ master_notebook_name }"
+        # Default empty notebook for JupyterLab 4
         master_notebook_content = "{\n \"cells\": [],\n \"metadata\": {},\n \"nbformat\": 4,\n \"nbformat_minor\": 5\n}"
 
         gitignore_path = f"{ directory_path }/.gitignore"
-        gitignore_content = \
-            "*grades.csv\n" \
-            f"{ master_notebook_name }\n" \
-            f"{ name }-dist\n" \
-            ".ssh\n"
+        gitignore_content = await self.get_gitignore_content(assignment)
         
         readme_path = f"{ directory_path }/README.md"
         readme_content = f"# { name }"
@@ -177,6 +174,32 @@ class AssignmentService:
             .first()
         
         return assignment.due_date + (latest_time.extra_time if latest_time.extra_time is not None else timedelta(0))
+    
+    async def get_master_notebook_name(self, assignment: AssignmentModel) -> str:
+        return self._compute_master_notebook_name(assignment.name)
+    
+    @staticmethod
+    def _compute_master_notebook_name(self, assignment_name: str) -> str:
+        return f"{ assignment_name }-prof.ipynb"
+
+    """ Compute the default gitignore for an assignment. """
+    async def get_gitignore_content(self, assignment: AssignmentModel) -> str:
+        master_notebook_name = await self.get_master_notebook_name(assignment)
+        return f"""### Python ###
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+### Misc ###
+*.DS_Store
+*grades.csv
+{ master_notebook_name }
+{ assignment.name }-dist
+.ssh
+.ipynb_checkpoints
+*venv
+"""
 
 class InstructorAssignmentService(AssignmentService):
     def __init__(self, session: Session, instructor: InstructorModel, assignment: AssignmentModel):
