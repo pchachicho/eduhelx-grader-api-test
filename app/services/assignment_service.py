@@ -199,6 +199,7 @@ __pycache__/
 .ssh
 .ipynb_checkpoints
 *venv
+prof-scripts/*
 """
 
 class InstructorAssignmentService(AssignmentService):
