@@ -45,7 +45,7 @@ class CourseService:
             private=True
         )
 
-        readme_path = f"./README.md"
+        readme_path = "README.md"
         readme_content = ""
         master_branch_name = await self.get_master_branch_name()
 
