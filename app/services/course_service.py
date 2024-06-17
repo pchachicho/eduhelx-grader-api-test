@@ -25,7 +25,7 @@ class CourseService:
         return CourseWithInstructorsSchema.from_orm(course)
 
     async def create_course(self, name: str, start_at: datetime = None, end_at: datetime = None) -> CourseModel:
-        from app.services import GiteaService
+        from app.services import GiteaService, FileOperation, FileOperationType
 
         try:
             await self.get_course()
@@ -43,6 +43,22 @@ class CourseService:
             description=f"The class master repository for { name }",
             owner=instructor_organization_name,
             private=True
+        )
+
+        readme_path = "README.md"
+        readme_content = ""
+        master_branch_name = await self.get_master_branch_name()
+
+        files_to_modify = [
+            FileOperation(content=readme_content, path=readme_path, operation=FileOperationType.CREATE)
+        ]
+
+        await gitea_service.modify_repository_files(
+            name=master_repository_name,
+            owner=instructor_organization_name,
+            branch_name=master_branch_name,
+            commit_message="Initialize README",
+            files=files_to_modify
         )
 
         course = CourseModel(
