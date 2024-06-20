@@ -20,6 +20,7 @@ class AssignmentSchema(BaseModel):
 class UpdateAssignmentSchema(BaseModel):
     name: str = UNSET
     directory_path: str = UNSET
+    master_notebook_path: str = UNSET
     available_date: datetime | None
     due_date: datetime | None
 
@@ -27,6 +28,9 @@ class UpdateAssignmentSchema(BaseModel):
 class InstructorAssignmentSchema(AssignmentSchema):
     is_available: bool
     is_closed: bool
+    # Relative to the assignment root (directory_path), i.e., the fully qualified path
+    # of the file within the repo is `/{directory_path}/{master_notebook_path}`
+    master_notebook_path: str
 
 # Adds in student-specific fields to the assignment (tailored to a particular student)
 class StudentAssignmentSchema(AssignmentSchema):

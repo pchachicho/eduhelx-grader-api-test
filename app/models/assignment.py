@@ -1,3 +1,4 @@
+import os.path
 from datetime import timedelta
 from re import L
 from sqlalchemy import (
@@ -18,6 +19,9 @@ class AssignmentModel(Base):
     id = Column(Integer, Sequence("assignment_id_seq"), primary_key=True, index=True)
     name = Column(Text, nullable=False, unique=True)
     directory_path = Column(Text, nullable=False)
+    # Relative to the assignment root (directory_path), i.e., the fully qualified path
+    # of the file within the repo is `/{directory_path}/{master_notebook_path}`
+    master_notebook_path = Column(Text, nullable=False)
     created_date = Column(DateTime(timezone=True), server_default=func.current_timestamp())
     available_date = Column(DateTime(timezone=True))
     due_date = Column(DateTime(timezone=True))

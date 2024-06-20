@@ -73,8 +73,9 @@ class CourseService:
                 repository_name=master_repository_name,
                 owner=instructor_organization_name,
                 hook_id="pre-receive",
-                hook_content=await gitea_service.get_merge_control_hook()
+                hook_content=await gitea_service.get_master_repo_prereceive_hook()
             )
+            
         except Exception as e:
             await cleanup_service.undo_create_course(delete_database_course=True, delete_gitea_organization=True)
             raise e

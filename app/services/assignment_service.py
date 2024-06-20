@@ -38,6 +38,8 @@ class AssignmentService:
             id=id,
             name=name,
             directory_path=directory_path,
+            # This is relative to directory_path
+            master_notebook_path=f"{ name }-prof.ipynb",
             available_date=available_date,
             due_date=due_date
         )
@@ -49,10 +51,9 @@ class AssignmentService:
         owner = await course_service.get_instructor_gitea_organization_name()
         branch_name = await course_service.get_master_branch_name()
 
-        master_notebook_name = await self.get_master_notebook_name(assignment)
-        master_notebook_path = f"{ directory_path }/{ master_notebook_name }"
+        master_notebook_path = f"{ assignment.directory_path }/{ assignment.master_notebook_path }"
         # Default empty notebook for JupyterLab 4
-        master_notebook_content = "{\n \"cells\": [],\n \"metadata\": {},\n \"nbformat\": 4,\n \"nbformat_minor\": 5\n}"
+        master_notebook_content = '{\n "cells": [],\n "metadata": {\n  "kernelspec": {\n   "display_name": "Python 3 (ipykernel)",\n   "language": "python",\n   "name": "python3"\n  },\n  "language_info": {\n   "codemirror_mode": {\n    "name": "ipython",\n    "version": 3\n   },\n   "file_extension": ".py",\n   "mimetype": "text/x-python",\n   "name": "python",\n   "nbconvert_exporter": "python",\n   "pygments_lexer": "ipython3",\n   "version": "3.11.5"\n  }\n },\n "nbformat": 4,\n "nbformat_minor": 5\n}'
 
         gitignore_path = f"{ directory_path }/.gitignore"
         gitignore_content = await self.get_gitignore_content(assignment)
@@ -140,6 +141,9 @@ class AssignmentService:
         if "directory_path" in update_fields:
             assignment.directory_path = update_fields["directory_path"]
 
+        if "master_notebook_path" in update_fields:
+            assignment.master_notebook_path = update_fields["master_notebook_path"]
+
         if "available_date" in update_fields:
             assignment.available_date = update_fields["available_date"]
         
@@ -148,6 +152,9 @@ class AssignmentService:
 
         if assignment.available_date >= assignment.due_date:
             raise AssignmentDueBeforeOpenException
+        
+        if "master_notebook_path" in update_fields:
+            await self.update_gitignore_content()
 
         self.session.commit()
 
@@ -174,33 +181,34 @@ class AssignmentService:
             .first()
         
         return assignment.due_date + (latest_time.extra_time if latest_time.extra_time is not None else timedelta(0))
-    
-    async def get_master_notebook_name(self, assignment: AssignmentModel) -> str:
-        return self._compute_master_notebook_name(assignment.name)
-    
-    @staticmethod
-    def _compute_master_notebook_name(self, assignment_name: str) -> str:
-        return f"{ assignment_name }-prof.ipynb"
 
     """ Compute the default gitignore for an assignment. """
     async def get_gitignore_content(self, assignment: AssignmentModel) -> str:
-        master_notebook_name = await self.get_master_notebook_name(assignment)
-        return f"""### Python ###
-# Byte-compiled / optimized / DLL files
+        protected_files = ["\n".join(file) for file in await self.get_protected_files(assignment)]
+
+        return f"""### Defaults ###
 __pycache__/
 *.py[cod]
 *$py.class
-
-### Misc ###
-*.DS_Store
-*grades.csv
-{ master_notebook_name }
-{ assignment.name }-dist
-.ssh
-.ipynb_checkpoints
 *venv
-prof-scripts/*
+.ipynb_checkpoints
+
+### Protected ###
+{ protected_files }
 """
+    
+    """
+    NOTE: File paths are not necessarily real files and may instead be globs.
+    NOTE: File paths are relative to `assignment.directory_path`.
+    """
+    async def get_protected_files(self, assignment: AssignmentModel) -> str:
+        return [
+            "*grades.csv",
+            assignment.master_notebook_path,
+            f"{ assignment.name }-dist",
+            ".ssh",
+            "prof-scripts"
+        ]
 
 class InstructorAssignmentService(AssignmentService):
     def __init__(self, session: Session, instructor: InstructorModel, assignment: AssignmentModel):

@@ -19,6 +19,7 @@ router = APIRouter()
 class UpdateAssignmentBody(BaseModel):
     name: str = UNSET
     directory_path: str = UNSET
+    master_notebook_path: str = UNSET
     available_date: datetime | None
     due_date: datetime | None
 
