@@ -1,4 +1,4 @@
-import os.path
+from pathlib import Path
 from datetime import timedelta
 from re import L
 from sqlalchemy import (
@@ -30,3 +30,8 @@ class AssignmentModel(Base):
     @hybrid_property
     def is_created(self):
         return self.available_date is not None and self.due_date is not None
+    
+    @hybrid_property
+    def student_notebook_path(self) -> str:
+        p = Path(self.master_notebook_path)
+        return str(p.parents[0] / (p.stem + "-student.ipynb"))

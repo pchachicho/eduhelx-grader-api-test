@@ -39,7 +39,7 @@ class AssignmentService:
             name=name,
             directory_path=directory_path,
             # This is relative to directory_path
-            master_notebook_path=f"{ name }-prof.ipynb",
+            master_notebook_path=f"{ name }.ipynb",
             available_date=available_date,
             due_date=due_date
         )
@@ -152,9 +152,6 @@ class AssignmentService:
 
         if assignment.available_date >= assignment.due_date:
             raise AssignmentDueBeforeOpenException
-        
-        if "master_notebook_path" in update_fields:
-            await self.update_gitignore_content()
 
         self.session.commit()
 
