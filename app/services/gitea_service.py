@@ -365,7 +365,7 @@ while read oldrev newrev refname; do
         oldrev=4b825dc642cb6eb9a060e54bf8d69288fbee4904
     fi
     # Iterate over files that have been modified between the old and new revisions
-    modified_files=$(git diff --name-only --diff-filter=M $oldrev $newrev)
+    modified_files=$(git diff --name-only --diff-filter=MD $oldrev $newrev)
     while IFS= read -r file; do
         for directory_path in "${{!assignments[@]}}"; do
             if [[ "${{file}}" == "${{directory_path}}"* ]]; then
