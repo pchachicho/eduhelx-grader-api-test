@@ -229,8 +229,6 @@ class GiteaService:
     ):
         files = [f.dict() for f in files]
         for file in files:
-            if file["operation"] == FileOperationType.UPDATE or file["operation"] == FileOperationType.DELETE:
-                raise NotImplementedError("File modify/delete is not implemented in Gitea Assist yet (requires sha)")
             # Gitea expects file content to be base64-encoded
             file["content"] = base64.b64encode(file["content"].encode("utf-8")).decode("utf-8")
         
