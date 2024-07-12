@@ -61,10 +61,14 @@ class AssignmentService:
         readme_path = f"{ directory_path }/README.md"
         readme_content = f"# { name }"
 
+        requirements_path = f"{ directory_path }/requirements.txt"
+        requirements_content = f"otter-grader==5.5.0"
+
         files_to_modify = [
             FileOperation(content=master_notebook_content, path=master_notebook_path, operation=FileOperationType.CREATE),
             FileOperation(content=gitignore_content, path=gitignore_path, operation=FileOperationType.CREATE),
-            FileOperation(content=readme_content, path=readme_path, operation=FileOperationType.CREATE)
+            FileOperation(content=readme_content, path=readme_path, operation=FileOperationType.CREATE),
+            FileOperation(content=requirements_content, path=requirements_path, operation=FileOperationType.CREATE)
         ]
 
         try:
