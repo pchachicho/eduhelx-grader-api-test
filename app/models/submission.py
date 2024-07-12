@@ -15,5 +15,5 @@ class SubmissionModel(Base):
     commit_id = Column(String(255), nullable=False)
     submission_time = Column(DateTime(timezone=True), server_default=func.current_timestamp())
 
-    student = relationship("StudentModel", foreign_keys="SubmissionModel.student_id")
+    student = relationship("StudentModel", foreign_keys="SubmissionModel.student_id", back_populates="submissions")
     assignment = relationship("AssignmentModel", foreign_keys="SubmissionModel.assignment_id")

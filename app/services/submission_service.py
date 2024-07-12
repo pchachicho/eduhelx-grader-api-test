@@ -1,9 +1,11 @@
 from typing import List
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
+from fastapi_events.dispatcher import dispatch
 from app.models import StudentModel, AssignmentModel, SubmissionModel
 from app.core.exceptions import SubmissionNotFoundException
 from app.services import StudentService, StudentAssignmentService
+from app.events import CreateSubmissionCrudEvent, ModifySubmissionCrudEvent, DeleteSubmissionCrudEvent
 
 class SubmissionService:
     def __init__(self, session: Session):
@@ -30,6 +32,8 @@ class SubmissionService:
 
         self.session.add(submission)
         self.session.commit()
+
+        dispatch(CreateSubmissionCrudEvent(submission=submission))
 
         return submission
     

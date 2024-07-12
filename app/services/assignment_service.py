@@ -2,13 +2,16 @@ from typing import List
 from datetime import datetime, timedelta
 from sqlalchemy import func
 from sqlalchemy.orm import Session
+from fastapi_events.dispatcher import dispatch
 from app.models import AssignmentModel, InstructorModel, StudentModel, ExtraTimeModel
-from app.schemas import AssignmentSchema, InstructorAssignmentSchema, StudentAssignmentSchema
+from app.schemas import AssignmentSchema, InstructorAssignmentSchema, StudentAssignmentSchema, UpdateAssignmentSchema
+from app.events import CreateAssignmentCrudEvent, ModifyAssignmentCrudEvent, DeleteAssignmentCrudEvent
 from app.core.exceptions import (
     AssignmentNotFoundException,
     AssignmentNotCreatedException,
     AssignmentNotOpenException,
     AssignmentClosedException,
+    AssignmentDueBeforeOpenException
 )
 
 class AssignmentService:
@@ -25,7 +28,10 @@ class AssignmentService:
     ) -> AssignmentModel:
         from app.services import GiteaService, FileOperation, FileOperationType, CourseService
 
-        gitea_service = GiteaService()
+        if available_date >= due_date:
+            raise AssignmentDueBeforeOpenException
+
+        gitea_service = GiteaService(self.session)
         course_service = CourseService(self.session)
 
         assignment = AssignmentModel(
@@ -43,15 +49,13 @@ class AssignmentService:
         owner = await course_service.get_instructor_gitea_organization_name()
         branch_name = await course_service.get_master_branch_name()
 
-        master_notebook_name = f"{ name }-prof.ipynb"
+        master_notebook_name = await self.get_master_notebook_name(assignment)
         master_notebook_path = f"{ directory_path }/{ master_notebook_name }"
+        # Default empty notebook for JupyterLab 4
         master_notebook_content = "{\n \"cells\": [],\n \"metadata\": {},\n \"nbformat\": 4,\n \"nbformat_minor\": 5\n}"
 
         gitignore_path = f"{ directory_path }/.gitignore"
-        gitignore_content = \
-            "*grades.csv\n" \
-            f"{ master_notebook_name }\n" \
-            f"{ name }-dist"
+        gitignore_content = await self.get_gitignore_content(assignment)
         
         readme_path = f"{ directory_path }/README.md"
         readme_content = f"# { name }"
@@ -62,20 +66,27 @@ class AssignmentService:
             FileOperation(content=readme_content, path=readme_path, operation=FileOperationType.CREATE)
         ]
 
-        await gitea_service.modify_repository_files(
-            name=master_repository_name,
-            owner=owner,
-            branch_name=branch_name,
-            commit_message="Initialize assignment",
-            files=files_to_modify
-        )
+        try:
+            await gitea_service.modify_repository_files(
+                name=master_repository_name,
+                owner=owner,
+                branch_name=branch_name,
+                commit_message="Initialize assignment",
+                files=files_to_modify
+            )
+        except Exception as e:
+            self.session.delete(assignment)
+            self.session.commit()
+            raise e
+
+        dispatch(CreateAssignmentCrudEvent(assignment=assignment))
 
         return assignment
     
     async def delete_assignment(self, assignment: AssignmentModel) -> None:
         from app.services import GiteaService, CourseService, FileOperation, FileOperationType
 
-        gitea_service = GiteaService()
+        gitea_service = GiteaService(self.session)
         course_service = CourseService(self.session)
 
         master_repository_name = await course_service.get_master_repository_name()
@@ -98,6 +109,8 @@ class AssignmentService:
         self.session.delete(assignment)
         self.session.commit()
 
+        dispatch(DeleteAssignmentCrudEvent(assignment=assignment))
+
     async def get_assignment_by_id(self, id: int) -> AssignmentModel:
         assignment = self.session.query(AssignmentModel) \
             .filter_by(id=id) \
@@ -118,29 +131,76 @@ class AssignmentService:
             raise AssignmentNotFoundException()
         return assignment
     
-    async def update_assignment_name(self, assignment: AssignmentModel, new_name: str) -> AssignmentModel:
-        assignment.name = new_name
-        assignment.last_modified_date = func.current_timestamp()
+    async def update_assignment(self, assignment: AssignmentModel, update_assignment: UpdateAssignmentSchema) -> AssignmentModel:
+        update_fields = update_assignment.dict(exclude_unset=True)
+        
+        if "name" in update_fields:
+            assignment.name = update_fields["name"]
+
+        if "directory_path" in update_fields:
+            assignment.directory_path = update_fields["directory_path"]
+
+        if "available_date" in update_fields:
+            assignment.available_date = update_fields["available_date"]
+        
+        if "due_date" in update_fields:
+            assignment.due_date = update_fields["due_date"]
+
+        if assignment.available_date >= assignment.due_date:
+            raise AssignmentDueBeforeOpenException
+
         self.session.commit()
+
+        dispatch(ModifyAssignmentCrudEvent(assignment=assignment, modified_fields=list(update_fields.keys())))
+
         return assignment
     
-    async def update_assignment_directory_path(self, assignment: AssignmentModel, directory_path: str) -> AssignmentModel:
-        assignment.directory_path = directory_path
-        assignment.last_modified_date = func.current_timestamp()
-        self.session.commit()
-        return assignment
+    # Get the earliest time at which the given assignment is available
+    async def get_earliest_available_date(self, assignment: AssignmentModel) -> datetime | None:
+        if assignment.available_date is None: return None
+        earliest_deferral = self.session.query(ExtraTimeModel.deferred_time) \
+            .filter_by(assignment_id=assignment.id) \
+            .order_by(ExtraTimeModel.deferred_time) \
+            .first()
+        
+        return assignment.available_date + (earliest_deferral if earliest_deferral is not None else timedelta(0))
     
-    async def update_assignment_available_date(self, assignment: AssignmentModel, available_date: datetime) -> AssignmentModel:
-        assignment.available_date = available_date
-        assignment.last_modified_date = func.current_timestamp()
-        self.session.commit()
-        return assignment
+    # Gets the latest time at which the given assignment closes
+    async def get_latest_due_date(self, assignment: AssignmentModel) -> datetime | None:
+        if assignment.due_date is None: return None
+        latest_time = self.session.query(ExtraTimeModel.extra_time) \
+            .filter_by(assignment_id=assignment.id) \
+            .order_by(ExtraTimeModel.extra_time.desc()) \
+            .first()
+        
+        return assignment.due_date + (latest_time.extra_time if latest_time.extra_time is not None else timedelta(0))
     
-    async def update_assignment_due_date(self, assignment: AssignmentModel, due_date: datetime) -> AssignmentModel:
-        assignment.due_date = due_date
-        assignment.last_modified_date = func.current_timestamp()
-        self.session.commit()
-        return assignment
+    async def get_master_notebook_name(self, assignment: AssignmentModel) -> str:
+        return self._compute_master_notebook_name(assignment.name)
+    
+    @staticmethod
+    def _compute_master_notebook_name(self, assignment_name: str) -> str:
+        return f"{ assignment_name }-prof.ipynb"
+
+    """ Compute the default gitignore for an assignment. """
+    async def get_gitignore_content(self, assignment: AssignmentModel) -> str:
+        master_notebook_name = await self.get_master_notebook_name(assignment)
+        return f"""### Python ###
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+### Misc ###
+*.DS_Store
+*grades.csv
+{ master_notebook_name }
+{ assignment.name }-dist
+.ssh
+.ipynb_checkpoints
+*venv
+prof-scripts/*
+"""
 
 class InstructorAssignmentService(AssignmentService):
     def __init__(self, session: Session, instructor: InstructorModel, assignment: AssignmentModel):
@@ -184,7 +244,7 @@ class StudentAssignmentService(AssignmentService):
         return extra_time_model
 
     # The release date for a specific student, considering extra_time
-    def get_adjusted_available_date(self) -> datetime:
+    def get_adjusted_available_date(self) -> datetime | None:
         if self.assignment.available_date is None: return None
 
         deferred_time = self.extra_time_model.deferred_time if self.extra_time_model is not None else timedelta(0)
@@ -192,7 +252,7 @@ class StudentAssignmentService(AssignmentService):
         return self.assignment.available_date + deferred_time
 
     # The due date for a specific student, considering extra_time
-    def get_adjusted_due_date(self) -> datetime:
+    def get_adjusted_due_date(self) -> datetime | None:
         if self.assignment.due_date is None: return None
 
         # If a student does not have any extra time allotted for the assignment,

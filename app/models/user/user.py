@@ -20,6 +20,9 @@ class UserModel(Base):
 
     role = Column(UserRoleType, nullable=False)
 
+    autogen_password_auth = relationship("AutoPasswordAuthModel", cascade="all,delete", uselist=False)
+    onyen_pid = relationship("OnyenPIDModel", cascade="all,delete", uselist=False)
+
     __mapper_args__ = {
         "polymorphic_on": "user_type",
         "polymorphic_identity": "user"

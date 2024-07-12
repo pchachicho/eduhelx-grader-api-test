@@ -56,17 +56,19 @@ async def appstore_login(
 async def set_gitea_ssh(
     *,
     request: Request,
+    db: Session = Depends(get_db),
     ssh_body: SetGiteaSSHBody,
 ):
-    await GiteaService().set_ssh_key(request.user.onyen, ssh_body.name, ssh_body.key)
+    await GiteaService(db).set_ssh_key(request.user.onyen, ssh_body.name, ssh_body.key)
 
 @router.delete("/logout/gitea/ssh", description="Remove an SSH key for your Gitea user")
 async def set_gitea_ssh(
     *,
     request: Request,
+    db: Session = Depends(get_db),
     ssh_body: DeleteGiteaSSHBody,
 ):
-    await GiteaService().remove_ssh_key(request.user.onyen, ssh_body.name)
+    await GiteaService(db).remove_ssh_key(request.user.onyen, ssh_body.name)
 
 @router.post("/refresh", response_model=str)
 async def refresh(

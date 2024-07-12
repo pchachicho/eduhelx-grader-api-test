@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, Boolean, Interval, DateTime, Text, ForeignKey, func
+from sqlalchemy.orm import relationship
 from .user import UserModel, UserType
 
 class StudentModel(UserModel):
@@ -13,4 +14,7 @@ class StudentModel(UserModel):
     base_extra_time = Column(Interval, server_default="0")
     join_date = Column(DateTime(timezone=True), server_default=func.current_timestamp())
     exit_date = Column(DateTime(timezone=True))
+
+    submissions = relationship("SubmissionModel", cascade="all,delete", back_populates="student")
+    extra_times = relationship("ExtraTimeModel", cascade="all,delete", back_populates="student")
     

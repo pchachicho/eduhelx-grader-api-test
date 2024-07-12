@@ -1,15 +1,11 @@
-from datetime import timedelta
-from re import L
 from sqlalchemy import (
-    Column, Sequence, ForeignKey,
-    Integer, Text, DateTime, Interval,
+    Column, Sequence,
+    Integer, Text, DateTime,
     func
 )
-from sqlalchemy.orm import relationship, Session
+from sqlalchemy.orm import relationship
 from sqlalchemy.ext.hybrid import hybrid_property
 from app.database import Base
-from .user import StudentModel
-from .extra_time import ExtraTimeModel
 
 class AssignmentModel(Base):
     __tablename__ = "assignment"

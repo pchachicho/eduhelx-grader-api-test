@@ -1,12 +1,14 @@
 from typing import List, Optional
 from enum import Enum
 from io import BytesIO
+from math import ceil
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
 from app.core.config import settings
+from app.services import AssignmentService
 from app.core.utils.header import parse_content_disposition_header
 import httpx
 import base64
-from pydantic import BaseModel
 
 class FileOperationType(str, Enum):
     CREATE = "create"
@@ -28,7 +30,8 @@ class CollaboratorPermission(str, Enum):
     ADMIN = "admin"
 
 class GiteaService:
-    def __init__(self):
+    def __init__(self, session: Session):
+        self.session = session
         self.client = httpx.AsyncClient(
             base_url=f"{ self.api_url }",
             headers={
@@ -74,6 +77,16 @@ class GiteaService:
     ) -> None:
         await self._post("/orgs", json={
             "org_name": organization_name
+        })
+
+    async def delete_organization(
+        self,
+        organization_name: str,
+        purge: bool=False
+    ) -> None:
+        await self._delete("/orgs", params={
+            "org_name": organization_name,
+            "purge": purge
         })
     
     async def add_user_to_organization(
@@ -251,3 +264,66 @@ class GiteaService:
             "key_name": key_name,
             "username": username
         })
+
+    async def set_git_hook(
+        self,
+        repository_name: str,
+        owner: str,
+        hook_id: str,
+        hook_content: str
+    ):
+        res = await self._put("/repos/hooks", json={
+            "name": repository_name,
+            "owner": owner,
+            "hook_id": hook_id,
+            "content": hook_content
+        })
+
+    async def get_merge_control_hook(self):
+        assignment_service = AssignmentService(self.session)
+
+        assignments = await assignment_service.get_assignments()
+        init_assignments_assoc = []
+        for assignment in assignments:
+            if assignment.is_created:
+                earliest_datetime = await assignment_service.get_earliest_available_date(assignment)
+                declaration = f'assignments["{ assignment.directory_path }"]'
+                value=ceil(earliest_datetime.timestamp())
+                init_assignments_assoc.append(f"{ declaration }={ value }")
+        init_assignments_assoc = "\n".join(init_assignments_assoc)
+        
+        return f"""
+#!/bin/bash
+z40=0000000000000000000000000000000000000000
+# Epoch time
+current_timestamp=$(date -u +%s)
+declare -a violations
+declare -A assignments
+{ init_assignments_assoc }
+while read oldrev newrev refname; do
+    if [ $oldrev == $z40 ]; then
+        # Commit being pushed is for a new branch, use empty tree SHA
+        oldrev=4b825dc642cb6eb9a060e54bf8d69288fbee4904
+    fi
+    # Iterate over files that have been modified between the old and new revisions
+    modified_files=$(git diff --name-only --diff-filter=M $oldrev $newrev)
+    while IFS= read -r file; do
+        for directory_path in "${{!assignments[@]}}"; do
+            if [[ "${{file}}" == "${{directory_path}}"* ]]; then
+                # Assignment has already opened to some students, so can't modify this file.
+                if [ "${{current_timestamp}}" -gt "${{assignments[$directory_path]}}" ]; then
+                    violations+=("$file")
+                fi
+            fi
+        done
+    done <<< "$modified_files  "
+done
+
+if [ ${{#violations[@]}} -gt 0 ]; then
+    echo "ERROR: Merge control policy violation"
+    for file in "${{violations[@]}}"; do
+        echo "VIOLATION: $file"
+    done
+    exit 1
+fi
+"""

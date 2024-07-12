@@ -1,5 +1,7 @@
 from sqlalchemy.orm import Session
+from fastapi_events.dispatcher import dispatch
 from app.models import UserModel, AutoPasswordAuthModel
+from app.events import DeleteUserCrudEvent
 from app.schemas import RefreshTokenSchema
 from app.core.config import settings
 from app.core.utils.token_helper import TokenHelper
@@ -75,35 +77,27 @@ class UserService:
         )
 
         return autogen_password
-    
-    async def delete_user_auto_password_auth(self, onyen: str) -> str:
-        from app.services import CourseService, KubernetesService, GiteaService
-
-        course = await CourseService(self.session).get_course()
-        user_auth = self.session.query(AutoPasswordAuthModel).filter_by(onyen=onyen).first()
-
-        KubernetesService().delete_credential_secret(course.name, onyen)
-
-        self.session.delete(user_auth)
-        self.session.commit()
 
     async def delete_user(
         self,
         onyen: str
     ) -> None:
-        from app.services import GiteaService, KubernetesService, CourseService, CanvasService
+        from app.services import GiteaService, KubernetesService, CourseService, CleanupService
         
-        await self.delete_user_auto_password_auth(onyen)
-        try:
-            # MARKED FOR REMOVAL AFTER HLXK-232
-            await CanvasService(self.session).unassociate_pid_from_user(onyen)
-        except:
-            # If it's already been unassociated or never was associated, don't care.
-            pass
-
+        course = await CourseService(self.session).get_course()
         user = await self.get_user_by_onyen(onyen)
+
+        password = KubernetesService().get_autogen_password(course.name, onyen)
+        cleanup_service = CleanupService.User(self.session, user, password)
+
+        KubernetesService().delete_credential_secret(course.name, onyen)
+        try:
+            await GiteaService().delete_user(onyen, purge=True)
+        except Exception as e:
+            await cleanup_service.undo_delete_user(create_password_secret=True)
+            raise e
+
         self.session.delete(user)
         self.session.commit()
 
-        gitea_service = GiteaService()
-        await gitea_service.delete_user(onyen, purge=True)
+        dispatch(DeleteUserCrudEvent(user=user))

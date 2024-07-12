@@ -4,7 +4,8 @@ from typing import List, Union
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from app.models import AssignmentModel, StudentModel, InstructorModel
-from app.schemas import InstructorAssignmentSchema, StudentAssignmentSchema, AssignmentSchema
+from app.schemas import InstructorAssignmentSchema, StudentAssignmentSchema, AssignmentSchema, UpdateAssignmentSchema
+from app.schemas._unset import UNSET
 from app.services import (
     AssignmentService, InstructorAssignmentService, StudentAssignmentService,
     StudentService, UserService, LmsSyncService
@@ -13,9 +14,11 @@ from app.core.dependencies import get_db, PermissionDependency, RequireLoginPerm
 
 router = APIRouter()
 
+# Note: we don't want to reuse UpdateAssignmentSchema here because it is
+# intended for internal use only, and may have private values in the future.
 class UpdateAssignmentBody(BaseModel):
-    new_name: str | None
-    directory_path: str | None
+    name: str = UNSET
+    directory_path: str = UNSET
     available_date: datetime | None
     due_date: datetime | None
 
@@ -32,17 +35,9 @@ async def update_assignment_fields(
 
     # Differentiate between fields that are set as None and fields that are not set at all
     updated_set_fields = assignment_body.dict(exclude_unset=True)
+    update_schema = UpdateAssignmentSchema(**updated_set_fields)
+    assignment = await AssignmentService(db).update_assignment(assignment, update_schema)
 
-    # validate the first two fields since they are non nullable in our model, the two date fields are nullable
-    if "new_name" in updated_set_fields and updated_set_fields["new_name"] is not None:
-        assignment = await AssignmentService(db).update_assignment_name(assignment, updated_set_fields["new_name"])
-    if "directory_path" in updated_set_fields and updated_set_fields["directory_path"] is not None:
-        assignment = await AssignmentService(db).update_assignment_directory_path(assignment, updated_set_fields["directory_path"])
-    if "available_date" in updated_set_fields:
-        assignment = await AssignmentService(db).update_assignment_available_date(assignment, updated_set_fields["available_date"])
-    if "due_date" in updated_set_fields:
-        assignment = await AssignmentService(db).update_assignment_due_date(assignment, updated_set_fields["due_date"])
-    
     await LmsSyncService(db).upsync_assignment(assignment)
 
     return assignment
