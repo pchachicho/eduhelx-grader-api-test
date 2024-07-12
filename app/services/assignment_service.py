@@ -60,6 +60,7 @@ class AssignmentService:
             "source": [
                 "# ASSIGNMENT CONFIG\n",
                 "requirements: requirements.txt\n"
+                "export_cell: false\n"
             ]
         }
         title_cell = {
