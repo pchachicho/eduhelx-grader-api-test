@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 from sqlalchemy.orm import Session
 from app.services import AssignmentService
 from app.models import AssignmentModel
+from app.schemas import UpdateAssignmentSchema
 from app.core.exceptions import AssignmentNotFoundException
 
 class TestAssignmentService(unittest.IsolatedAsyncioTestCase):
@@ -87,7 +88,8 @@ class TestAssignmentService(unittest.IsolatedAsyncioTestCase):
         self.mock_session.commit.return_value = None
         mock_current_timestamp.return_value = date.today()
 
-        result = await self.assignment_service.update_assignment_name(assignment=mock_assignment, new_name="new_name")
+        payload = UpdateAssignmentSchema(name="new_name")
+        result = await self.assignment_service.update_assignment(assignment=mock_assignment, update_assignment=payload)
         
         self.assertEqual(result.name, "new_name")
         self.assertEqual(result.last_modified_date, date.today())
@@ -98,7 +100,8 @@ class TestAssignmentService(unittest.IsolatedAsyncioTestCase):
         self.mock_session.commit.return_value = None
         mock_current_timestamp.return_value = date.today()
 
-        result = await self.assignment_service.update_assignment_directory_path(assignment=mock_assignment, directory_path="new/directory/path")
+        payload = UpdateAssignmentSchema(directory_path="new/directory/path")
+        result = await self.assignment_service.update_assignment(assignment=mock_assignment, update_assignment=payload)
         
         self.assertEqual(result.directory_path, "new/directory/path")
         self.assertEqual(result.last_modified_date, date.today())
@@ -110,7 +113,8 @@ class TestAssignmentService(unittest.IsolatedAsyncioTestCase):
         mock_current_timestamp.return_value = date.today()
 
         new_date = mock_assignment.available_date + timedelta(hours=3)
-        result = await self.assignment_service.update_assignment_available_date(assignment=mock_assignment, available_date=new_date)
+        payload = UpdateAssignmentSchema(available_date=new_date)
+        result = await self.assignment_service.update_assignment(assignment=mock_assignment, update_assignment=payload)
         
         self.assertEqual(result.available_date, new_date)
         self.assertEqual(result.last_modified_date, date.today())
@@ -122,7 +126,8 @@ class TestAssignmentService(unittest.IsolatedAsyncioTestCase):
         mock_current_timestamp.return_value = date.today()
 
         new_date = mock_assignment.due_date + timedelta(hours=3)
-        result = await self.assignment_service.update_assignment_due_date(assignment=mock_assignment, due_date=new_date)
+        payload = UpdateAssignmentSchema(due_date=new_date)
+        result = await self.assignment_service.update_assignment(assignment=mock_assignment, update_assignment=payload)
         
         self.assertEqual(result.due_date, new_date)
         self.assertEqual(result.last_modified_date, date.today())
