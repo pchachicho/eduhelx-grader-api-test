@@ -1,6 +1,5 @@
 from __future__ import annotations
 from sqlalchemy import Column, Sequence, Integer, Text, DateTime
-from sqlalchemy.orm import Session
 from app.database import Base
 
 class CourseModel(Base):
