@@ -155,25 +155,10 @@ class LmsSyncService:
         
 
     async def downsync(self):
+        print("Syncing the LMS with the database")
         await self.sync_course()
         await asyncio.gather(
             self.sync_assignments(),
             self.sync_students(),
             self.sync_instructors()
         )
-    
-
-# Delete below before merge
-# 
-# if True:
-# #     # Currently only for testing purposes: a script that can be run to sync the LMS with the database
-#     from app.database import SessionLocal
-
-#     sess = SessionLocal()
-#     lms = LmsSyncService(sess)
-#     # asyncio.run(lms.sync_course())
-#     # asyncio.run(lms.sync_students())
-#     # asyncio.run(lms.sync_assignments())
-#     asyncio.run(lms.downsync())
-
-#     sess.close()
