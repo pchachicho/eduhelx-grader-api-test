@@ -209,6 +209,7 @@ __pycache__/
 *$py.class
 *venv
 .ipynb_checkpoints
+.OTTER_LOG
 
 ### Protected ###
 { protected_files }
