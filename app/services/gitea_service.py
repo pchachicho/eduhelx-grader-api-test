@@ -2,10 +2,13 @@ from typing import List, Optional
 from enum import Enum
 from io import BytesIO
 from math import ceil
+from datetime import datetime
+from dateutil import tz
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.services import AssignmentService
+from app.schemas import CommitSchema
 from app.core.utils.header import parse_content_disposition_header
 import httpx
 import base64
@@ -219,6 +222,23 @@ class GiteaService:
         file_stream.name = file_name
         return file_stream
     
+    async def get_commits(
+        self,
+        name: str,
+        owner: str,
+        branch_name: str
+    ) -> List[CommitSchema]:
+        res = await self._get("/repos/commits", params={
+            "name": name,
+            "owner": owner,
+            "branch": branch_name
+        })
+        raw_commits = res.json()
+        return [
+            CommitSchema.from_gitea(raw_commit)
+            for raw_commit in raw_commits
+        ]
+    
     async def modify_repository_files(
         self,
         name: str,
@@ -344,7 +364,9 @@ fi
         init_assignments_assoc = []
         for assignment in assignments:
             if assignment.is_created:
-                earliest_datetime = await assignment_service.get_earliest_available_date(assignment)
+                # Until HLXK-265, merge control policy is ALWAYS active.
+                earliest_datetime = datetime.now(tz.UTC)
+                # earliest_datetime = await assignment_service.get_earliest_available_date(assignment)
                 declaration = f'assignments["{ assignment.directory_path }"]'
                 value=ceil(earliest_datetime.timestamp())
                 init_assignments_assoc.append(f"{ declaration }={ value }")
