@@ -1,3 +1,4 @@
+import json
 from typing import List
 from datetime import datetime, timedelta
 from sqlalchemy import func
@@ -52,8 +53,23 @@ class AssignmentService:
         branch_name = await course_service.get_master_branch_name()
 
         master_notebook_path = f"{ assignment.directory_path }/{ assignment.master_notebook_path }"
-        # Default empty notebook for JupyterLab 4
-        master_notebook_content = '{\n "cells": [],\n "metadata": {\n  "kernelspec": {\n   "display_name": "Python 3 (ipykernel)",\n   "language": "python",\n   "name": "python3"\n  },\n  "language_info": {\n   "codemirror_mode": {\n    "name": "ipython",\n    "version": 3\n   },\n   "file_extension": ".py",\n   "mimetype": "text/x-python",\n   "name": "python",\n   "nbconvert_exporter": "python",\n   "pygments_lexer": "ipython3",\n   "version": "3.11.5"\n  }\n },\n "nbformat": 4,\n "nbformat_minor": 5\n}'
+        # Default empty notebook for JupyterLab 4 w/ Otter Config
+        otter_config_cell = {
+            "cell_type": "raw",
+            "metadata": {},
+            "source": [
+                "# ASSIGNMENT CONFIG\n",
+                "requirements: requirements.txt\n"
+            ]
+        }
+        title_cell = {
+            "cell_type": "markdown",
+            "metadata": {},
+            "source": [
+                f"# { assignment.name }\n",
+            ]
+        }
+        master_notebook_content = json.dumps({ "cells": [otter_config_cell, title_cell], "metadata": {  "kernelspec": {   "display_name": "Python 3 (ipykernel)",   "language": "python",   "name": "python3"  },  "language_info": {   "codemirror_mode": {    "name": "ipython",    "version": 3   },   "file_extension": ".py",   "mimetype": "text/x-python",   "name": "python",   "nbconvert_exporter": "python",   "pygments_lexer": "ipython3",   "version": "3.11.5"  } }, "nbformat": 4, "nbformat_minor": 5})
 
         gitignore_path = f"{ directory_path }/.gitignore"
         gitignore_content = await self.get_gitignore_content(assignment)
