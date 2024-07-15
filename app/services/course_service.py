@@ -61,7 +61,7 @@ class CourseService:
         try:
             await gitea_service.create_organization(instructor_organization_name)
         except Exception as e:
-            cleanup_service.undo_create_course(delete_database_course=True)
+            await cleanup_service.undo_create_course(delete_database_course=True)
             raise e
         
         try:
