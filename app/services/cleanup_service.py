@@ -1,7 +1,6 @@
 from sqlalchemy.orm import Session
 from app.models import UserModel, CourseModel
 from app.services import GiteaService, KubernetesService
-from httpx import HTTPStatusError
 
 class CleanupService:
     class Course:
