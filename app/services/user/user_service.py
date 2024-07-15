@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from fastapi_events.dispatcher import dispatch
+from app.events import dispatch
 from app.models import UserModel, AutoPasswordAuthModel
 from app.events import DeleteUserCrudEvent
 from app.schemas import RefreshTokenSchema
