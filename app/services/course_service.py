@@ -40,16 +40,6 @@ class CourseService:
         except NoCourseExistsException:
             pass
 
-        course = CourseModel(
-            name=name,
-            master_remote_url=master_remote_url,
-            start_at=start_at,
-            end_at=end_at
-        )
-        
-        self.session.add(course)
-        self.session.commit()
-
         gitea_service = GiteaService(self.session)
         cleanup_service = CleanupService.Course(self.session)
 
@@ -78,6 +68,16 @@ class CourseService:
         except Exception as e:
             await cleanup_service.undo_create_course(delete_database_course=True, delete_gitea_organization=True)
             raise e
+        
+        course = CourseModel(
+            name=name,
+            master_remote_url=master_remote_url,
+            start_at=start_at,
+            end_at=end_at
+        )
+        
+        self.session.add(course)
+        self.session.commit()
 
         dispatch(CreateCourseCrudEvent(course=course))
 
