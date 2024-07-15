@@ -82,7 +82,6 @@ class CourseService:
             raise e
         
         course.master_remote_url = master_remote_url
-
         self.session.commit()
 
         dispatch(CreateCourseCrudEvent(course=course))
