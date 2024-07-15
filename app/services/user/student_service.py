@@ -1,5 +1,5 @@
 from typing import List
-from fastapi_events.dispatcher import dispatch
+from app.events import dispatch
 from app.models import StudentModel
 from app.events import CreateUserCrudEvent
 from app.core.role_permissions import student_role
