@@ -1,4 +1,4 @@
-from fastapi_events.dispatcher import dispatch
+from app.events import dispatch
 
 # For use with static events.
 def dispatches(*args, **kwargs):

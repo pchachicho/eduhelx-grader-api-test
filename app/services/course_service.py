@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
-from fastapi_events.dispatcher import dispatch
+from app.events import dispatch
 from app.models import CourseModel
 from app.schemas import CourseWithInstructorsSchema, CourseSchema, UpdateCourseSchema
 from app.events import CreateCourseCrudEvent, ModifyCourseCrudEvent, DeleteCourseCrudEvent
@@ -42,7 +42,7 @@ class CourseService:
 
         course = CourseModel(
             name=name,
-            master_remote_url=master_remote_url,
+            master_remote_url="",
             start_at=start_at,
             end_at=end_at
         )
@@ -51,7 +51,7 @@ class CourseService:
         self.session.commit()
 
         gitea_service = GiteaService(self.session)
-        cleanup_service = CleanupService.Course(self.session)
+        cleanup_service = CleanupService.Course(self.session, course)
 
         master_repository_name = self._compute_master_repository_name(name)
         instructor_organization_name = self._compute_instructor_gitea_organization_name(name)
@@ -75,6 +75,8 @@ class CourseService:
                 hook_id="pre-receive",
                 hook_content=await gitea_service.get_master_repo_prereceive_hook()
             )
+            course.master_remote_url = master_remote_url
+            self.session.commit()
             
         except Exception as e:
             await cleanup_service.undo_create_course(delete_database_course=True, delete_gitea_organization=True)

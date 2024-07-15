@@ -111,13 +111,25 @@ class CanvasService:
             "enrollment_type": enrollment_type
         })
     
-    async def upload_grade(self, assignment_id: int, user_id: int, grade: float):
+    async def upload_grade(
+        self,
+        assignment_id: int,
+        user_id: int,
+        grade: float,
+        comments: str | None = None,
+        attempt: int | None = None
+    ):
         url = f"courses/{ settings.CANVAS_COURSE_ID }/assignments/{ assignment_id }/submissions/{ user_id }"
-        return await self._put(url, json={
+        payload = {
             "submission": {
                 "posted_grade": grade
-            }
-        })
+            },
+            "comment": {},
+            "prefer_points_over_scheme": True
+        }
+        if comments is not None: payload["comment"]["text_comment"] = comments
+        if attempt is not None: payload["comment"]["attempt"] = attempt
+        return await self._put(url, json=payload)
 
     async def update_assignment(self, assignment_id: int, body: UpdateCanvasAssignmentBody):
         url = f"courses/{ settings.CANVAS_COURSE_ID }/assignments/{ assignment_id }"

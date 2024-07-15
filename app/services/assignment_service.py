@@ -3,7 +3,7 @@ from typing import List
 from datetime import datetime, timedelta
 from sqlalchemy import func
 from sqlalchemy.orm import Session
-from fastapi_events.dispatcher import dispatch
+from app.events import dispatch
 from app.models import AssignmentModel, InstructorModel, StudentModel, ExtraTimeModel
 from app.schemas import AssignmentSchema, InstructorAssignmentSchema, StudentAssignmentSchema, UpdateAssignmentSchema
 from app.events import CreateAssignmentCrudEvent, ModifyAssignmentCrudEvent, DeleteAssignmentCrudEvent
@@ -223,6 +223,7 @@ __pycache__/
     async def get_protected_files(self, assignment: AssignmentModel) -> str:
         return [
             "*grades.csv",
+            "*grading_config.json",
             assignment.master_notebook_path,
             f"{ assignment.name }-dist",
             ".ssh",

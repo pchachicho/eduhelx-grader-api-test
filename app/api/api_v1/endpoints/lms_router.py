@@ -21,7 +21,7 @@ class UploadGradesBody(BaseModel):
 async def downsync(
     *,
     db: Session = Depends(get_db),
-    perm: None = Depends(PermissionDependency(UserIsInstructorPermission))
+    # perm: None = Depends(PermissionDependency(UserIsInstructorPermission))
 ):
     await LmsSyncService(db).downsync()
 
@@ -40,15 +40,3 @@ async def downsync_assignments(
     perm: None = Depends(PermissionDependency(UserIsInstructorPermission))
 ):
     return await LmsSyncService(db).sync_assignments()
-
-@router.post("/lms/grades/{assignment_id}")
-async def post_grades(
-    *,
-    db: Session = Depends(get_db),
-    assignment_id: int,
-    perm: None = Depends(PermissionDependency(UserIsInstructorPermission)),
-    body: UploadGradesBody
-):
-    # Validate the assignment exists
-    await AssignmentService(db).get_assignment_by_id(assignment_id)
-    return await LmsSyncService(db).upload_grades(assignment_id, [grade.dict() for grade in body.grades])

@@ -8,9 +8,9 @@ from app.schemas import InstructorAssignmentSchema, StudentAssignmentSchema, Ass
 from app.schemas._unset import UNSET
 from app.services import (
     AssignmentService, InstructorAssignmentService, StudentAssignmentService,
-    StudentService, UserService, LmsSyncService
+    StudentService, UserService, LmsSyncService, GradingService
 )
-from app.core.dependencies import get_db, PermissionDependency, RequireLoginPermission, AssignmentModifyPermission
+from app.core.dependencies import get_db, PermissionDependency, RequireLoginPermission, AssignmentModifyPermission, UserIsInstructorPermission
 
 router = APIRouter()
 
@@ -22,6 +22,10 @@ class UpdateAssignmentBody(BaseModel):
     master_notebook_path: str = UNSET
     available_date: datetime | None
     due_date: datetime | None
+
+class GradingBody(BaseModel):
+    master_notebook_content: str
+    otter_config_content: str
 
 @router.patch("/assignments/{assignment_name}", response_model=AssignmentSchema)
 async def update_assignment_fields(
@@ -70,3 +74,23 @@ async def get_assignments(
         ]
     else:
         return assignments
+    
+@router.post(
+    "/assignments/{assignment_name}/grade",
+    response_model=None
+)
+async def grade_assignment(
+    *,
+    request: Request,
+    db: Session = Depends(get_db),
+    assignment_name: str,
+    grading_body: GradingBody,
+    perm: None = Depends(PermissionDependency(UserIsInstructorPermission))
+):
+    assignment = await AssignmentService(db).get_assignment_by_name(assignment_name)
+    grade_report = await GradingService(db).grade_assignment(
+        assignment,
+        grading_body.master_notebook_content,
+        grading_body.otter_config_content
+    )
+    print(grade_report)
