@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
-from fastapi_events.dispatcher import dispatch
+from app.events import dispatch
 from app.models import CourseModel
 from app.schemas import CourseWithInstructorsSchema, CourseSchema, UpdateCourseSchema
 from app.events import CreateCourseCrudEvent, ModifyCourseCrudEvent, DeleteCourseCrudEvent
