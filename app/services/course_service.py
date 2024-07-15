@@ -51,7 +51,7 @@ class CourseService:
 
         self.session.add(course)
         self.session.commit()
-        
+
         gitea_service = GiteaService(self.session)
         cleanup_service = CleanupService.Course(self.session, course)
 
