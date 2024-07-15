@@ -40,22 +40,24 @@ class CourseService:
         except NoCourseExistsException:
             pass
 
+        master_remote_url = ""
+
         course = CourseModel(
             name=name,
             master_remote_url=master_remote_url,
             start_at=start_at,
             end_at=end_at
         )
-        
+
         self.session.add(course)
         self.session.commit()
 
         gitea_service = GiteaService(self.session)
-        cleanup_service = CleanupService.Course(self.session)
+        cleanup_service = CleanupService.Course(self.session, course)
 
         master_repository_name = self._compute_master_repository_name(name)
         instructor_organization_name = self._compute_instructor_gitea_organization_name(name)
-        
+
         try:
             await gitea_service.create_organization(instructor_organization_name)
         except Exception as e:
@@ -78,6 +80,9 @@ class CourseService:
         except Exception as e:
             await cleanup_service.undo_create_course(delete_database_course=True, delete_gitea_organization=True)
             raise e
+        
+        course.master_remote_url = master_remote_url
+        self.session.commit()
 
         dispatch(CreateCourseCrudEvent(course=course))
 
@@ -132,7 +137,6 @@ class CourseService:
     @classmethod
     def _compute_student_repository_name(cls, course_name: str) -> str:
         return f"{ course_name.replace(' ', '_') }-student-repo"
-        return f"{ course.name }-class-master-repo"
     
     @classmethod
     def _compute_master_branch_name(cls) -> str:
