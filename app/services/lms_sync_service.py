@@ -6,6 +6,8 @@ from app.services.ldap_service import LDAPService
 from app.services.assignment_service import AssignmentService
 from app.services.user.student_service import StudentService
 from app.services.user.instructor_service import InstructorService
+from app.models.submission import SubmissionModel
+from app.models.assignment import AssignmentModel
 from app.schemas.course import UpdateCourseSchema
 from app.schemas.assignment import UpdateAssignmentSchema
 from sqlalchemy.orm import Session
@@ -140,13 +142,27 @@ class LmsSyncService:
 
         return canvas_instructors
 
-    async def upload_grades(self, assignment_id: int, grades: list[dict]):
-        for row in grades:
-            user_pid = await self.canvas_service.get_pid_from_onyen(row['onyen'])
-            student = await self.canvas_service.get_student_by_pid(user_pid)
-            await self.canvas_service.upload_grade(assignment_id, student["id"], row['percent_correct'])
+    async def upsync_grade(
+        self,
+        submission: SubmissionModel,
+        grade: float,
+        comments: str | None = None,
+        attempt: str | None = None
+    ):
+        user_pid = await self.canvas_service.get_pid_from_onyen(submission.student.onyen)
+        student = await self.canvas_service.get_student_by_pid(user_pid)
+        await self.canvas_service.upload_grade(
+            assignment_id=submission.assignment.id,
+            user_id=student["id"],
+            grade=grade,
+            comments=comments,
+            attempt=attempt
+        )
             
-    async def upsync_assignment(self, assignment):
+    async def upsync_assignment(
+        self,
+        assignment: AssignmentModel
+    ):
         await self.canvas_service.update_assignment(assignment.id, UpdateCanvasAssignmentBody(
             name=assignment.name,
             available_date=assignment.available_date,

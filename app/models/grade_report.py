@@ -1,11 +1,12 @@
 from __future__ import annotations
 from sqlalchemy import Column, Sequence, ForeignKey, Integer, Float, DateTime, ARRAY, Text, func
 from sqlalchemy.orm import relationship
+from app.database import Base
 from app.models.assignment import AssignmentModel
 from app.schemas.grade_report import SubmissionGradeSchema
 import numpy as np
 
-class GradeReportModel:
+class GradeReportModel(Base):
     __tablename__ = "grade_report"
 
     id = Column(Integer, Sequence("grade_report_id_seq"), primary_key=True, autoincrement=True, index=True)
@@ -22,7 +23,7 @@ class GradeReportModel:
     master_notebook_content = Column(Text, nullable=False)
     otter_config_content = Column(Text, nullable=False)
 
-    created_date = Column(DateTime(timezone=True), server_default=func.current_timestamp())
+    created_date = Column(DateTime(timezone=True), nullable=False, server_default=func.current_timestamp())
 
     assignment_id = Column(Integer, ForeignKey("assignment.id"), nullable=False)
     assignment = relationship("AssignmentModel", foreign_keys="GradeReportModel.assignment_id")

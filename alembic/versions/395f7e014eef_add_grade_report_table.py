@@ -29,10 +29,9 @@ def upgrade() -> None:
     sa.Column('total_points', sa.Float(), nullable=False),
     sa.Column('num_passing', sa.Integer(), nullable=False),
     sa.Column('num_submitted', sa.Integer(), nullable=False),
-    sa.Column('num_students', sa.Integer(), nullable=False),
     sa.Column('master_notebook_content', sa.Text, nullable=False),
-    sa.Column('otter_config_zip', sa.LargeBinary, nullable=False),
-    sa.Column('created_date', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('otter_config_content', sa.Text, nullable=False),
+    sa.Column('created_date', sa.DateTime(timezone=True), nullable=False, server_default=sa.text('CURRENT_TIMESTAMP')),
     sa.Column('assignment_id', sa.Integer(), nullable=False),
     sa.ForeignKeyConstraint(['assignment_id'], ['assignment.id'], ),
     sa.PrimaryKeyConstraint('id')

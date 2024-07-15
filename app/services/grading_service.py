@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings, DevPhase
 from app.core.exceptions import SubmissionNotFoundException, OtterConfigViolationException
 from app.core.utils.datetime import get_now_with_tzinfo
-from app.services import StudentService, SubmissionService, CourseService, GiteaService
+from app.services import StudentService, SubmissionService, CourseService, GiteaService, LmsSyncService, CleanupService
 from app.models import AssignmentModel, SubmissionModel, GradeReportModel
 from app.schemas import GradeReportSchema, SubmissionGradeSchema
 
@@ -96,6 +96,9 @@ class GradingService:
     ) -> GradeReportModel:
         course_service = CourseService(self.session)
         gitea_service = GiteaService(self.session)
+        submission_service = SubmissionService(self.session)
+        lms_sync_service = LmsSyncService(self.session)
+
         submissions = await self.compute_submissions_at_moment(assignment)
         final_graded_notebook_content, zip_config_bytes = await self.generate_config(
             master_notebook_content,
@@ -142,14 +145,37 @@ class GradingService:
 
                 score = sum([question["score"] for question in tests])
                 max_score = sum([question["max_score"] for question in tests])
-                final_scores[submission.student.onyen] = SubmissionGradeSchema(
+                final_scores[submission] = SubmissionGradeSchema(
                     score=score,
                     total_points=max_score,
                     comments=public_test_comments
                 )
 
+            grade_report = GradeReportModel.from_submission_grades(
+                assignment=assignment,
+                submission_grades=list(final_scores.values()),
+                master_notebook_content=master_notebook_content,
+                otter_config_content=otter_config_content
+            )
             # If it's a dry run, stop right here and return the grade report.
-            if dry_run:
+            if dry_run: return grade_report
 
-            for onyen, grade in final_scores.items():
-                
+            self.session.add(grade_report)
+            self.session.commit()
+
+            cleanup_service = CleanupService.Grading(self.session, grade_report)
+
+            try:
+                for submission, submission_grade in final_scores.items():
+                    attempt = await submission_service.get_submission_attempt(submission)
+                    await lms_sync_service.upsync_grade(
+                        submission=submission,
+                        grade=submission_grade.score,
+                        comments=submission_grade.comments,
+                        attempt=attempt
+                    )
+            except Exception as e:
+                await cleanup_service.undo_grade_assignment(delete_database_grade_report=True)
+                raise e
+            
+            return grade_report

@@ -79,6 +79,14 @@ class SubmissionService:
         if submission is None:
             raise SubmissionNotFoundException()
         return submission
+    
+    async def get_submission_attempt(
+        self,
+        submission: SubmissionModel
+    ):
+        return self.session.query(SubmissionModel) \
+            .filter(SubmissionModel.submission_time < submission.submission_time) \
+            .count() + 1
         
     async def get_submission_schema(self, submission: SubmissionModel) -> SubmissionSchema:
         submission_schema = DatabaseSubmissionSchema.from_orm(submission).dict()
