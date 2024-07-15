@@ -19,11 +19,8 @@ class CleanupService:
                 self.session.commit()
             
             if delete_gitea_organization:
-                try:
-                    instructor_organization_name = CourseService._compute_instructor_gitea_organization_name(self.course.name)
-                    await gitea_service.delete_organization(instructor_organization_name, purge=True)
-                except HTTPStatusError:
-                    pass
+                instructor_organization_name = CourseService._compute_instructor_gitea_organization_name(self.course.name)
+                await gitea_service.delete_organization(instructor_organization_name, purge=True)
 
     class User:
         def __init__(self, session: Session, user: UserModel, autogen_password: str | None = None):
