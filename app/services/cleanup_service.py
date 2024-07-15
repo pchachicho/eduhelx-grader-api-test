@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 from app.models import UserModel, CourseModel
 from app.services import GiteaService, KubernetesService
+from httpx import HTTPStatusError
 
 class CleanupService:
     class Course:
@@ -18,8 +19,11 @@ class CleanupService:
                 self.session.commit()
             
             if delete_gitea_organization:
-                instructor_organization_name = CourseService._compute_instructor_gitea_organization_name(self.course.name)
-                await gitea_service.delete_organization(instructor_organization_name, purge=True)
+                try:
+                    instructor_organization_name = CourseService._compute_instructor_gitea_organization_name(self.course.name)
+                    await gitea_service.delete_organization(instructor_organization_name, purge=True)
+                except HTTPStatusError:
+                    pass
 
     class User:
         def __init__(self, session: Session, user: UserModel, autogen_password: str | None = None):
