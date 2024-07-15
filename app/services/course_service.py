@@ -129,7 +129,6 @@ class CourseService:
     @classmethod
     def _compute_student_repository_name(cls, course_name: str) -> str:
         return f"{ course_name.replace(' ', '_') }-student-repo"
-        return f"{ course.name }-class-master-repo"
     
     @classmethod
     def _compute_master_branch_name(cls) -> str:
