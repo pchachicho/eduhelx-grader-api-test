@@ -68,7 +68,7 @@ class CourseService:
         self.session.add(course)
         self.session.commit()
         
-        cleanup_service = CleanupService.Course(self.session, )
+        cleanup_service = CleanupService.Course(self.session, course)
         
         try:
             await gitea_service.create_organization(instructor_organization_name)
