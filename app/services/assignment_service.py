@@ -179,7 +179,7 @@ class AssignmentService:
         return self._compute_master_notebook_name(assignment.name)
     
     @staticmethod
-    def _compute_master_notebook_name(self, assignment_name: str) -> str:
+    def _compute_master_notebook_name(assignment_name: str) -> str:
         return f"{ assignment_name }-prof.ipynb"
 
     """ Compute the default gitignore for an assignment. """
