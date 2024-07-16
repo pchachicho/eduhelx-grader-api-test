@@ -1,5 +1,11 @@
 import requests
 import httpx
+import os.path
+from typing import BinaryIO
+from io import BytesIO
+from mimetypes import guess_type
+from pathlib import Path
+from enum import Enum
 from pydantic import BaseModel
 from datetime import datetime
 from fastapi import HTTPException
@@ -7,10 +13,16 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.models import UserModel, OnyenPIDModel
 from app.services import UserService, UserType
+from app.core.utils.datetime import get_now_with_tzinfo
 from app.core.exceptions import (
     LMSNoCourseFetchedException, LMSNoAssignmentFetchedException, LMSNoStudentsFetchedException,
-    LMSUserNotFoundException, LMSUserPIDAlreadyAssociatedException, LMSBackendException
+    LMSUserNotFoundException, LMSUserPIDAlreadyAssociatedException, LMSBackendException,
+    LMSFolderNotFoundException
 )
+
+class DuplicateFileAction(str, Enum):
+    OVERWRITE = "overwrite"
+    RENAME = "rename"
 
 class UpdateCanvasAssignmentBody(BaseModel):
     name: str | None
@@ -37,6 +49,14 @@ class CanvasService:
     def api_url(self) -> str:
         return settings.CANVAS_API_URL + ("/" if not settings.CANVAS_API_URL.endswith("/") else "")
     
+    async def _check_response(self, res: httpx.Response):
+        try:
+            res.raise_for_status()
+        except Exception as e:
+            if hasattr(e, "response"):
+                raise LMSBackendException(e.response.text, e.response) from e
+            raise LMSBackendException(str(e)) from e
+    
     async def _make_request(self, method: str, endpoint: str, headers={}, **kwargs):
         res = await self.client.request(
             method,
@@ -46,12 +66,7 @@ class CanvasService:
             },
             **kwargs
         )
-        try:
-            res.raise_for_status()
-        except Exception as e:
-            if hasattr(e, "response"):
-                raise LMSBackendException(e.response.text) from e
-            raise LMSBackendException(str(e)) from e
+        await self._check_response(res)
         return res.json()
     
     async def _get(self, endpoint: str, **kwargs):
@@ -111,25 +126,191 @@ class CanvasService:
             "enrollment_type": enrollment_type
         })
     
+    async def _upload_file(
+        self,
+        upload_url: str,
+        file: BinaryIO,
+        parent_folder_path_or_id: str | int,
+        on_duplicate: DuplicateFileAction,
+        *,
+        headers={}
+    ):
+        use_id = isinstance(parent_folder_path_or_id, int)
+        
+        # Seek to end of file buffer
+        file.seek(0, 2)
+        payload = {
+            "name": file.name,
+            "size": file.tell(),
+            "on_duplicate": on_duplicate.value
+        }
+        if use_id: payload["parent_folder_id"] = parent_folder_path_or_id
+        else: payload["parent_folder_path"] = parent_folder_path_or_id
+        print(upload_url)
+        data = await self._post(upload_url, json=payload, headers=headers)
+        upload_url = data["upload_url"]
+
+        file.seek(0)
+        res = await self.client.post(upload_url, data=data["upload_params"], files={
+            "file": (file.name, file.read())
+        })
+        print(res.text)
+        await self._check_response(res)
+
+        image_url = res.headers.get("location")
+        if res.status_code >= 300 and res.status_code < 400:
+            # Upload is incomplete, need to perform a GET request to returned URL first.
+            res = await self.client.get(image_url)
+            await self._check_response(res)
+        
+        return await self._post(image_url, headers={
+            "Content-Length": "0"
+        })
+    
+    """ Not working at the moment.
+    async def upload_user_file(
+        self,
+        user_id: int,
+        file: BinaryIO,
+        parent_folder_path_or_id: str | int,
+        on_duplicate: DuplicateFileAction = DuplicateFileAction.OVERWRITE
+    ):
+        url = f"users/{ user_id }/files"
+        return await self._upload_file(
+            url,
+            file,
+            parent_folder_path_or_id,
+            on_duplicate
+        )
+    """
+    
+    async def upload_course_file(
+        self,
+        file: BinaryIO,
+        parent_folder_path_or_id: str | int,
+        on_duplicate: DuplicateFileAction = DuplicateFileAction.OVERWRITE
+    ):
+        url = f"courses/{ settings.CANVAS_COURSE_ID }/files"
+        return await self._upload_file(
+            url,
+            file,
+            parent_folder_path_or_id,
+            on_duplicate
+        )
+    
+    """ NOTE: Currently, UNC Canvas does not allow uploading a submission file on behalf of another user """
+    async def upload_submission_file(
+        self,
+        assignment_id: int,
+        user_id: int,
+        file: BinaryIO,
+        parent_folder_path_or_id: str | int,
+        on_duplicate: DuplicateFileAction = DuplicateFileAction.OVERWRITE
+    ):
+        url = f"courses/{ settings.CANVAS_COURSE_ID }/assignments/{ assignment_id }/submissions/{ user_id }/files"
+        return await self._upload_file(
+            url,
+            file,
+            parent_folder_path_or_id,
+            on_duplicate,
+            headers={
+                # I have no idea why this is required (the documentation doesn't mention it),
+                # but file upload endpoints return a 403 if using wrong content-type
+                "Content-Type": "unknown/unknown"
+            }
+        )
+    
+    async def get_course_folder(
+        self,
+        folder_path: str | Path
+    ):
+        folder_path = Path(folder_path)
+        url = f"courses/{ settings.CANVAS_COURSE_ID }/folders"
+        folders = await self._get(url)
+        for folder in folders:
+            # Canvas files are always under a hidden top-level directory.
+            # E.g., course files are under the "course files" directory, but you don't see that in the UI.
+            # We're have to remove that from the path before comparing.
+            path = Path(folder["full_name"])
+            if len(path.parts) <= 1: continue
+            path = Path(*path.parts[1:])
+            if path == folder_path: return folder
+        raise LMSFolderNotFoundException(f'Could not find the folder "{ folder_path }" in Canvas course files')
+    
+    async def _create_folder(
+        self,
+        upload_url: str,
+        name: str,
+        parent_folder_path_or_id: str | int,
+        hidden: bool,
+        locked: bool,
+    ):
+        use_id = isinstance(parent_folder_path_or_id, int)
+        payload = {
+            "name": name,
+            "hidden": hidden,
+            "locked": locked
+        }
+        if use_id: payload["parent_folder_id"] = parent_folder_path_or_id
+        else: payload["parent_folder_path"] = parent_folder_path_or_id
+
+        return await self._post(upload_url, json=payload)
+    
+    async def create_course_folder(
+        self,
+        name: str,
+        parent_folder_path_or_id: str | int,
+        hidden: bool = False,
+        locked: bool = False
+    ):
+        url = f"courses/{ settings.CANVAS_COURSE_ID }/folders"
+        return await self._create_folder(
+            url,
+            name,
+            parent_folder_path_or_id,
+            hidden,
+            locked
+        )
+    
     async def upload_grade(
         self,
         assignment_id: int,
         user_id: int,
         grade: float,
+        student_notebook: BinaryIO,
+        attempt: int,
         comments: str | None = None,
-        attempt: int | None = None
     ):
-        url = f"courses/{ settings.CANVAS_COURSE_ID }/assignments/{ assignment_id }/submissions/{ user_id }"
+        url = f"courses/{ settings.CANVAS_COURSE_ID }/assignments/{ assignment_id }/submissions"
+        iso_now = get_now_with_tzinfo().isoformat()
+
+        student_course_submissions_folder = await self.get_student_course_submissions_folder_path()
+        # You can't attach course files to submissions
+        student_notebook_file_id = await self.upload_user_file(
+            user_id,
+            student_notebook,
+            os.path.join(student_course_submissions_folder, str(assignment_id)),
+            on_duplicate=DuplicateFileAction.OVERWRITE
+        )
+        print(123841241238019281920840, student_notebook_file_id)
+        
         payload = {
             "submission": {
-                "posted_grade": grade
+                "user_id": user_id,
+                "submission_type": "online_upload",
+                "posted_grade": grade,
+                "file_ids": [student_notebook_file_id],
+                "submitted_at": iso_now
             },
             "comment": {},
             "prefer_points_over_scheme": True
         }
         if comments is not None: payload["comment"]["text_comment"] = comments
-        if attempt is not None: payload["comment"]["attempt"] = attempt
-        return await self._put(url, json=payload)
+        try:
+            return await self._post(url, json=payload)
+        except Exception as e:
+            print(45687458674598, e.response.text)
+            raise e
 
     async def update_assignment(self, assignment_id: int, body: UpdateCanvasAssignmentBody):
         url = f"courses/{ settings.CANVAS_COURSE_ID }/assignments/{ assignment_id }"
@@ -184,3 +365,24 @@ class CanvasService:
             raise LMSUserNotFoundException()
         self.db.delete(pid_onyen)
         self.db.commit()
+
+    async def get_private_course_folder_path(self) -> str:
+        return self._compute_private_course_folder_path()
+
+    async def get_student_eduhelx_folder_path(self) -> str:
+        return self._compute_student_eduhelx_folder_path()
+    
+    async def get_student_course_submissions_folder_path(self) -> str:
+        return self._compute_student_course_submissions_folder_path(await self.get_student_eduhelx_folder_path())
+
+    @staticmethod
+    def _compute_private_course_folder_path() -> str:
+        return "EduHeLx Hidden Files"
+    
+    @staticmethod
+    def _compute_student_eduhelx_folder_path() -> str:
+        return "EduHeLx Files"
+    
+    @staticmethod
+    def _compute_student_course_submissions_folder_path(student_eduhelx_folder_path: str):
+        return os.path.join(student_eduhelx_folder_path, "Student Submissions")

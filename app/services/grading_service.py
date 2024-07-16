@@ -145,15 +145,21 @@ class GradingService:
 
                 score = sum([question["score"] for question in tests])
                 max_score = sum([question["max_score"] for question in tests])
-                final_scores[submission] = SubmissionGradeSchema(
-                    score=score,
-                    total_points=max_score,
-                    comments=public_test_comments
+                with open(submission_notebook_path, "rb") as f:
+                    student_notebook_content = f.read()
+                final_scores[submission] = (
+                    SubmissionGradeSchema(
+                        score=score,
+                        total_points=max_score,
+                        comments=public_test_comments,
+                        submission_already_graded=submission.graded
+                    ),
+                    student_notebook_content
                 )
 
             grade_report = GradeReportModel.from_submission_grades(
                 assignment=assignment,
-                submission_grades=list(final_scores.values()),
+                submission_grades=[submission_grade for (submission_grade, _) in final_scores.values()],
                 master_notebook_content=master_notebook_content,
                 otter_config_content=otter_config_content
             )
@@ -166,16 +172,30 @@ class GradingService:
             cleanup_service = CleanupService.Grading(self.session, grade_report)
 
             try:
-                for submission, submission_grade in final_scores.items():
+                for submission, (
+                    submission_grade,
+                    student_notebook_content
+                ) in final_scores.items():
+                    if submission.graded:
+                        # This submission is already graded. No point in reuploading it to Canvas.
+                        continue
+                    
                     attempt = await submission_service.get_submission_attempt(submission)
+                    student_notebook = BytesIO(student_notebook_content)
+                    student_notebook.name = f"{ submission.student.onyen }-submission-{ attempt }.ipynb"
                     await lms_sync_service.upsync_grade(
                         submission=submission,
                         grade=submission_grade.score,
+                        student_notebook=student_notebook,
                         comments=submission_grade.comments,
                         attempt=attempt
                     )
+                    submission.graded = True
             except Exception as e:
                 await cleanup_service.undo_grade_assignment(delete_database_grade_report=True)
                 raise e
+            
+            # All we've done is change `graded` on submissions, which can't cause any violations here.
+            self.session.commit()
             
             return grade_report

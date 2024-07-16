@@ -39,7 +39,8 @@ class CourseService:
             raise CourseAlreadyExistsException()
         except NoCourseExistsException:
             pass
-
+        
+        print("CREATING COURSE")
         course = CourseModel(
             name=name,
             master_remote_url="",
@@ -58,8 +59,10 @@ class CourseService:
         
         try:
             await gitea_service.create_organization(instructor_organization_name)
+            print("CREATED GITEA ORGANIZATION")
         except Exception as e:
             await cleanup_service.undo_create_course(delete_database_course=True)
+            print("UNDO COURSE CREATE (db=True)")
             raise e
         
         try:
@@ -69,21 +72,24 @@ class CourseService:
                 owner=instructor_organization_name,
                 private=True
             )
+            print("CREATED CLASS MASTER REPOSITORY")
             await gitea_service.set_git_hook(
                 repository_name=master_repository_name,
                 owner=instructor_organization_name,
                 hook_id="pre-receive",
                 hook_content=await gitea_service.get_master_repo_prereceive_hook()
             )
+            print("SET CLASS MASTER REPO HOOK")
             course.master_remote_url = master_remote_url
             self.session.commit()
             
         except Exception as e:
             await cleanup_service.undo_create_course(delete_database_course=True, delete_gitea_organization=True)
+            print("UNDO CREATE COURSE (db=True, gitea_org=True)")
             raise e
 
         dispatch(CreateCourseCrudEvent(course=course))
-
+        print("DONE CREATING COURSE")
         return course
     
     async def update_course(self, update_course: UpdateCourseSchema) -> CourseModel:

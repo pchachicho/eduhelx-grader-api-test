@@ -17,7 +17,7 @@ class GradeReportModel(Base):
     stdev = Column(Float, nullable=False)
     scores = Column(ARRAY(Float), nullable=False)
     total_points = Column(Float, nullable=False)
-    num_passing = Column(Integer, nullable=False)
+    num_skipped = Column(Integer, nullable=False)
     num_submitted = Column(Integer, nullable=False)
 
     master_notebook_content = Column(Text, nullable=False)
@@ -41,7 +41,8 @@ class GradeReportModel(Base):
         stdev = np.std(scores)
         minimum, maximum = min(scores), max(scores)
         num_submitted = len(submission_grades)
-        num_passing = num_submitted
+        num_skipped = sum([grade.submission_already_graded for grade in submission_grades])
+        
         return GradeReportModel(
             average=average,
             median=median,
@@ -50,8 +51,8 @@ class GradeReportModel(Base):
             stdev=stdev,
             scores=scores,
             total_points=submission_grades[0].total_points,
-            num_passing=num_passing,
             num_submitted=num_submitted,
+            num_skipped=num_skipped,
             master_notebook_content=master_notebook_content,
             otter_config_content=otter_config_content,
             assignment_id=assignment.id

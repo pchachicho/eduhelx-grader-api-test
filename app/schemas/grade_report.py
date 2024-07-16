@@ -11,8 +11,9 @@ class GradeReportSchema(BaseModel):
     stdev: float
     scores: list[float]
     total_points: float
-    num_passing: int
     num_submitted: int
+    # num_skipped = num_submitted (== num students w/ submissions) - num_active_submissions_already_graded
+    num_skipped: int
 
     master_notebook_content: str
     otter_config_content: str
@@ -28,3 +29,4 @@ class SubmissionGradeSchema(BaseModel):
     score: float
     total_points: float
     comments: Optional[str]
+    submission_already_graded: bool = False
