@@ -163,7 +163,6 @@ class LmsSyncService:
         submission: SubmissionModel,
         grade: float,
         student_notebook: BinaryIO,
-        attempt: int,
         comments: str | None = None,
     ):
         user_pid = await self.canvas_service.get_pid_from_onyen(submission.student.onyen)
@@ -173,7 +172,6 @@ class LmsSyncService:
             user_id=student["id"],
             grade=grade,
             student_notebook=student_notebook,
-            attempt=attempt,
             comments=comments
         )
             

@@ -6,6 +6,7 @@ from io import BytesIO
 from mimetypes import guess_type
 from pathlib import Path
 from enum import Enum
+from urllib.parse import urlparse
 from pydantic import BaseModel
 from datetime import datetime
 from fastapi import HTTPException
@@ -17,7 +18,7 @@ from app.core.utils.datetime import get_now_with_tzinfo
 from app.core.exceptions import (
     LMSNoCourseFetchedException, LMSNoAssignmentFetchedException, LMSNoStudentsFetchedException,
     LMSUserNotFoundException, LMSUserPIDAlreadyAssociatedException, LMSBackendException,
-    LMSFolderNotFoundException
+    LMSFolderNotFoundException, LMSFileUploadException
 )
 
 class DuplicateFileAction(str, Enum):
@@ -97,6 +98,58 @@ class CanvasService:
     async def get_assignment(self, assignment_id):
         return await self._get(f"courses/{ settings.CANVAS_COURSE_ID }/assignments/{ assignment_id }")
     
+    """ NOTE: Will return a Submission for every specified student_id, even if they have not submitted (submitted_at = None). """
+    """ NOTE: include_submission_history includes the returned Submission as its final element. """
+    async def get_submissions_for_assignments(
+        self,
+        assignment_ids: list[int],
+        student_ids: list[int],
+        *,
+        # Note: I believe submission_history generally includes the active submission as well.
+        include_submission_history: bool = True,
+        include_comments: bool = False,
+        include_rubric_assessment: bool = False,
+        include_visibility: bool = False,
+        include_is_read: bool = False
+    ):
+        include = []
+        if include_submission_history: include.append("submission_history")
+        if include_comments: include.append["submission_comments"]
+        if include_rubric_assessment: include.append["full_rubric_assessment"]
+        if include_visibility: include.append("visibility")
+        if include_is_read: include.append("read_status")
+
+        params = {
+            "assignment_ids[]": assignment_ids,
+            "student_ids[]": student_ids,
+            "include[]": include
+        }
+        return await self._get(f"courses/{ settings.CANVAS_COURSE_ID }/students/submissions", params=params)
+
+    """ NOTE: If student_id is provided, returns a single Submission object. """
+    """ NOTE: Otherwise, returns a Submission for every enrolled student, even if they have not submitted (submitted_at = None). """
+    """ NOTE: include_submission_history includes the returned Submission as its final element. """
+    async def get_submissions(
+        self,
+        assignment_id: int,
+        student_id: int | None = None,
+        **kwargs
+    ):
+        student_ids = [student_id] if student_id is not None else []
+        submissions = await self.get_submissions_for_assignments([assignment_id], student_ids, **kwargs)
+        if student_id is not None: return submissions[0]
+        return submissions
+    
+    """ Get the current attempt count of the student for the assignment. If the student hasn't submitted, then 0. """
+    async def get_current_submission_attempt(
+        self,
+        assignment_id: int,
+        student_id: int
+    ):
+        submission = await self.get_submissions(assignment_id, student_id)
+        if submission["submitted_at"] is None: return 0
+        return len(submission["submission_history"])
+    
     async def get_students(self):
         return await self.get_users(user_type=UserType.STUDENT)
 
@@ -146,7 +199,7 @@ class CanvasService:
         }
         if use_id: payload["parent_folder_id"] = parent_folder_path_or_id
         else: payload["parent_folder_path"] = parent_folder_path_or_id
-        print(upload_url)
+        
         data = await self._post(upload_url, json=payload, headers=headers)
         upload_url = data["upload_url"]
 
@@ -154,18 +207,34 @@ class CanvasService:
         res = await self.client.post(upload_url, data=data["upload_params"], files={
             "file": (file.name, file.read())
         })
-        print(res.text)
+        
         await self._check_response(res)
 
-        image_url = res.headers.get("location")
+        canvas_image_url = res.headers.get("location")
+
         if res.status_code >= 300 and res.status_code < 400:
-            # Upload is incomplete, need to perform a GET request to returned URL first.
-            res = await self.client.get(image_url)
-            await self._check_response(res)
+            # If a redirect is returned, you are supposed to GET the redirect to confirm the upload.
+            # We can't do this though since we can't access the file on behalf of the user...
+            raise LMSFileUploadException("file upload returned confirmation redirect, which is currently unsupported")
         
-        return await self._post(image_url, headers={
-            "Content-Length": "0"
-        })
+        # VERY HACKY, no other choice...
+        try:
+            return int(urlparse(canvas_image_url).path.split("/")[-1])
+        except Exception as e:
+            raise LMSFileUploadException(str(e)) from e
+        
+
+        """ NOTE: The file access endpoint (which is the value of canvas_image_url) can only be used by the owner of the file.
+        Until we can masquerade as the user (this permission can be granted to admin accounts) we can use the proper workflow.
+        """
+        # if res.status_code >= 300 and res.status_code < 400:
+        #     # Upload is incomplete, need to perform a GET request to returned URL first.
+        #     res = await self.client.get(image_url)
+        #     await self._check_response(res)
+        
+        # return await self._post(image_url, headers={
+        #     "Content-Length": "0"
+        # })
     
     """ Not working at the moment.
     async def upload_user_file(
@@ -278,21 +347,26 @@ class CanvasService:
         user_id: int,
         grade: float,
         student_notebook: BinaryIO,
-        attempt: int,
         comments: str | None = None,
     ):
         url = f"courses/{ settings.CANVAS_COURSE_ID }/assignments/{ assignment_id }/submissions"
         iso_now = get_now_with_tzinfo().isoformat()
 
         student_course_submissions_folder = await self.get_student_course_submissions_folder_path()
-        # You can't attach course files to submissions
-        student_notebook_file_id = await self.upload_user_file(
-            user_id,
+        # You can't attach course files to submissions, this is so that
+        # instructors have an alternative place to view/download submissions
+        await self.upload_course_file(
             student_notebook,
             os.path.join(student_course_submissions_folder, str(assignment_id)),
             on_duplicate=DuplicateFileAction.OVERWRITE
         )
-        print(123841241238019281920840, student_notebook_file_id)
+        student_notebook_file_id = await self.upload_submission_file(
+            assignment_id,
+            user_id,
+            student_notebook,
+            "",
+            on_duplicate=DuplicateFileAction.OVERWRITE
+        )
         
         payload = {
             "submission": {
@@ -306,11 +380,19 @@ class CanvasService:
             "prefer_points_over_scheme": True
         }
         if comments is not None: payload["comment"]["text_comment"] = comments
-        try:
-            return await self._post(url, json=payload)
-        except Exception as e:
-            print(45687458674598, e.response.text)
-            raise e
+
+        # Although posted_grade is listed as a supported argument of the endpoint,
+        # it only works to set the grade for the first submission by the student.
+        submission = await self._post(url, json=payload)
+        await self._put(f"{ url }/{ user_id }", json={
+            "submission": {
+                "user_id": user_id,
+                "posted_grade": grade
+            },
+            "prefer_points_over_scheme": True
+        })
+        return submission
+
 
     async def update_assignment(self, assignment_id: int, body: UpdateCanvasAssignmentBody):
         url = f"courses/{ settings.CANVAS_COURSE_ID }/assignments/{ assignment_id }"
@@ -369,20 +451,14 @@ class CanvasService:
     async def get_private_course_folder_path(self) -> str:
         return self._compute_private_course_folder_path()
 
-    async def get_student_eduhelx_folder_path(self) -> str:
-        return self._compute_student_eduhelx_folder_path()
     
     async def get_student_course_submissions_folder_path(self) -> str:
-        return self._compute_student_course_submissions_folder_path(await self.get_student_eduhelx_folder_path())
+        return self._compute_student_course_submissions_folder_path(await self.get_private_course_folder_path())
 
     @staticmethod
     def _compute_private_course_folder_path() -> str:
         return "EduHeLx Hidden Files"
     
     @staticmethod
-    def _compute_student_eduhelx_folder_path() -> str:
-        return "EduHeLx Files"
-    
-    @staticmethod
-    def _compute_student_course_submissions_folder_path(student_eduhelx_folder_path: str):
-        return os.path.join(student_eduhelx_folder_path, "Student Submissions")
+    def _compute_student_course_submissions_folder_path(private_course_folder_path: str):
+        return os.path.join(private_course_folder_path, "Student Submissions")

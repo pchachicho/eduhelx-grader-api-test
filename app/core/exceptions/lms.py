@@ -23,13 +23,18 @@ class LMSUserNotFoundException(CustomException):
 
 class LMSFileNotFoundException(CustomException):
     code = 404
-    error_code = "LMS_FILE_NOT_FOUND"
+    error_code = "LMS__FILE_NOT_FOUND"
     message = "File does not exist in LMS file storage"
 
 class LMSFolderNotFoundException(CustomException):
     code = 404
-    error_code = "LMS_FOLDER_NOT_FOUND"
+    error_code = "LMS__FOLDER_NOT_FOUND"
     message = "Folder does not exist in LMS file storage"
+
+class LMSFileUploadException(CustomException):
+    code = 500
+    error_code = "LMS__FILE_UPLOAD_FAILED"
+    message = "The file failed to upload to the LMS"
 
 class LMSUserPIDAlreadyAssociatedException(CustomException):
     code = 409
