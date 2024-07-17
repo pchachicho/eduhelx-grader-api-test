@@ -157,8 +157,6 @@ class LmsSyncService:
     async def downsync(self):
         print("Syncing the LMS with the database")
         await self.sync_course()
-        await asyncio.gather(
-            self.sync_assignments(),
-            self.sync_students(),
-            self.sync_instructors()
-        )
+        await self.sync_assignments()
+        await self.sync_students()
+        await self.sync_instructors()
