@@ -178,8 +178,8 @@ class AssignmentService:
     async def get_master_notebook_name(self, assignment: AssignmentModel) -> str:
         return self._compute_master_notebook_name(assignment.name)
     
-    @staticmethod
-    def _compute_master_notebook_name(self, assignment_name: str) -> str:
+    @classmethod
+    def _compute_master_notebook_name(cls, assignment_name: str) -> str:
         return f"{ assignment_name }-prof.ipynb"
 
     """ Compute the default gitignore for an assignment. """
