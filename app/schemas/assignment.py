@@ -7,6 +7,7 @@ class AssignmentSchema(BaseModel):
     id: int
     name: str
     directory_path: str
+    max_attempts: int | None
     created_date: datetime
     available_date: datetime | None
     due_date: datetime | None
@@ -20,6 +21,7 @@ class AssignmentSchema(BaseModel):
 class UpdateAssignmentSchema(BaseModel):
     name: str = UNSET
     directory_path: str = UNSET
+    max_attempts: int | None
     available_date: datetime | None
     due_date: datetime | None
 
@@ -30,6 +32,7 @@ class InstructorAssignmentSchema(AssignmentSchema):
 
 # Adds in student-specific fields to the assignment (tailored to a particular student)
 class StudentAssignmentSchema(AssignmentSchema):
+    current_attempts: int
     adjusted_available_date: datetime | None
     adjusted_due_date: datetime | None
     is_available: bool

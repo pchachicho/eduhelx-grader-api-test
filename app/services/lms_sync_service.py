@@ -6,6 +6,7 @@ from app.services.ldap_service import LDAPService
 from app.services.assignment_service import AssignmentService
 from app.services.user.student_service import StudentService
 from app.services.user.instructor_service import InstructorService
+from app.models import AssignmentModel, StudentModel
 from app.schemas.course import UpdateCourseSchema
 from app.schemas.assignment import UpdateAssignmentSchema
 from sqlalchemy.orm import Session
@@ -55,13 +56,16 @@ class LmsSyncService:
                 await self.assignment_service.delete_assignment(assignment)
 
         for assignment in canvas_assignments:
+            # Canvas uses -1 for unlimited attempts.
+            max_attempts = assignment["allowed_attempts"] if assignment["allowed_attempts"] >= 0 else None
             try:
                 db_assignment = await self.assignment_service.get_assignment_by_id(assignment['id'])
 
                 await self.assignment_service.update_assignment(db_assignment, UpdateAssignmentSchema(
                     name=assignment["name"],
                     available_date=assignment["unlock_at"],
-                    due_date=assignment["due_at"]
+                    due_date=assignment["due_at"],
+                    max_attempts=max_attempts
                 ))
 
             except AssignmentNotFoundException as e:
@@ -71,7 +75,8 @@ class LmsSyncService:
                     name=assignment['name'], 
                     due_date=assignment['due_at'], 
                     available_date=assignment['unlock_at'],
-                    directory_path=assignment['name']
+                    directory_path=assignment['name'],
+                    max_attempts=max_attempts
                 )
         
         return canvas_assignments
@@ -152,6 +157,11 @@ class LmsSyncService:
             available_date=assignment.available_date,
             due_date=assignment.due_date
         ))
+
+    async def get_current_submission_attempt(self, assignment: AssignmentModel, student: StudentModel):
+        pid = await self.canvas_service.get_pid_from_onyen(student.onyen)
+        student = await self.canvas_service.get_student_by_pid(pid)
+        return await self.canvas_service.get_current_submission_attempt(assignment.id, student["id"])
         
 
     async def downsync(self):

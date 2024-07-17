@@ -82,6 +82,58 @@ class CanvasService:
     async def get_assignment(self, assignment_id):
         return await self._get(f"courses/{ settings.CANVAS_COURSE_ID }/assignments/{ assignment_id }")
     
+    """ NOTE: Will return a Submission for every specified student_id, even if they have not submitted (submitted_at = None). """
+    """ NOTE: include_submission_history includes the returned Submission as its final element. """
+    async def get_submissions_for_assignments(
+        self,
+        assignment_ids: list[int],
+        student_ids: list[int],
+        *,
+        # Note: I believe submission_history generally includes the active submission as well.
+        include_submission_history: bool = True,
+        include_comments: bool = False,
+        include_rubric_assessment: bool = False,
+        include_visibility: bool = False,
+        include_is_read: bool = False
+    ):
+        include = []
+        if include_submission_history: include.append("submission_history")
+        if include_comments: include.append["submission_comments"]
+        if include_rubric_assessment: include.append["full_rubric_assessment"]
+        if include_visibility: include.append("visibility")
+        if include_is_read: include.append("read_status")
+
+        params = {
+            "assignment_ids[]": assignment_ids,
+            "student_ids[]": student_ids,
+            "include[]": include
+        }
+        return await self._get(f"courses/{ settings.CANVAS_COURSE_ID }/students/submissions", params=params)
+
+    """ NOTE: If student_id is provided, returns a single Submission object. """
+    """ NOTE: Otherwise, returns a Submission for every enrolled student, even if they have not submitted (submitted_at = None). """
+    """ NOTE: include_submission_history includes the returned Submission as its final element. """
+    async def get_submissions(
+        self,
+        assignment_id: int,
+        student_id: int | None = None,
+        **kwargs
+    ):
+        student_ids = [student_id] if student_id is not None else []
+        submissions = await self.get_submissions_for_assignments([assignment_id], student_ids, **kwargs)
+        if student_id is not None: return submissions[0]
+        return submissions
+    
+    """ Get the current attempt count of the student for the assignment. If the student hasn't submitted, then 0. """
+    async def get_current_submission_attempt(
+        self,
+        assignment_id: int,
+        student_id: int
+    ):
+        submission = await self.get_submissions(assignment_id, student_id)
+        if submission["submitted_at"] is None: return 0
+        return len(submission["submission_history"])
+    
     async def get_students(self):
         return await self.get_users(user_type=UserType.STUDENT)
 

@@ -19,6 +19,7 @@ router = APIRouter()
 class UpdateAssignmentBody(BaseModel):
     name: str = UNSET
     directory_path: str = UNSET
+    max_attempts: int | None
     available_date: datetime | None
     due_date: datetime | None
 

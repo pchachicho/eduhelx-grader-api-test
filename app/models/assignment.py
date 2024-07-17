@@ -13,6 +13,7 @@ class AssignmentModel(Base):
     id = Column(Integer, Sequence("assignment_id_seq"), primary_key=True, index=True)
     name = Column(Text, nullable=False, unique=True)
     directory_path = Column(Text, nullable=False)
+    max_attempts = Column(Integer)
     created_date = Column(DateTime(timezone=True), server_default=func.current_timestamp())
     available_date = Column(DateTime(timezone=True))
     due_date = Column(DateTime(timezone=True))

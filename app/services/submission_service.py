@@ -22,7 +22,7 @@ class SubmissionService:
         # Alternatively, we could bake this logic into the endpoints to get submissions, rather than into this one.
 
         # Assert the assignment can be submitted to by the student.
-        StudentAssignmentService(self.session, student, assignment).validate_student_can_submit()
+        await StudentAssignmentService(self.session, student, assignment).validate_student_can_submit()
 
         submission = SubmissionModel(
             student_id=student.id,
@@ -74,3 +74,11 @@ class SubmissionService:
             raise SubmissionNotFoundException()
         return submission
         
+
+    async def get_current_submission_attempt(
+        self,
+        student: StudentModel,
+        assignment: AssignmentModel
+    ) -> int:
+        from app.services import LmsSyncService
+        return await LmsSyncService(self.session).get_current_submission_attempt(assignment, student)

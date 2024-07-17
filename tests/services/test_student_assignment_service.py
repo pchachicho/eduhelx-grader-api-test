@@ -139,7 +139,7 @@ class TestStudentAssignmentService(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result_get_is_available, False)
         self.assertEqual(result_get_is_closed, True)
 
-    def test_validate_student_can_submit(self):
+    async def test_validate_student_can_submit(self):
         self.mock_assignment.is_created = False
 
         student_assignment_service = StudentAssignmentService(
@@ -149,9 +149,9 @@ class TestStudentAssignmentService(unittest.IsolatedAsyncioTestCase):
         )
 
         with self.assertRaises(AssignmentNotCreatedException):
-            student_assignment_service.validate_student_can_submit()
+            await student_assignment_service.validate_student_can_submit()
 
-    def test_validate_student_can_submit_not_open(self):
+    async def test_validate_student_can_submit_not_open(self):
         self.mock_assignment.is_created = True
         self.mock_session.query().filter().first.return_value = None
         self.mock_student.base_extra_time = datetime.timedelta(days=0)
@@ -168,9 +168,9 @@ class TestStudentAssignmentService(unittest.IsolatedAsyncioTestCase):
         )
 
         with self.assertRaises(AssignmentNotOpenException):
-            student_assignment_service.validate_student_can_submit()
+            await student_assignment_service.validate_student_can_submit()
 
-    def test_validate_student_can_submit_closed(self):
+    async def test_validate_student_can_submit_closed(self):
         self.mock_assignment.is_created = True
         self.mock_session.query().filter().first.return_value = None
         self.mock_student.base_extra_time = datetime.timedelta(days=0)
@@ -188,7 +188,7 @@ class TestStudentAssignmentService(unittest.IsolatedAsyncioTestCase):
         )
 
         with self.assertRaises(AssignmentClosedException):
-            student_assignment_service.validate_student_can_submit()
+            await student_assignment_service.validate_student_can_submit()
 
 
 suite = unittest.TestLoader().loadTestsFromTestCase(TestStudentAssignmentService)
