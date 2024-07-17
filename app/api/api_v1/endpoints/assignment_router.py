@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, PositiveInt
 from datetime import datetime
 from typing import List, Union
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -19,7 +19,7 @@ router = APIRouter()
 class UpdateAssignmentBody(BaseModel):
     name: str = UNSET
     directory_path: str = UNSET
-    max_attempts: int | None
+    max_attempts: PositiveInt | None
     available_date: datetime | None
     due_date: datetime | None
 

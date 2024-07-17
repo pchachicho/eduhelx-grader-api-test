@@ -1,4 +1,5 @@
 from typing import List
+from pydantic import PositiveInt
 from datetime import datetime, timedelta
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -24,7 +25,7 @@ class AssignmentService:
         id: int,
         name: str,
         directory_path: str,
-        max_attempts: int | None,
+        max_attempts: PositiveInt | None,
         available_date: datetime | None,
         due_date: datetime | None
     ) -> AssignmentModel:

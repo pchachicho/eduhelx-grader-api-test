@@ -1,13 +1,13 @@
 from typing import List
 from datetime import datetime, timedelta
-from pydantic import BaseModel
+from pydantic import BaseModel, PositiveInt
 from ._unset import UNSET
 
 class AssignmentSchema(BaseModel):
     id: int
     name: str
     directory_path: str
-    max_attempts: int | None
+    max_attempts: PositiveInt | None
     created_date: datetime
     available_date: datetime | None
     due_date: datetime | None
@@ -21,7 +21,7 @@ class AssignmentSchema(BaseModel):
 class UpdateAssignmentSchema(BaseModel):
     name: str = UNSET
     directory_path: str = UNSET
-    max_attempts: int | None
+    max_attempts: PositiveInt | None
     available_date: datetime | None
     due_date: datetime | None
 
