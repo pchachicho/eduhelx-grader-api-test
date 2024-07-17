@@ -187,7 +187,7 @@ class GradingService:
                         submission=submission,
                         grade=submission_grade.score,
                         student_notebook=student_notebook,
-                        comments=submission_grade.comments,
+                        comments=submission_grade.comments if assignment.grader_question_feedback else None,
                     )
                     submission.graded = True
             except Exception as e:

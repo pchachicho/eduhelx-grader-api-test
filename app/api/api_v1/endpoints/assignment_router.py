@@ -20,6 +20,7 @@ class UpdateAssignmentBody(BaseModel):
     name: str = UNSET
     directory_path: str = UNSET
     master_notebook_path: str = UNSET
+    grader_question_feedback: bool = UNSET
     available_date: datetime | None
     due_date: datetime | None
 

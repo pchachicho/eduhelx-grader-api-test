@@ -4,7 +4,7 @@ from re import L
 from sqlalchemy import (
     Column, Sequence, ForeignKey,
     Integer, Text, DateTime, Interval,
-    func
+    Boolean, func
 )
 from sqlalchemy.orm import relationship, Session
 from sqlalchemy.ext.hybrid import hybrid_property
@@ -22,6 +22,7 @@ class AssignmentModel(Base):
     # Relative to the assignment root (directory_path), i.e., the fully qualified path
     # of the file within the repo is `/{directory_path}/{master_notebook_path}`
     master_notebook_path = Column(Text, nullable=False)
+    grader_question_feedback = Column(Boolean, server_default='t', nullable=False)
     created_date = Column(DateTime(timezone=True), server_default=func.current_timestamp())
     available_date = Column(DateTime(timezone=True))
     due_date = Column(DateTime(timezone=True))

@@ -165,6 +165,9 @@ class AssignmentService:
         if "master_notebook_path" in update_fields:
             assignment.master_notebook_path = update_fields["master_notebook_path"]
 
+        if "grader_question_feedback" in update_fields:
+            assignment.grader_question_feedback = update_fields["grader_question_feedback"]
+
         if "available_date" in update_fields:
             assignment.available_date = update_fields["available_date"]
         
