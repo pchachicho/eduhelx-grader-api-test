@@ -4,7 +4,7 @@ from typing import List, Union
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from app.models import AssignmentModel, StudentModel, InstructorModel
-from app.schemas import InstructorAssignmentSchema, StudentAssignmentSchema, AssignmentSchema, UpdateAssignmentSchema
+from app.schemas import InstructorAssignmentSchema, StudentAssignmentSchema, AssignmentSchema, UpdateAssignmentSchema, GradeReportSchema
 from app.schemas._unset import UNSET
 from app.services import (
     AssignmentService, InstructorAssignmentService, StudentAssignmentService,
@@ -78,7 +78,7 @@ async def get_assignments(
     
 @router.post(
     "/assignments/{assignment_name}/grade",
-    response_model=None
+    response_model=GradeReportSchema
 )
 async def grade_assignment(
     *,
@@ -94,4 +94,4 @@ async def grade_assignment(
         grading_body.master_notebook_content,
         grading_body.otter_config_content
     )
-    print(grade_report)
+    return grade_report

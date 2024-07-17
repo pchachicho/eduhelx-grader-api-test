@@ -8,8 +8,6 @@ class DatabaseSubmissionSchema(BaseModel):
     commit_id: str
     graded: bool
     submission_time: datetime
-    # student: StudentSchema
-    # assignment: AssignmentSchema
 
     class Config:
         orm_mode = True

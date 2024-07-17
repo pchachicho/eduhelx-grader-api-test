@@ -21,7 +21,7 @@ class UploadGradesBody(BaseModel):
 async def downsync(
     *,
     db: Session = Depends(get_db),
-    # perm: None = Depends(PermissionDependency(UserIsInstructorPermission))
+    perm: None = Depends(PermissionDependency(UserIsInstructorPermission))
 ):
     await LmsSyncService(db).downsync()
 
