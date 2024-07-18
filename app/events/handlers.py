@@ -12,12 +12,13 @@ You MUST call Session.close() once you are done with the database session.
 """
 
 
-@event_emitter.on("crud:assignment")
+@event_emitter.on("crud:assignment:*")
 async def handle_sync_create_assignment(event: AssignmentCrudEvent):
     from app.services import GiteaService, StudentService, CourseService
     
     assignment = event.assignment
-    print(assignment.id, "changed")
+    raise Exception("testing")
+    print(123948123094813290132809, assignment.id, "changed")
 
     with SessionLocal() as session:
         course_service = CourseService(session)

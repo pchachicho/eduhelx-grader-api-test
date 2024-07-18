@@ -151,7 +151,7 @@ class AssignmentService:
 
         self.session.commit()
 
-        event_emitter.emit(ModifyAssignmentCrudEvent(assignment=assignment, modified_fields=list(update_fields.keys())))
+        await event_emitter.emit_future(ModifyAssignmentCrudEvent(assignment=assignment, modified_fields=list(update_fields.keys())))
 
         return assignment
     

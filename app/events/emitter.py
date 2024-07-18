@@ -1,3 +1,4 @@
+import asyncio
 from typing import Callable
 from pydantic import BaseModel
 from pymitter import EventEmitter
@@ -14,7 +15,9 @@ class PydanticEventEmitter(EventEmitter):
             raise TypeError(f"unrecognized event { event }, only Pydantic events are supported")
         
         # By converting the event to a dict, Pydantic performs validation on it.
-        name, payload = event.__event_name__, event.dict()
+        event.dict()
+
+        name, payload = event.__event_name__, event
         return name, payload
     
     def on(self, event: str | BaseModel, *args, **kwargs) -> Callable:
@@ -24,9 +27,18 @@ class PydanticEventEmitter(EventEmitter):
         
         return super().on(event, *args, **kwargs)
 
-    def emit(self, event: BaseModel) -> None:
+    def emit(self, *args, **kwargs):
+        return self.emit_future(*args, **kwargs)
+        raise NotImplementedError("use `emit_future` instead if you need to dispatch from a sync block")
+
+    """ This method is safe to use within sync and async blocks to trigger async handlers. However,
+    you must keep in mind that since it's a future, the event is not necessary processed. """
+    def emit_future(self, event: BaseModel) -> asyncio.Task:
         name, payload = self._validate_pydantic_event(event)
-        super().emit(name, payload)
+        awaitables = self._emit(name, payload)
+
+        if awaitables:
+            return asyncio.ensure_future(asyncio.gather(*awaitables))
 
     async def emit_async(self, event: BaseModel) -> None:
         name, payload = self._validate_pydantic_event(event)
