@@ -59,6 +59,18 @@ async def get_submissions(
             await submission_service.get_submission_schema(s)
             for s in await submission_service.get_submissions(student, assignment)
         ]
+    
+@router.get("/submissions/{submission_id}", response_model=SubmissionSchema)
+async def get_submission_by_id(
+    *,
+    request: Request,
+    db: Session = Depends(get_db),
+    perm: None = Depends(PermissionDependency(SubmissionListPermission)),
+    submission_id: int
+):
+    submission_service = SubmissionService(db)
+    submission = await submission_service.get_submission_by_id(submission_id)
+    return await submission_service.get_submission_schema(submission)
 
 @router.get("/submissions/self", response_model=List[SubmissionSchema])
 async def get_own_submissions(
@@ -76,7 +88,7 @@ async def get_own_submissions(
 
     return [await submission_service.get_submission_schema(s) for s in submissions]
 
-@router.get("/active_submission/", response_model=SubmissionSchema)
+@router.get("/submissions/active", response_model=SubmissionSchema)
 async def get_active_submission(
     *,
     db: Session = Depends(get_db),
@@ -113,7 +125,7 @@ async def download_submission_stream(db, submission: SubmissionModel):
     )
 
 
-@router.get("/submissions/download", response_class=FileResponse)
+@router.get("/submissions/{submission_id}/download", response_class=FileResponse)
 async def download_submission(
     *,
     db: Session = Depends(get_db),
@@ -123,7 +135,7 @@ async def download_submission(
     submission = await SubmissionService(db).get_submission_by_id(submission_id)
     return await download_submission_stream(db, submission)
 
-@router.get("/submissions/download/active", response_class=FileResponse)
+@router.get("/submissions/active/download", response_class=FileResponse)
 async def download_active_submission(
     *,
     db: Session = Depends(get_db),
