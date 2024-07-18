@@ -9,7 +9,7 @@ class PydanticEvent(BaseModel):
         arbitrary_types_allowed = True
 
 class PydanticEventEmitter(EventEmitter):
-    def _validate_pydantic_event(event: PydanticEvent) -> tuple[str, dict]:
+    def _validate_pydantic_event(self, event: PydanticEvent) -> tuple[str, dict]:
         if not isinstance(event, PydanticEvent):
             raise TypeError(f"unrecognized event { event }, only Pydantic events are supported")
         

@@ -109,7 +109,7 @@ class AssignmentService:
         self.session.delete(assignment)
         self.session.commit()
 
-        dispatch(DeleteAssignmentCrudEvent(assignment=assignment))
+        event_emitter.emit(DeleteAssignmentCrudEvent(assignment=assignment))
 
     async def get_assignment_by_id(self, id: int) -> AssignmentModel:
         assignment = self.session.query(AssignmentModel) \
@@ -151,7 +151,7 @@ class AssignmentService:
 
         self.session.commit()
 
-        dispatch(ModifyAssignmentCrudEvent(assignment=assignment, modified_fields=list(update_fields.keys())))
+        event_emitter.emit(ModifyAssignmentCrudEvent(assignment=assignment, modified_fields=list(update_fields.keys())))
 
         return assignment
     
