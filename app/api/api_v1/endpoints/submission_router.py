@@ -140,10 +140,10 @@ async def download_active_submission(
     *,
     db: Session = Depends(get_db),
     perm: None = Depends(PermissionDependency(SubmissionListPermission, SubmissionDownloadPermission)),
-    student_id: int,
+    onyen: str,
     assignment_id: int
 ):
-    student = await StudentService(db).get_user_by_id(student_id)
+    student = await StudentService(db).get_user_by_onyen(onyen)
     assignment = await AssignmentService(db).get_assignment_by_id(assignment_id)
     active_submission = await SubmissionService(db).get_active_submission(student, assignment)
     return await download_submission_stream(db, active_submission)
