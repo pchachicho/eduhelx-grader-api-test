@@ -2,7 +2,7 @@ from typing import List
 from datetime import datetime, timedelta
 from sqlalchemy import func
 from sqlalchemy.orm import Session
-from app.events import dispatch
+from app.events import event_emitter
 from app.models import AssignmentModel, InstructorModel, StudentModel, ExtraTimeModel
 from app.schemas import AssignmentSchema, InstructorAssignmentSchema, StudentAssignmentSchema, UpdateAssignmentSchema
 from app.events import CreateAssignmentCrudEvent, ModifyAssignmentCrudEvent, DeleteAssignmentCrudEvent
@@ -79,7 +79,7 @@ class AssignmentService:
             self.session.commit()
             raise e
 
-        dispatch(CreateAssignmentCrudEvent(assignment=assignment))
+        event_emitter.emit(CreateAssignmentCrudEvent(assignment=assignment))
 
         return assignment
     

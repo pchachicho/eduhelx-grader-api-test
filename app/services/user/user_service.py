@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from app.events import dispatch
+from app.events import event_emitter
 from app.models import UserModel, AutoPasswordAuthModel
 from app.events import DeleteUserCrudEvent
 from app.schemas import RefreshTokenSchema
@@ -100,4 +100,4 @@ class UserService:
         self.session.delete(user)
         self.session.commit()
 
-        dispatch(DeleteUserCrudEvent(user=user))
+        event_emitter.emit(DeleteUserCrudEvent(user=user))

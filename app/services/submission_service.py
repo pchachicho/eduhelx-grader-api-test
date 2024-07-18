@@ -1,7 +1,7 @@
 from typing import List
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
-from app.events import dispatch
+from app.events import event_emitter
 from app.models import StudentModel, AssignmentModel, SubmissionModel
 from app.core.exceptions import SubmissionNotFoundException
 from app.services import StudentService, StudentAssignmentService
@@ -33,7 +33,7 @@ class SubmissionService:
         self.session.add(submission)
         self.session.commit()
 
-        dispatch(CreateSubmissionCrudEvent(submission=submission))
+        event_emitter.emit(CreateSubmissionCrudEvent(submission=submission))
 
         return submission
     

@@ -1,12 +1,9 @@
 from fastapi import Depends
-from fastapi_events.handlers.local import local_handler
-from fastapi_events.typing import Event
 from sqlalchemy.orm import Session
-
-from .schemas import SyncEvents
 from app.database import SessionLocal
 from app.models import AssignmentModel
-from app.events import ModifyAssignmentCrudEvent
+from app.events.schemas import AssignmentCrudEvent
+from app.events.emitter import event_emitter
 from app.core.dependencies import get_db_persistent
 
 """
@@ -15,12 +12,12 @@ You MUST call Session.close() once you are done with the database session.
 """
 
 
-@local_handler.register(event_name=ModifyAssignmentCrudEvent.__event_name__)
-async def handle_sync_create_assignment(event: ModifyAssignmentCrudEvent):
+@event_emitter.on("crud:assignment")
+async def handle_sync_create_assignment(event: AssignmentCrudEvent):
     from app.services import GiteaService, StudentService, CourseService
     
-    event_name, payload = event
-    assignment = payload["assignment"]
+    assignment = event.assignment
+    print(assignment.id, "changed")
 
     with SessionLocal() as session:
         course_service = CourseService(session)

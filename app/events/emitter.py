@@ -2,17 +2,11 @@ from typing import Callable
 from pydantic import BaseModel
 from pymitter import EventEmitter
 
-EVENT_DELIMITER = ":"
-
 class PydanticEvent(BaseModel):
     __event_name__: str
-
-    @classmethod
-    def get_parent_namespace(cls) -> str:
-        # NOTE: a "namespace" is just the next-level up category of the event.
-        # For example, "crud:assignment:create" -> "crud:assignment".
-        # This is mostly useful for wildcarding.
-        return cls.__event_name__.rsplit(EVENT_DELIMITER, 1)[0]
+    
+    class Config:
+        arbitrary_types_allowed = True
 
 class PydanticEventEmitter(EventEmitter):
     def _validate_pydantic_event(event: PydanticEvent) -> tuple[str, dict]:
@@ -38,4 +32,4 @@ class PydanticEventEmitter(EventEmitter):
         name, payload = self._validate_pydantic_event(event)
         await super().emit_async(name, payload)
 
-ee = PydanticEventEmitter(wildcard=True, delimiter=":")
+event_emitter = PydanticEventEmitter(wildcard=True, delimiter=":")

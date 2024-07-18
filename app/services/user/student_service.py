@@ -1,5 +1,5 @@
 from typing import List
-from app.events import dispatch
+from app.events import event_emitter
 from app.models import StudentModel
 from app.events import CreateUserCrudEvent
 from app.core.role_permissions import student_role
@@ -86,7 +86,7 @@ class StudentService(UserService):
             await cleanup_service.undo_create_user(delete_database_user=True, delete_password_secret=True, delete_gitea_user=True)
             raise e
 
-        dispatch(CreateUserCrudEvent(user=student))
+        event_emitter.emit(CreateUserCrudEvent(user=student))
 
     async def get_user_by_onyen(self, onyen: str) -> StudentModel:
         user = await super().get_user_by_onyen(onyen)

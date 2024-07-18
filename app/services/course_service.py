@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
-from app.events import dispatch
+from app.events import event_emitter
 from app.models import CourseModel
 from app.schemas import CourseWithInstructorsSchema, CourseSchema, UpdateCourseSchema
 from app.events import CreateCourseCrudEvent, ModifyCourseCrudEvent, DeleteCourseCrudEvent
@@ -84,7 +84,7 @@ class CourseService:
         course.master_remote_url = master_remote_url
         self.session.commit()
 
-        dispatch(CreateCourseCrudEvent(course=course))
+        event_emitter.emit(CreateCourseCrudEvent(course=course))
 
         return course
     
