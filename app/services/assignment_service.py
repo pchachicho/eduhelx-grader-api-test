@@ -82,9 +82,12 @@ class AssignmentService:
         requirements_content = f"otter-grader==5.5.0"
 
         files_to_modify = [
-            FileOperation(content=master_notebook_content, path=master_notebook_path, operation=FileOperationType.CREATE),
+            # Until toggleable workahead on assignments is implemented, there's no point in creating a master notebook
+            # for professors since they will need to make a new one to edit it anyways per the merge control policy.
+            # FileOperation(content=master_notebook_content, path=master_notebook_path, operation=FileOperationType.CREATE),
             FileOperation(content=gitignore_content, path=gitignore_path, operation=FileOperationType.CREATE),
-            FileOperation(content=readme_content, path=readme_path, operation=FileOperationType.CREATE),
+            # Same situation, professor probably wants readme under README.md so not helpful to create an empty one.
+            # FileOperation(content=readme_content, path=readme_path, operation=FileOperationType.CREATE),
             FileOperation(content=requirements_content, path=requirements_path, operation=FileOperationType.CREATE)
         ]
 
