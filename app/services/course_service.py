@@ -41,13 +41,16 @@ class CourseService:
             pass
         
         print("CREATING COURSE")
+
+        master_remote_url = ""
+
         course = CourseModel(
             name=name,
             master_remote_url="",
             start_at=start_at,
             end_at=end_at
         )
-        
+
         self.session.add(course)
         self.session.commit()
 
@@ -56,7 +59,7 @@ class CourseService:
 
         master_repository_name = self._compute_master_repository_name(name)
         instructor_organization_name = self._compute_instructor_gitea_organization_name(name)
-        
+
         try:
             await gitea_service.create_organization(instructor_organization_name)
             print("CREATED GITEA ORGANIZATION")
@@ -87,6 +90,9 @@ class CourseService:
             await cleanup_service.undo_create_course(delete_database_course=True, delete_gitea_organization=True)
             print("UNDO CREATE COURSE (db=True, gitea_org=True)")
             raise e
+        
+        course.master_remote_url = master_remote_url
+        self.session.commit()
 
         dispatch(CreateCourseCrudEvent(course=course))
         print("DONE CREATING COURSE")
@@ -141,7 +147,6 @@ class CourseService:
     @classmethod
     def _compute_student_repository_name(cls, course_name: str) -> str:
         return f"{ course_name.replace(' ', '_') }-student-repo"
-        return f"{ course.name }-class-master-repo"
     
     @classmethod
     def _compute_master_branch_name(cls) -> str:

@@ -1,7 +1,6 @@
 from sqlalchemy import (
     Column, Sequence, ForeignKey,
-    Integer, Interval, DateTime,
-    func
+    Integer, Interval,
 )
 from sqlalchemy.schema import UniqueConstraint
 from sqlalchemy.orm import relationship

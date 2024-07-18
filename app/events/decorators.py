@@ -1,4 +1,4 @@
-from app.events import dispatch
+from .dispatcher import dispatch
 
 # For use with static events.
 def dispatches(*args, **kwargs):
