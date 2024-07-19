@@ -64,8 +64,9 @@ class InstructorService(UserService):
             except Exception as e:
                 await cleanup_service.undo_create_user(delete_password_secret=True, delete_gitea_user=True)
                 raise e
-            
-            return instructor
+
+        self.session.commit()    
+        return instructor
 
 
     async def get_user_by_onyen(self, onyen: str) -> InstructorModel:

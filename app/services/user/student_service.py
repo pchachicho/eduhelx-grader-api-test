@@ -88,7 +88,8 @@ class StudentService(UserService):
                 await cleanup_service.undo_create_user(delete_password_secret=True, delete_gitea_user=True)
                 raise e
 
-            return student
+        self.session.commit()
+        return student
 
     async def get_user_by_onyen(self, onyen: str) -> StudentModel:
         user = await super().get_user_by_onyen(onyen)
@@ -103,6 +104,8 @@ class StudentService(UserService):
                 self.session.flush()
             except SQLAlchemyError as e:
                 DatabaseTransactionException.raise_exception(e)
+
+        self.session.commit()
 
     async def get_total_students(self) -> int:
         return self.session.query(StudentModel).count()

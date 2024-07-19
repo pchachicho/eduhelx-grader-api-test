@@ -88,7 +88,8 @@ class CourseService:
                 await cleanup_service.undo_create_course(delete_gitea_organization=True)
                 raise e
             
-            return course
+        self.session.commit()
+        return course
     
     async def update_course(self, update_course: UpdateCourseSchema) -> CourseModel:
         course = await self.get_course()
@@ -117,7 +118,8 @@ class CourseService:
 
             await event_emitter.emit_async(ModifyCourseCrudEvent(course=course, modified_fields=list(update_fields.keys())))
 
-            return course
+        self.session.commit()
+        return course
 
     async def get_instructor_gitea_organization_name(self) -> str:
         course = await self.get_course()

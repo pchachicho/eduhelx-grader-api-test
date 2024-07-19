@@ -176,6 +176,8 @@ class CanvasService:
                     self.session.flush()
                 except SQLAlchemyError as e:
                     DatabaseTransactionException.raise_exception(e)
+
+        self.session.commit()
         
     async def unassociate_pid_from_user(self, onyen: str) -> None:
         with self.session.begin_nested():
@@ -188,3 +190,5 @@ class CanvasService:
                 self.session.flush()
             except SQLAlchemyError as e:
                 DatabaseTransactionException.raise_exception(e)
+        
+        self.session.commit()

@@ -82,7 +82,8 @@ class UserService:
                 user_type=user.user_type
             )
 
-            return autogen_password
+        self.session.commit()
+        return autogen_password
 
     async def delete_user(
         self,
@@ -118,3 +119,5 @@ class UserService:
             except:
                 # TODO: CLEANUP and raise e
                 pass
+
+        self.session.commit()

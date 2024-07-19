@@ -37,7 +37,8 @@ class SubmissionService:
 
             await event_emitter.emit_async(CreateSubmissionCrudEvent(submission=submission))
 
-            return submission
+        self.session.commit()
+        return submission
     
     async def get_submission_by_id(
         self,
