@@ -83,7 +83,7 @@ class CourseService:
                     hook_content=await gitea_service.get_merge_control_hook()
                 )
                 course.master_remote_url = master_remote_url
-                event_emitter.emit(CreateCourseCrudEvent(course=course))
+                await event_emitter.emit_async(CreateCourseCrudEvent(course=course))
             except Exception as e:
                 await cleanup_service.undo_create_course(delete_gitea_organization=True)
                 raise e
@@ -115,7 +115,7 @@ class CourseService:
             except SQLAlchemyError as e:
                 DatabaseTransactionException.raise_exception(e)
 
-            event_emitter.emit(ModifyCourseCrudEvent(course=course, modified_fields=list(update_fields.keys())))
+            await event_emitter.emit_async(ModifyCourseCrudEvent(course=course, modified_fields=list(update_fields.keys())))
 
             return course
 

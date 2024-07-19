@@ -23,13 +23,10 @@ class CleanupService:
             self.user = user
             self.autogen_password = autogen_password
 
-        async def undo_create_user(self, delete_database_user=False, delete_password_secret=False, delete_gitea_user=False):
+        async def undo_create_user(self, delete_password_secret=False, delete_gitea_user=False):
             from app.services import CourseService
 
             course = await CourseService(self.session).get_course()
-            if delete_database_user:
-                self.session.delete(self.user)
-                self.session.commit()
 
             if delete_password_secret:
                 KubernetesService().delete_credential_secret(course.name, self.user.onyen)
