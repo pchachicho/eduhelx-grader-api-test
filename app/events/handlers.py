@@ -7,18 +7,15 @@ from app.events.emitter import event_emitter
 from app.core.dependencies import get_db_persistent
 
 """
-NOTE: Use `get_db_persistent` instead of `get_db`. FastAPI-Events does not support generator-based DI.
-You MUST call Session.close() once you are done with the database session. 
+NOTE: Keep in mind that exceptions raised in event handlers bubble up to the original emitter.
+If it's okay for the handler to fail, then the handler should catch the error instead of raising it.
 """
 
-
 @event_emitter.on("crud:assignment:*")
-async def handle_sync_create_assignment(event: AssignmentCrudEvent):
+async def handle_master_repo_hook_update(event: AssignmentCrudEvent):
     from app.services import GiteaService, StudentService, CourseService
     
     assignment = event.assignment
-    raise Exception("testing")
-    print(123948123094813290132809, assignment.id, "changed")
 
     with SessionLocal() as session:
         course_service = CourseService(session)

@@ -2,6 +2,7 @@ from typing import List
 from datetime import datetime, timedelta
 from sqlalchemy import func
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
 from app.events import event_emitter
 from app.models import AssignmentModel, InstructorModel, StudentModel, ExtraTimeModel
 from app.schemas import AssignmentSchema, InstructorAssignmentSchema, StudentAssignmentSchema, UpdateAssignmentSchema
@@ -11,7 +12,9 @@ from app.core.exceptions import (
     AssignmentNotCreatedException,
     AssignmentNotOpenException,
     AssignmentClosedException,
-    AssignmentDueBeforeOpenException
+    AssignmentDueBeforeOpenException,
+    AssignmentNameTakenException,
+    DatabaseTransactionException
 )
 
 class AssignmentService:
@@ -28,45 +31,53 @@ class AssignmentService:
     ) -> AssignmentModel:
         from app.services import GiteaService, FileOperation, FileOperationType, CourseService
 
-        if available_date >= due_date:
+        if available_date is not None and due_date is not None and available_date >= due_date:
             raise AssignmentDueBeforeOpenException
+        
+        try:
+            await self.get_assignment_by_name(name)
+            raise AssignmentNameTakenException()
+        except AssignmentNotFoundException: pass
 
         gitea_service = GiteaService(self.session)
         course_service = CourseService(self.session)
 
-        assignment = AssignmentModel(
-            id=id,
-            name=name,
-            directory_path=directory_path,
-            available_date=available_date,
-            due_date=due_date
-        )
+        with self.session.begin_nested():
+            assignment = AssignmentModel(
+                id=id,
+                name=name,
+                directory_path=directory_path,
+                available_date=available_date,
+                due_date=due_date
+            )
 
-        self.session.add(assignment)
-        self.session.commit()
+            self.session.add(assignment)
+            try:
+                self.session.flush()
+            except SQLAlchemyError as e:
+                DatabaseTransactionException.raise_exception(e)
 
-        master_repository_name = await course_service.get_master_repository_name()
-        owner = await course_service.get_instructor_gitea_organization_name()
-        branch_name = await course_service.get_master_branch_name()
+            master_repository_name = await course_service.get_master_repository_name()
+            owner = await course_service.get_instructor_gitea_organization_name()
+            branch_name = await course_service.get_master_branch_name()
 
-        master_notebook_name = await self.get_master_notebook_name(assignment)
-        master_notebook_path = f"{ directory_path }/{ master_notebook_name }"
-        # Default empty notebook for JupyterLab 4
-        master_notebook_content = "{\n \"cells\": [],\n \"metadata\": {},\n \"nbformat\": 4,\n \"nbformat_minor\": 5\n}"
+            master_notebook_name = await self.get_master_notebook_name(assignment)
+            master_notebook_path = f"{ directory_path }/{ master_notebook_name }"
+            # Default empty notebook for JupyterLab 4
+            master_notebook_content = "{\n \"cells\": [],\n \"metadata\": {},\n \"nbformat\": 4,\n \"nbformat_minor\": 5\n}"
 
-        gitignore_path = f"{ directory_path }/.gitignore"
-        gitignore_content = await self.get_gitignore_content(assignment)
-        
-        readme_path = f"{ directory_path }/README.md"
-        readme_content = f"# { name }"
+            gitignore_path = f"{ directory_path }/.gitignore"
+            gitignore_content = await self.get_gitignore_content(assignment)
+            
+            readme_path = f"{ directory_path }/README.md"
+            readme_content = f"# { name }"
 
-        files_to_modify = [
-            FileOperation(content=master_notebook_content, path=master_notebook_path, operation=FileOperationType.CREATE),
-            FileOperation(content=gitignore_content, path=gitignore_path, operation=FileOperationType.CREATE),
-            FileOperation(content=readme_content, path=readme_path, operation=FileOperationType.CREATE)
-        ]
+            files_to_modify = [
+                FileOperation(content=master_notebook_content, path=master_notebook_path, operation=FileOperationType.CREATE),
+                FileOperation(content=gitignore_content, path=gitignore_path, operation=FileOperationType.CREATE),
+                FileOperation(content=readme_content, path=readme_path, operation=FileOperationType.CREATE)
+            ]
 
-        try:
             await gitea_service.modify_repository_files(
                 name=master_repository_name,
                 owner=owner,
@@ -74,14 +85,18 @@ class AssignmentService:
                 commit_message="Initialize assignment",
                 files=files_to_modify
             )
-        except Exception as e:
-            self.session.delete(assignment)
-            self.session.commit()
-            raise e
 
-        event_emitter.emit(CreateAssignmentCrudEvent(assignment=assignment))
+            try:
+                """ BUG: HLXK-286. This dispatch needs to be cleaned up since it can raise. However,
+                at the moment, there's no mechanism for us to undo the commit with. And we can't dispatch
+                before the commit is pushed (inconsistent state). """
+                await event_emitter.emit_async(CreateAssignmentCrudEvent(assignment=assignment))
+            except:
+                # TODO
+                # For now, just pretend that everything is okay if an event handler fails.
+                pass
 
-        return assignment
+            return assignment
     
     async def delete_assignment(self, assignment: AssignmentModel) -> None:
         from app.services import GiteaService, CourseService, FileOperation, FileOperationType
@@ -89,27 +104,36 @@ class AssignmentService:
         gitea_service = GiteaService(self.session)
         course_service = CourseService(self.session)
 
-        master_repository_name = await course_service.get_master_repository_name()
-        owner = await course_service.get_instructor_gitea_organization_name()
-        branch_name = await course_service.get_master_branch_name()
-        directory_path = assignment.directory_path
+        with self.session.begin_nested():
+            master_repository_name = await course_service.get_master_repository_name()
+            owner = await course_service.get_instructor_gitea_organization_name()
+            branch_name = await course_service.get_master_branch_name()
+            directory_path = assignment.directory_path
 
-        files_to_modify = [
-            FileOperation(content="", path=f"{ directory_path }", operation=FileOperationType.DELETE)
-        ]
+            files_to_modify = [
+                FileOperation(content="", path=f"{ directory_path }", operation=FileOperationType.DELETE)
+            ]
 
-        await gitea_service.modify_repository_files(
-            name=master_repository_name,
-            owner=owner,
-            branch_name=branch_name,
-            commit_message=f"Delete assignment",
-            files=files_to_modify
-        )
+            self.session.delete(assignment)
+            try:
+                self.session.flush()
+            except SQLAlchemyError as e:
+                DatabaseTransactionException.raise_exception(e)
 
-        self.session.delete(assignment)
-        self.session.commit()
-
-        event_emitter.emit(DeleteAssignmentCrudEvent(assignment=assignment))
+            await gitea_service.modify_repository_files(
+                name=master_repository_name,
+                owner=owner,
+                branch_name=branch_name,
+                commit_message=f"Delete assignment",
+                files=files_to_modify
+            )
+            
+            try:
+                await event_emitter.emit_async(DeleteAssignmentCrudEvent(assignment=assignment))
+            except:
+                # TODO
+                # Needs cleanup, see same comment in create_assignment event dispatch
+                pass
 
     async def get_assignment_by_id(self, id: int) -> AssignmentModel:
         assignment = self.session.query(AssignmentModel) \
@@ -134,25 +158,29 @@ class AssignmentService:
     async def update_assignment(self, assignment: AssignmentModel, update_assignment: UpdateAssignmentSchema) -> AssignmentModel:
         update_fields = update_assignment.dict(exclude_unset=True)
         
-        if "name" in update_fields:
-            assignment.name = update_fields["name"]
+        with self.session.begin_nested():
+            if "name" in update_fields:
+                assignment.name = update_fields["name"]
 
-        if "directory_path" in update_fields:
-            assignment.directory_path = update_fields["directory_path"]
+            if "directory_path" in update_fields:
+                assignment.directory_path = update_fields["directory_path"]
 
-        if "available_date" in update_fields:
-            assignment.available_date = update_fields["available_date"]
-        
-        if "due_date" in update_fields:
-            assignment.due_date = update_fields["due_date"]
+            if "available_date" in update_fields:
+                assignment.available_date = update_fields["available_date"]
+            
+            if "due_date" in update_fields:
+                assignment.due_date = update_fields["due_date"]
 
-        if assignment.available_date >= assignment.due_date:
-            raise AssignmentDueBeforeOpenException
+            if assignment.available_date >= assignment.due_date:
+                raise AssignmentDueBeforeOpenException
 
-        self.session.commit()
+            try:
+                self.session.flush()
+            except SQLAlchemyError as e:
+                DatabaseTransactionException.raise_exception(e)
 
-        await event_emitter.emit_future(ModifyAssignmentCrudEvent(assignment=assignment, modified_fields=list(update_fields.keys())))
-
+            await event_emitter.emit_async(ModifyAssignmentCrudEvent(assignment=assignment, modified_fields=list(update_fields.keys())))
+            
         return assignment
     
     # Get the earliest time at which the given assignment is available

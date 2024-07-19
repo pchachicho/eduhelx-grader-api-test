@@ -3,6 +3,12 @@ from typing import Callable
 from pydantic import BaseModel
 from pymitter import EventEmitter
 
+"""
+NOTE: Any exceptions encountered within handlers will bubble up to the emitter.
+In general, emits need to be caught by the caller for cleanup/etc. Any handlers
+who are ok with failing should not raise events to the emitter.
+"""
+
 class PydanticEvent(BaseModel):
     __event_name__: str
     
