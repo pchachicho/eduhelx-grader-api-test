@@ -80,7 +80,7 @@ class SubmissionService:
             raise SubmissionNotFoundException()
         return submission
     
-    async def get_submission_attempt(
+    async def get_submission_attempts(
         self,
         submission: SubmissionModel
     ):
