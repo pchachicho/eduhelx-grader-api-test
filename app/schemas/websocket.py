@@ -6,10 +6,11 @@ from app.events.schemas import CrudType, ResourceType
 class WebsocketMessage(BaseModel):
     __event_name__: str
     uuid: UUID4 = Field(default_factory=uuid4)
+    # If the message is in response to another.
+    originator: Optional[UUID4]
 
 class WebsocketErrorMessage(WebsocketMessage):
     exception: Exception
-    originator: Optional[WebsocketMessage]
 
     class Config:
         arbitrary_types_allowed = True
