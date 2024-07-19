@@ -96,7 +96,8 @@ class AssignmentService:
                 # For now, just pretend that everything is okay if an event handler fails.
                 pass
 
-            return assignment
+        self.session.commit()
+        return assignment
     
     async def delete_assignment(self, assignment: AssignmentModel) -> None:
         from app.services import GiteaService, CourseService, FileOperation, FileOperationType
@@ -134,6 +135,8 @@ class AssignmentService:
                 # TODO
                 # Needs cleanup, see same comment in create_assignment event dispatch
                 pass
+            
+        self.session.commit()
 
     async def get_assignment_by_id(self, id: int) -> AssignmentModel:
         assignment = self.session.query(AssignmentModel) \
@@ -180,8 +183,9 @@ class AssignmentService:
                 DatabaseTransactionException.raise_exception(e)
 
             await event_emitter.emit_async(ModifyAssignmentCrudEvent(assignment=assignment, modified_fields=list(update_fields.keys())))
-            
-            return assignment
+
+        self.session.commit()    
+        return assignment
     
     # Get the earliest time at which the given assignment is available
     async def get_earliest_available_date(self, assignment: AssignmentModel) -> datetime | None:
