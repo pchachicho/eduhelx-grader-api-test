@@ -8,14 +8,10 @@ class CleanupService:
             self.session = session
             self.course = course
 
-        async def undo_create_course(self, delete_database_course=False, delete_gitea_organization=False):
+        async def undo_create_course(self, delete_gitea_organization=False):
             from app.services import CourseService
 
             gitea_service = GiteaService(self.session)
-
-            if delete_database_course:
-                self.session.delete(self.course)
-                self.session.commit()
             
             if delete_gitea_organization:
                 instructor_organization_name = CourseService._compute_instructor_gitea_organization_name(self.course.name)
