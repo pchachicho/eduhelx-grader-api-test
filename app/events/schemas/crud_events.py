@@ -8,6 +8,12 @@ class CrudType(str, Enum):
     MODIFY = "MODIFY"
     DELETE = "DELETE"
 
+class ResourceType(str, Enum):
+    COURSE = "COURSE"
+    USER = "USER"
+    ASSIGNMENT = "ASSIGNMENT"
+    SUBMISSION = "SUBMISSION"
+
 class CrudEvents(Enum):
     CREATE_COURSE = "crud:course:create"
     MODIFY_COURSE = "crud:course:modify"
@@ -26,29 +32,27 @@ class CrudEvents(Enum):
     DELETE_SUBMISSION = "crud:submission:delete"
 
 class CrudEvent(PydanticEvent):
-    modified_fields: list[str] | None = None
-
-    @property
-    def crud_type(self):
-        return self.__event_name__.split(":")[2]
-
-    @property
-    def resource_type(self):
-        return self.__event_name__.split(":")[1]
+    crud_type: CrudType
+    resource_type: ResourceType
 
 class CourseCrudEvent(CrudEvent):
     course: CourseModel
+    resource_type = ResourceType.COURSE
 
 class CreateCourseCrudEvent(CourseCrudEvent):
     __event_name__ = CrudEvents.CREATE_COURSE.value
+    crud_type = CrudType.CREATE
 class ModifyCourseCrudEvent(CourseCrudEvent):
     __event_name__ = CrudEvents.MODIFY_COURSE.value
+    crud_type = CrudType.MODIFY
 class DeleteCourseCrudEvent(CourseCrudEvent):
     __event_name__ = CrudEvents.DELETE_COURSE.value
+    crud_type = CrudType.DELETE
 
 
 class UserCrudEvent(CrudEvent):
     user: UserModel
+    resource_type = ResourceType.USER
 
     @property
     def user_type(self):
@@ -62,29 +66,40 @@ class UserCrudEvent(CrudEvent):
 
 class CreateUserCrudEvent(UserCrudEvent):
     __event_name__ = CrudEvents.CREATE_USER.value
+    crud_type = CrudType.CREATE
 class ModifyUserCrudEvent(UserCrudEvent):
     __event_name__ = CrudEvents.MODIFY_USER.value
+    crud_type = CrudType.MODIFY
 class DeleteUserCrudEvent(UserCrudEvent):
     __event_name__ = CrudEvents.DELETE_USER.value
+    crud_type = CrudType.DELETE
 
 
 class AssignmentCrudEvent(CrudEvent):
     assignment: AssignmentModel
+    resource_type = ResourceType.ASSIGNMENT
 
 class CreateAssignmentCrudEvent(AssignmentCrudEvent):
     __event_name__ = CrudEvents.CREATE_ASSIGNMENT.value
+    crud_type = CrudType.CREATE
 class ModifyAssignmentCrudEvent(AssignmentCrudEvent):
     __event_name__ = CrudEvents.MODIFY_ASSIGNMENT.value
+    crud_type = CrudType.MODIFY
 class DeleteAssignmentCrudEvent(AssignmentCrudEvent):
     __event_name__ = CrudEvents.DELETE_ASSIGNMENT.value
+    crud_type = CrudType.DELETE
 
 
 class SubmissionCrudEvent(CrudEvent):
     submission: SubmissionModel
+    resource_type = ResourceType.SUBMISSION
 
 class CreateSubmissionCrudEvent(SubmissionCrudEvent):
     __event_name__ = CrudEvents.CREATE_SUBMISSION.value
+    crud_type = CrudType.CREATE
 class ModifySubmissionCrudEvent(SubmissionCrudEvent):
     __event_name__ = CrudEvents.MODIFY_SUBMISSION.value
+    crud_type = CrudType.MODIFY
 class DeleteSubmissionCrudEvent(SubmissionCrudEvent):
     __event_name__ = CrudEvents.DELETE_SUBMISSION.value
+    crud_type = CrudType.DELETE

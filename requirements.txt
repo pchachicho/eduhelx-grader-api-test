@@ -20,4 +20,5 @@ ldap3==2.9
 pandas==2.2.2
 python-multipart==0.0.9
 pymitter==0.5.1
+uuid==1.30
 git+https://github.com/helxplatform/eduhelx-utils.git

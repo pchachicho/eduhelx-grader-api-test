@@ -2,7 +2,7 @@ from fastapi import Depends
 from sqlalchemy.orm import Session
 from app.database import SessionLocal
 from app.models import AssignmentModel
-from app.events.schemas import AssignmentCrudEvent
+from app.events.schemas import CrudEvent, AssignmentCrudEvent
 from app.events.emitter import event_emitter
 from app.core.dependencies import get_db_persistent
 
@@ -31,3 +31,58 @@ async def handle_master_repo_hook_update(event: AssignmentCrudEvent):
             hook_id="pre-receive",
             hook_content=hook_content
         )
+
+@event_emitter.on("crud:*")
+async def handle_crud_operation(event: CrudEvent):
+    from app.services import (
+        WebsocketManagerService, CourseService, UserService,
+        StudentAssignmentService, InstructorAssignmentService,
+    )
+    from app.models.user import UserModel, UserType
+    from app.schemas import WebsocketCrudMessage, AssignmentSchema, StudentSchema, InstructorSchema, SubmissionSchema
+    from app.events.schemas import (
+        ResourceType, CourseCrudEvent, AssignmentCrudEvent, UserCrudEvent, SubmissionCrudEvent
+    )
+
+    with SessionLocal() as session:
+        websocket_service = WebsocketManagerService(session)
+        connected_users = await websocket_service.get_connected_users()
+
+        # TODO: Verify user permissions
+        # Permission system needs a bit of work with owned resources first though (HLXK-288)
+        for user in connected_users:
+            if user.user_type != UserType.STUDENT and user.user_type != UserType.INSTRUCTOR:
+                continue
+
+            if event.resource_type == ResourceType.COURSE:
+                resource = await CourseService(session).get_course_with_instructors_schema()
+
+            elif event.resource_type == ResourceType.ASSIGNMENT:
+                if user.user_type == UserType.STUDENT:
+                    resource = await StudentAssignmentService(session, user, event.assignment)
+                else:
+                    resource = await InstructorAssignmentService(session, user, event.assignment)
+
+            elif event.resource_type == ResourceType.USER:
+                if event.user_type == UserType.STUDENT:
+                    resource = await StudentSchema.from_orm(event.user)
+                elif event.user_type == UserType.INSTRUCTOR:
+                    resource = await InstructorSchema.from_orm(event.user)
+                else:
+                    continue
+
+                if user.user_type == UserType.STUDENT:
+                    # Users should only see instructor changes
+                    if event.user_type != UserType.INSTRUCTOR: continue
+
+            elif event.resource_type == ResourceType.SUBMISSION:
+                resource = SubmissionSchema.from_orm(event.submission)
+
+            else:
+                raise NotImplementedError("Unrecognized CRUD event resource type: ", event.resource_type.value)
+            
+            await websocket_service.send_message_to_user(user, WebsocketCrudMessage(
+                operation_type=event.crud_type,
+                resource_type=event.resource_type,
+                resource=resource
+            ))
