@@ -181,7 +181,7 @@ class AssignmentService:
 
             await event_emitter.emit_async(ModifyAssignmentCrudEvent(assignment=assignment, modified_fields=list(update_fields.keys())))
             
-        return assignment
+            return assignment
     
     # Get the earliest time at which the given assignment is available
     async def get_earliest_available_date(self, assignment: AssignmentModel) -> datetime | None:

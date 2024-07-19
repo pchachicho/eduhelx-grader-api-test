@@ -1,9 +1,10 @@
 from typing import List
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
 from app.events import event_emitter
 from app.models import StudentModel, AssignmentModel, SubmissionModel
-from app.core.exceptions import SubmissionNotFoundException
+from app.core.exceptions import SubmissionNotFoundException, DatabaseTransactionException
 from app.services import StudentService, StudentAssignmentService
 from app.events import CreateSubmissionCrudEvent, ModifySubmissionCrudEvent, DeleteSubmissionCrudEvent
 
@@ -24,18 +25,22 @@ class SubmissionService:
         # Assert the assignment can be submitted to by the student.
         StudentAssignmentService(self.session, student, assignment).validate_student_can_submit()
 
-        submission = SubmissionModel(
-            student_id=student.id,
-            assignment_id=assignment.id,
-            commit_id=commit_id
-        )
+        with self.session.begin_nested():
+            submission = SubmissionModel(
+                student_id=student.id,
+                assignment_id=assignment.id,
+                commit_id=commit_id
+            )
 
-        self.session.add(submission)
-        self.session.commit()
+            self.session.add(submission)
+            try:
+                self.session.flush()
+            except SQLAlchemyError as e:
+                DatabaseTransactionException.raise_exception(e)
 
-        event_emitter.emit(CreateSubmissionCrudEvent(submission=submission))
+            await event_emitter.emit_async(CreateSubmissionCrudEvent(submission=submission))
 
-        return submission
+            return submission
     
     async def get_submission_by_id(
         self,
