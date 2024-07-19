@@ -15,7 +15,7 @@ You MUST call Session.close() once you are done with the database session.
 """
 
 
-@local_handler.register(event_name=ModifyAssignmentCrudEvent.__event_name__)
+@local_handler.register(event_name="crud:assignment:*")
 async def handle_sync_create_assignment(event: ModifyAssignmentCrudEvent):
     from app.services import GiteaService, StudentService, CourseService
     
@@ -26,7 +26,7 @@ async def handle_sync_create_assignment(event: ModifyAssignmentCrudEvent):
         course_service = CourseService(session)
         gitea_service = GiteaService(session)
 
-        hook_content = await gitea_service.get_merge_control_hook()    
+        hook_content = await gitea_service.get_master_repo_prereceive_hook()    
         master_repository_name = await course_service.get_master_repository_name()
         instructor_organization_name = await course_service.get_instructor_gitea_organization_name()
 

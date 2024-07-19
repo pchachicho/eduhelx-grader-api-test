@@ -1,3 +1,4 @@
+import json
 from typing import List
 from datetime import datetime, timedelta
 from sqlalchemy import func
@@ -38,6 +39,8 @@ class AssignmentService:
             id=id,
             name=name,
             directory_path=directory_path,
+            # This is relative to directory_path
+            master_notebook_path=f"{ name }.ipynb",
             available_date=available_date,
             due_date=due_date
         )
@@ -49,10 +52,25 @@ class AssignmentService:
         owner = await course_service.get_instructor_gitea_organization_name()
         branch_name = await course_service.get_master_branch_name()
 
-        master_notebook_name = await self.get_master_notebook_name(assignment)
-        master_notebook_path = f"{ directory_path }/{ master_notebook_name }"
-        # Default empty notebook for JupyterLab 4
-        master_notebook_content = "{\n \"cells\": [],\n \"metadata\": {},\n \"nbformat\": 4,\n \"nbformat_minor\": 5\n}"
+        master_notebook_path = f"{ assignment.directory_path }/{ assignment.master_notebook_path }"
+        # Default empty notebook for JupyterLab 4 w/ Otter Config
+        otter_config_cell = {
+            "cell_type": "raw",
+            "metadata": {},
+            "source": [
+                "# ASSIGNMENT CONFIG\n",
+                "requirements: requirements.txt\n"
+                "export_cell: false\n"
+            ]
+        }
+        title_cell = {
+            "cell_type": "markdown",
+            "metadata": {},
+            "source": [
+                f"# { assignment.name }\n",
+            ]
+        }
+        master_notebook_content = json.dumps({ "cells": [otter_config_cell, title_cell], "metadata": {  "kernelspec": {   "display_name": "Python 3 (ipykernel)",   "language": "python",   "name": "python3"  },  "language_info": {   "codemirror_mode": {    "name": "ipython",    "version": 3   },   "file_extension": ".py",   "mimetype": "text/x-python",   "name": "python",   "nbconvert_exporter": "python",   "pygments_lexer": "ipython3",   "version": "3.11.5"  } }, "nbformat": 4, "nbformat_minor": 5})
 
         gitignore_path = f"{ directory_path }/.gitignore"
         gitignore_content = await self.get_gitignore_content(assignment)
@@ -60,10 +78,17 @@ class AssignmentService:
         readme_path = f"{ directory_path }/README.md"
         readme_content = f"# { name }"
 
+        requirements_path = f"{ directory_path }/requirements.txt"
+        requirements_content = f"otter-grader==5.5.0"
+
         files_to_modify = [
-            FileOperation(content=master_notebook_content, path=master_notebook_path, operation=FileOperationType.CREATE),
+            # Until toggleable workahead on assignments is implemented, there's no point in creating a master notebook
+            # for professors since they will need to make a new one to edit it anyways per the merge control policy.
+            # FileOperation(content=master_notebook_content, path=master_notebook_path, operation=FileOperationType.CREATE),
             FileOperation(content=gitignore_content, path=gitignore_path, operation=FileOperationType.CREATE),
-            FileOperation(content=readme_content, path=readme_path, operation=FileOperationType.CREATE)
+            # Same situation, professor probably wants readme under README.md so not helpful to create an empty one.
+            # FileOperation(content=readme_content, path=readme_path, operation=FileOperationType.CREATE),
+            FileOperation(content=requirements_content, path=requirements_path, operation=FileOperationType.CREATE)
         ]
 
         try:
@@ -140,6 +165,12 @@ class AssignmentService:
         if "directory_path" in update_fields:
             assignment.directory_path = update_fields["directory_path"]
 
+        if "master_notebook_path" in update_fields:
+            assignment.master_notebook_path = update_fields["master_notebook_path"]
+
+        if "grader_question_feedback" in update_fields:
+            assignment.grader_question_feedback = update_fields["grader_question_feedback"]
+
         if "available_date" in update_fields:
             assignment.available_date = update_fields["available_date"]
         
@@ -174,33 +205,43 @@ class AssignmentService:
             .first()
         
         return assignment.due_date + (latest_time.extra_time if latest_time.extra_time is not None else timedelta(0))
+
+    """ Compute the default gitignore for an assignment. """
+    async def get_gitignore_content(self, assignment: AssignmentModel) -> str:
+        protected_files = ["\n".join(file) for file in await self.get_protected_files(assignment)]
+
+        return f"""### Defaults ###
+__pycache__/
+*.py[cod]
+*$py.class
+*venv
+.ipynb_checkpoints
+.OTTER_LOG
+
+### Protected ###
+{ protected_files }
+"""
+    
+    """
+    NOTE: File paths are not necessarily real files and may instead be globs.
+    NOTE: File paths are relative to `assignment.directory_path`.
+    """
+    async def get_protected_files(self, assignment: AssignmentModel) -> str:
+        return [
+            "*grades.csv",
+            "*grading_config.json",
+            assignment.master_notebook_path,
+            f"{ assignment.name }-dist",
+            ".ssh",
+            "prof-scripts"
+        ]
     
     async def get_master_notebook_name(self, assignment: AssignmentModel) -> str:
         return self._compute_master_notebook_name(assignment.name)
     
-    @classmethod
-    def _compute_master_notebook_name(cls, assignment_name: str) -> str:
+    @staticmethod
+    def _compute_master_notebook_name(assignment_name: str) -> str:
         return f"{ assignment_name }-prof.ipynb"
-
-    """ Compute the default gitignore for an assignment. """
-    async def get_gitignore_content(self, assignment: AssignmentModel) -> str:
-        master_notebook_name = await self.get_master_notebook_name(assignment)
-        return f"""### Python ###
-# Byte-compiled / optimized / DLL files
-__pycache__/
-*.py[cod]
-*$py.class
-
-### Misc ###
-*.DS_Store
-*grades.csv
-{ master_notebook_name }
-{ assignment.name }-dist
-.ssh
-.ipynb_checkpoints
-*venv
-prof-scripts/*
-"""
 
 class InstructorAssignmentService(AssignmentService):
     def __init__(self, session: Session, instructor: InstructorModel, assignment: AssignmentModel):

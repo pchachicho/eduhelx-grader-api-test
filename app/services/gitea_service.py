@@ -2,10 +2,13 @@ from typing import List, Optional
 from enum import Enum
 from io import BytesIO
 from math import ceil
+from datetime import datetime
+from dateutil import tz
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.services import AssignmentService
+from app.schemas import CommitSchema
 from app.core.utils.header import parse_content_disposition_header
 import httpx
 import base64
@@ -219,6 +222,23 @@ class GiteaService:
         file_stream.name = file_name
         return file_stream
     
+    async def get_commits(
+        self,
+        name: str,
+        owner: str,
+        branch_name: str
+    ) -> List[CommitSchema]:
+        res = await self._get("/repos/commits", params={
+            "name": name,
+            "owner": owner,
+            "branch": branch_name
+        })
+        raw_commits = res.json()
+        return [
+            CommitSchema.from_gitea(raw_commit)
+            for raw_commit in raw_commits
+        ]
+    
     async def modify_repository_files(
         self,
         name: str,
@@ -229,8 +249,6 @@ class GiteaService:
     ):
         files = [f.dict() for f in files]
         for file in files:
-            if file["operation"] == FileOperationType.UPDATE or file["operation"] == FileOperationType.DELETE:
-                raise NotImplementedError("File modify/delete is not implemented in Gitea Assist yet (requires sha)")
             # Gitea expects file content to be base64-encoded
             file["content"] = base64.b64encode(file["content"].encode("utf-8")).decode("utf-8")
         
@@ -279,21 +297,82 @@ class GiteaService:
             "content": hook_content
         })
 
-    async def get_merge_control_hook(self):
+    async def get_master_repo_prereceive_hook(self) -> str:
+        prereceive_hooks = {
+            "reject_protected": await self.get_reject_protected_files_hook(),
+            "merge_control": await self.get_merge_control_hook()
+        }
+        return self._create_combined_hook_script(prereceive_hooks)
+
+    """
+    This hook ensures instructors do not commit files that may contain secrets/test cases.
+    It is used so that we don't need to edit the gitignore (which the professor may change themselves).
+    It is only used within the class master repository.
+    """
+    async def get_reject_protected_files_hook(self) -> str:
+        assignment_service = AssignmentService(self.session)
+        
+        assignments = await assignment_service.get_assignments()
+        protected_file_paths = []
+        for assignment in assignments:
+            protected_file_paths += [
+                f"{ assignment.directory_path }/{ file }"
+                for file in await assignment_service.get_protected_files(assignment)
+            ]
+
+        init_protected_file_paths = "\n".join([
+            f'protected_file_paths+=("{ path }")' for path in protected_file_paths
+        ])
+        return f"""#!/bin/bash
+z40=0000000000000000000000000000000000000000
+declare -a violations
+declare -a protected_file_paths
+{ init_protected_file_paths }
+while read oldrev newrev refname; do
+    if [ $oldrev == $z40 ]; then
+        # Commit being pushed is for a new branch, use empty tree SHA
+        oldrev=4b825dc642cb6eb9a060e54bf8d69288fbee4904
+    fi
+    # Iterate over files that have been modified between the old and new revisions
+    created_files=$(git diff --name-only --diff-filter=A $oldrev $newrev)
+    while IFS= read -r file; do
+        for protected_file in "${{protected_file_paths[@]}}"; do
+            if [[ $file == $protected_file ]]; then
+                violations+=("$file")
+            fi
+        done
+    done <<< "$created_files"
+done
+
+if [ ${{#violations[@]}} -gt 0 ]; then
+    echo "ERROR: Protected file violation"
+    for file in "${{violations[@]}}"; do
+        echo "PROTECTED_VIOLATION: $file"
+    done
+    exit 1
+fi
+"""
+
+    """
+    This hook enforces our merge control policy on assignments.
+    It is only used within the class master repository.
+    """
+    async def get_merge_control_hook(self) -> str:
         assignment_service = AssignmentService(self.session)
 
         assignments = await assignment_service.get_assignments()
         init_assignments_assoc = []
         for assignment in assignments:
             if assignment.is_created:
-                earliest_datetime = await assignment_service.get_earliest_available_date(assignment)
+                # Until HLXK-265, merge control policy is ALWAYS active.
+                earliest_datetime = datetime.now(tz.UTC)
+                # earliest_datetime = await assignment_service.get_earliest_available_date(assignment)
                 declaration = f'assignments["{ assignment.directory_path }"]'
                 value=ceil(earliest_datetime.timestamp())
                 init_assignments_assoc.append(f"{ declaration }={ value }")
         init_assignments_assoc = "\n".join(init_assignments_assoc)
         
-        return f"""
-#!/bin/bash
+        return f"""#!/bin/bash
 z40=0000000000000000000000000000000000000000
 # Epoch time
 current_timestamp=$(date -u +%s)
@@ -306,7 +385,7 @@ while read oldrev newrev refname; do
         oldrev=4b825dc642cb6eb9a060e54bf8d69288fbee4904
     fi
     # Iterate over files that have been modified between the old and new revisions
-    modified_files=$(git diff --name-only --diff-filter=M $oldrev $newrev)
+    modified_files=$(git diff --name-only --diff-filter=MD $oldrev $newrev)
     while IFS= read -r file; do
         for directory_path in "${{!assignments[@]}}"; do
             if [[ "${{file}}" == "${{directory_path}}"* ]]; then
@@ -316,14 +395,55 @@ while read oldrev newrev refname; do
                 fi
             fi
         done
-    done <<< "$modified_files  "
+    done <<< "$modified_files"
 done
 
 if [ ${{#violations[@]}} -gt 0 ]; then
     echo "ERROR: Merge control policy violation"
     for file in "${{violations[@]}}"; do
-        echo "VIOLATION: $file"
+        echo "MERGE_VIOLATION: $file"
     done
     exit 1
 fi
+"""
+    
+    """ Utility for combining multiple scripts for a single hook type into a
+    single, unified script (gitea only allows 1 script per hook type).
+    """
+    def _create_combined_hook_script(self, scripts: dict[str, str]) -> str:
+        template = "$(cat <<'EOF'\n{}\nEOF\n)"
+        init_hook_scripts = "\n".join([
+            f'hook_scripts["{ name }"]={ template.format(hook) }'
+            for name, hook in scripts.items()
+        ])
+        return f"""#!/bin/bash
+declare -A hook_scripts
+{ init_hook_scripts }
+
+stdin=$(cat /dev/stdin)
+for name in "${{!hook_scripts[@]}}"; do
+    hook="${{hook_scripts[$name]}}"
+    tmpfile=$(mktemp)
+
+    if [[ $? -ne 0 ]]; then
+        echo "Failed to create temp file"
+        exit 1
+    fi
+
+    # In case the script exits unexpectedly, still want to cleanup.
+    trap 'rm -f "$tmpfile"' SIGTERM SIGINT EXIT
+
+    echo "$hook" > "$tmpfile"
+    chmod +x "$tmpfile"
+    # Execute the hook
+    output=$(echo $stdin | "$tmpfile" 2>&1)
+    exit_code=$?
+    
+    rm -f "$tmpfile"
+
+    if [ $exit_code -ne 0 ]; then
+        echo "$output"
+        exit $exit_code
+    fi
+done
 """

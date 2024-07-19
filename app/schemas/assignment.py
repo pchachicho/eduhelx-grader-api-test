@@ -7,6 +7,12 @@ class AssignmentSchema(BaseModel):
     id: int
     name: str
     directory_path: str
+    # Relative to the assignment root (directory_path), i.e., the fully qualified path
+    # of the file within the repo is `/{directory_path}/{master_notebook_path}`
+    master_notebook_path: str
+    # Relative to the assignment root (directory_path)
+    student_notebook_path: str
+    grader_question_feedback: bool
     created_date: datetime
     available_date: datetime | None
     due_date: datetime | None
@@ -20,6 +26,8 @@ class AssignmentSchema(BaseModel):
 class UpdateAssignmentSchema(BaseModel):
     name: str = UNSET
     directory_path: str = UNSET
+    master_notebook_path: str = UNSET
+    grader_question_feedback: bool = UNSET
     available_date: datetime | None
     due_date: datetime | None
 

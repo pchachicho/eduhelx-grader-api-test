@@ -1,8 +1,18 @@
 from sqlalchemy.orm import Session
-from app.models import UserModel, CourseModel
+from app.models import UserModel, CourseModel, GradeReportModel
 from app.services import GiteaService, KubernetesService
 
 class CleanupService:
+    class Grading:
+        def __init__(self, session: Session, grade_report: GradeReportModel):
+            self.session = session
+            self.grade_report = grade_report
+
+        async def undo_grade_assignment(self, delete_database_grade_report=False):
+            if delete_database_grade_report:
+                self.session.delete(self.grade_report)
+                self.session.commit()
+
     class Course:
         def __init__(self, session: Session, course: CourseModel):
             self.session = session
