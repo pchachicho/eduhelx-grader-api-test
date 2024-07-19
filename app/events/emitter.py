@@ -34,7 +34,6 @@ class PydanticEventEmitter(EventEmitter):
         return super().on(event, *args, **kwargs)
 
     def emit(self, *args, **kwargs):
-        return self.emit_future(*args, **kwargs)
         raise NotImplementedError("use `emit_future` instead if you need to dispatch from a sync block")
 
     """ This method is safe to use within sync and async blocks to trigger async handlers. However,
