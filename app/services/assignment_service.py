@@ -171,7 +171,7 @@ class AssignmentService:
             if "due_date" in update_fields:
                 assignment.due_date = update_fields["due_date"]
 
-            if assignment.available_date >= assignment.due_date:
+            if assignment.available_date is not None and assignment.due_date is not None and assignment.available_date >= assignment.due_date:
                 raise AssignmentDueBeforeOpenException
 
             try:

@@ -1,10 +1,11 @@
+import asyncio
 from typing import List
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 from app.events import event_emitter
 from app.models import StudentModel, AssignmentModel, SubmissionModel
-from app.core.exceptions import SubmissionNotFoundException, DatabaseTransactionException
+from app.core.exceptions import SubmissionNotFoundException, SubmissionCommitNotFoundException, DatabaseTransactionException
 from app.services import StudentService, StudentAssignmentService
 from app.events import CreateSubmissionCrudEvent, ModifySubmissionCrudEvent, DeleteSubmissionCrudEvent
 
@@ -18,10 +19,6 @@ class SubmissionService:
         assignment: AssignmentModel,
         commit_id: str
     ) -> SubmissionModel:
-        # TODO: We should validate that the submitted commit id actually exists in gitea before persisting it in the database.
-        # We don't want another component of EduHeLx to assume the commit we return exists and crash when it doesn't.
-        # Alternatively, we could bake this logic into the endpoints to get submissions, rather than into this one.
-
         # Assert the assignment can be submitted to by the student.
         StudentAssignmentService(self.session, student, assignment).validate_student_can_submit()
 
@@ -79,3 +76,16 @@ class SubmissionService:
             raise SubmissionNotFoundException()
         return submission
         
+    async def validate_student_commit_exists(self, student: StudentModel, commit_id: str):
+        from app.services import CourseService, GiteaService
+
+        repository_config = await CourseService(self.session).get_student_repository_config(student)
+        commits = await GiteaService(self.session).get_commits(
+            repository_config.name,
+            repository_config.owner,
+            repository_config.master_branch
+        )
+        for commit in commits:
+            if commit.sha == commit_id: return
+
+        raise SubmissionCommitNotFoundException(f"Commit SHA { commit_id } could not be found within student's repository")

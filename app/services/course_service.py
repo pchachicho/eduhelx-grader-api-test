@@ -3,8 +3,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 from sqlalchemy.exc import SQLAlchemyError
 from app.events import event_emitter
-from app.models import CourseModel
-from app.schemas import CourseWithInstructorsSchema, CourseSchema, UpdateCourseSchema
+from app.models import CourseModel, StudentModel
+from app.schemas import CourseWithInstructorsSchema, CourseSchema, UpdateCourseSchema, RepositoryConfigSchema
 from app.events import CreateCourseCrudEvent, ModifyCourseCrudEvent, DeleteCourseCrudEvent
 from app.core.exceptions import (
     MultipleCoursesExistException, NoCourseExistsException, CourseAlreadyExistsException,
@@ -107,7 +107,7 @@ class CourseService:
             if "master_remote_url" in update_fields:
                 course.master_remote_url = update_fields["master_remote_url"]
 
-            if course.start_at >= course.end_at:
+            if course.start_at is not None and course.end_at is not None and course.start_at >= course.end_at:
                 raise CourseEndsBeforeStartDateException()
 
             try:
@@ -134,6 +134,26 @@ class CourseService:
     
     async def get_master_branch_name(self) -> str:
         return self._compute_master_branch_name()
+    
+    """ So that other services don't have to call 3 methods every time they want to access the master repo. """
+    async def get_master_repository_config(self) -> RepositoryConfigSchema:
+        course = await self.get_course()
+        return RepositoryConfigSchema(
+            name=self._compute_master_repository_name(course.name),
+            owner=self._compute_instructor_gitea_organization_name(course.name),
+            master_branch=self._compute_master_branch_name(),
+            remote_url=course.master_remote_url
+        )
+    
+    async def get_student_repository_config(self, student: StudentModel) -> RepositoryConfigSchema:
+        course = await self.get_course()
+        return RepositoryConfigSchema(
+            name=self._compute_student_repository_name(course.name),
+            owner=student.onyen,
+            master_branch=self._compute_master_branch_name(),
+            remote_url=student.fork_remote_url
+        )
+
 
     @staticmethod
     def _compute_instructor_gitea_organization_name(course_name: str) -> str:
