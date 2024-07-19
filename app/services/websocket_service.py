@@ -1,4 +1,5 @@
 from fastapi import WebSocket
+from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import Session
 from app.services import UserService
 from app.models.user import UserModel, UserType
@@ -66,8 +67,7 @@ class WebsocketManagerService:
 
     @staticmethod
     def _serialize_websocket_message(message: WebsocketMessage) -> dict:
-        return {
+        return jsonable_encoder({
             **message.dict(),
-            "event_name": message.__event_name__,
-            "uuid": message.__uuid__
-        }
+            "event_name": message.__event_name__
+        })

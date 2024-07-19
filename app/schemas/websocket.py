@@ -5,7 +5,7 @@ from app.events.schemas import CrudType, ResourceType
 
 class WebsocketMessage(BaseModel):
     __event_name__: str
-    __uuid__: UUID4 = Field(default_factory=uuid4)
+    uuid: UUID4 = Field(default_factory=uuid4)
 
 class WebsocketErrorMessage(WebsocketMessage):
     exception: Exception
@@ -15,7 +15,7 @@ class WebsocketErrorMessage(WebsocketMessage):
         arbitrary_types_allowed = True
 
 class WebsocketCrudMessage(WebsocketMessage):
-    __event_name__ = ""
+    __event_name__ = "crud_change"
     operation_type: CrudType
     resource_type: ResourceType
     resource: BaseModel

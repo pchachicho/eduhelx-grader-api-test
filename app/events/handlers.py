@@ -32,7 +32,8 @@ async def handle_master_repo_hook_update(event: AssignmentCrudEvent):
             hook_content=hook_content
         )
 
-@event_emitter.on("crud:*")
+""" Ideally, we'd use `crud:*` here, but for some reason pymitter doesn't support higher-level wildcards... """
+@event_emitter.on_any()
 async def handle_crud_operation(event: CrudEvent):
     from app.services import (
         WebsocketManagerService, CourseService, UserService,
@@ -43,6 +44,8 @@ async def handle_crud_operation(event: CrudEvent):
     from app.events.schemas import (
         ResourceType, CourseCrudEvent, AssignmentCrudEvent, UserCrudEvent, SubmissionCrudEvent
     )
+
+    if not isinstance(event, CrudEvent): return
 
     with SessionLocal() as session:
         websocket_service = WebsocketManagerService(session)
@@ -59,9 +62,11 @@ async def handle_crud_operation(event: CrudEvent):
 
             elif event.resource_type == ResourceType.ASSIGNMENT:
                 if user.user_type == UserType.STUDENT:
-                    resource = await StudentAssignmentService(session, user, event.assignment)
+                    resource = await StudentAssignmentService(session, user, event.assignment) \
+                        .get_student_assignment_schema()
                 else:
-                    resource = await InstructorAssignmentService(session, user, event.assignment)
+                    resource = await InstructorAssignmentService(session, user, event.assignment) \
+                        .get_instructor_assignment_schema()
 
             elif event.resource_type == ResourceType.USER:
                 if event.user_type == UserType.STUDENT:
