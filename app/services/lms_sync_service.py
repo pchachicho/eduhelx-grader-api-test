@@ -100,7 +100,11 @@ class LmsSyncService:
                 except LMSUserNotFoundException: pass
        
         for student in canvas_students:
-            pid = student['sis_user_id']
+            pid, email, name = student.get("sis_user_id"), student.get("email"), student.get("name")
+            if pid is None or email is None or name is None:
+                print("Skipping over pending student", name or "<unknown>")
+                continue
+
             print("getting user info for ", pid)
             user_info = self.ldap_service.get_user_info(pid)
             print(pid, "->", user_info.onyen)
@@ -113,8 +117,8 @@ class LmsSyncService:
                 print("student doesn't exist", user_info.onyen)
                 await self.student_service.create_student(
                     onyen=user_info.onyen,
-                    name=student['name'],
-                    email=student['email']
+                    name=name,
+                    email=email
                 )
                 print("associate pid", pid, "to onyen", user_info.onyen)
                 await self.canvas_service.associate_pid_to_user(user_info.onyen, pid)
@@ -137,7 +141,11 @@ class LmsSyncService:
                 except LMSUserNotFoundException: pass
         
         for instructor in canvas_instructors:
-            pid = instructor['sis_user_id']
+            pid, email, name = instructor.get("sis_user_id"), instructor.get("email"), instructor.get("name")
+            if pid is None or email is None or name is None:
+                print("Skipping over pending instructor", name or "<unknown>")
+                continue
+
             print("getting user info for ", pid)
             user_info = self.ldap_service.get_user_info(pid)
             print(pid, "->", user_info.onyen)
@@ -150,8 +158,8 @@ class LmsSyncService:
                 print("instructor doesn't exit", user_info.onyen)
                 await self.instructor_service.create_instructor(
                     onyen=user_info.onyen,
-                    name=instructor['name'],
-                    email=instructor['email']
+                    name=name,
+                    email=email
                 )
                 print("associate pid", pid, "to onyen", user_info.onyen)
                 await self.canvas_service.associate_pid_to_user(user_info.onyen, pid)
