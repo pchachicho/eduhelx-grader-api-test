@@ -60,18 +60,6 @@ async def get_submissions(
             for s in await submission_service.get_submissions(student, assignment)
         ]
     
-@router.get("/submissions/{submission_id}", response_model=SubmissionSchema)
-async def get_submission_by_id(
-    *,
-    request: Request,
-    db: Session = Depends(get_db),
-    perm: None = Depends(PermissionDependency(SubmissionListPermission)),
-    submission_id: int
-):
-    submission_service = SubmissionService(db)
-    submission = await submission_service.get_submission_by_id(submission_id)
-    return await submission_service.get_submission_schema(submission)
-
 @router.get("/submissions/self", response_model=List[SubmissionSchema])
 async def get_own_submissions(
     *,
@@ -103,6 +91,18 @@ async def get_active_submission(
     submission = await submission_service.get_active_submission(student, assignment)
 
     return await submission_service.get_submission_schema(submission)
+    
+@router.get("/submissions/{submission_id}", response_model=SubmissionSchema)
+async def get_submission_by_id(
+    *,
+    request: Request,
+    db: Session = Depends(get_db),
+    perm: None = Depends(PermissionDependency(SubmissionListPermission)),
+    submission_id: int
+):
+    submission_service = SubmissionService(db)
+    submission = await submission_service.get_submission_by_id(submission_id)
+    return await submission_service.get_submission_schema(submission)
 
 async def download_submission_stream(db, submission: SubmissionModel):
     gitea_service = GiteaService(db)
@@ -124,17 +124,6 @@ async def download_submission_stream(db, submission: SubmissionModel):
         headers={"Content-Disposition": f'attachment; filename="{ archive_name }"'}
     )
 
-
-@router.get("/submissions/{submission_id}/download", response_class=FileResponse)
-async def download_submission(
-    *,
-    db: Session = Depends(get_db),
-    perm: None = Depends(PermissionDependency(SubmissionListPermission, SubmissionDownloadPermission)),
-    submission_id: int
-):
-    submission = await SubmissionService(db).get_submission_by_id(submission_id)
-    return await download_submission_stream(db, submission)
-
 @router.get("/submissions/active/download", response_class=FileResponse)
 async def download_active_submission(
     *,
@@ -147,3 +136,13 @@ async def download_active_submission(
     assignment = await AssignmentService(db).get_assignment_by_id(assignment_id)
     active_submission = await SubmissionService(db).get_active_submission(student, assignment)
     return await download_submission_stream(db, active_submission)
+
+@router.get("/submissions/{submission_id}/download", response_class=FileResponse)
+async def download_submission(
+    *,
+    db: Session = Depends(get_db),
+    perm: None = Depends(PermissionDependency(SubmissionListPermission, SubmissionDownloadPermission)),
+    submission_id: int
+):
+    submission = await SubmissionService(db).get_submission_by_id(submission_id)
+    return await download_submission_stream(db, submission)
