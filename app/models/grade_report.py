@@ -36,9 +36,9 @@ class GradeReportModel(Base):
         otter_config_content: str
     ) -> GradeReportModel:
         scores = [grade.score for grade in submission_grades]
-        average = np.mean(scores)
-        median = np.median(scores)
-        stdev = np.std(scores)
+        average = float(np.mean(scores))
+        median = float(np.median(scores))
+        stdev = float(np.std(scores))
         minimum, maximum = min(scores), max(scores)
         num_submitted = len(submission_grades)
         num_skipped = sum([grade.submission_already_graded for grade in submission_grades])
