@@ -86,8 +86,7 @@ class AssignmentService:
             # for professors since they will need to make a new one to edit it anyways per the merge control policy.
             # FileOperation(content=master_notebook_content, path=master_notebook_path, operation=FileOperationType.CREATE),
             FileOperation(content=gitignore_content, path=gitignore_path, operation=FileOperationType.CREATE),
-            # Same situation, professor probably wants readme under README.md so not helpful to create an empty one.
-            # FileOperation(content=readme_content, path=readme_path, operation=FileOperationType.CREATE),
+            FileOperation(content=readme_content, path=readme_path, operation=FileOperationType.CREATE),
             FileOperation(content=requirements_content, path=requirements_path, operation=FileOperationType.CREATE)
         ]
 
@@ -217,6 +216,8 @@ __pycache__/
 *venv
 .ipynb_checkpoints
 .OTTER_LOG
+# This pattern (file~<ISO>~) is used for backup files where stash conflicts are encountered.
+*~*~
 
 ### Protected ###
 { protected_files }
@@ -226,14 +227,27 @@ __pycache__/
     NOTE: File paths are not necessarily real files and may instead be globs.
     NOTE: File paths are relative to `assignment.directory_path`.
     """
-    async def get_protected_files(self, assignment: AssignmentModel) -> str:
+    async def get_protected_files(self, assignment: AssignmentModel) -> list[str]:
         return [
             "*grades.csv",
             "*grading_config.json",
             assignment.master_notebook_path,
             f"{ assignment.name }-dist",
-            ".ssh",
+            "**/.ssh",
             "prof-scripts"
+        ]
+    
+    """
+    NOTE: File paths are not necessarily real files and may instead be globs.
+    NOTE: File paths are relative to `assignment.directory_path`
+    """
+    async def get_overwritable_files(self, assignment: AssignmentModel) -> list[str]:
+        return [
+            "README.md",
+            "helpers.*",
+            "requirements.txt",
+            "instruction*.txt",
+            ".gitignore",
         ]
     
     async def get_master_notebook_name(self, assignment: AssignmentModel) -> str:
@@ -263,6 +277,9 @@ class InstructorAssignmentService(AssignmentService):
     
     async def get_instructor_assignment_schema(self) -> InstructorAssignmentSchema:
         assignment = AssignmentSchema.from_orm(self.assignment).dict()
+        assignment["protected_files"] = await self.get_protected_files(self.assignment)
+        assignment["overwritable_files"] = await self.get_overwritable_files(self.assignment)
+
         assignment["is_available"] = self.get_is_available()
         assignment["is_closed"] = self.get_is_closed()
 
@@ -331,6 +348,9 @@ class StudentAssignmentService(AssignmentService):
 
     async def get_student_assignment_schema(self) -> StudentAssignmentSchema:
         assignment = AssignmentSchema.from_orm(self.assignment).dict()
+        assignment["protected_files"] = await self.get_protected_files(self.assignment)
+        assignment["overwritable_files"] = await self.get_overwritable_files(self.assignment)
+        
         assignment["adjusted_available_date"] = self.get_adjusted_available_date()
         assignment["adjusted_due_date"] = self.get_adjusted_due_date()
         assignment["is_available"] = self.get_is_available()
