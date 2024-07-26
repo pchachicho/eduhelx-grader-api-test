@@ -26,12 +26,12 @@ async def handle_sync_create_assignment(event: ModifyAssignmentCrudEvent):
         course_service = CourseService(session)
         gitea_service = GiteaService(session)
 
-        hook_content = await gitea_service.get_master_repo_prereceive_hook()    
-        master_repository_name = await course_service.get_master_repository_name()
+        hook_content = await gitea_service.get_staging_repo_prereceive_hook()    
+        staging_repository_name = await course_service.get_staging_repository_name()
         instructor_organization_name = await course_service.get_instructor_gitea_organization_name()
 
         await GiteaService(session).set_git_hook(
-            repository_name=master_repository_name,
+            repository_name=staging_repository_name,
             owner=instructor_organization_name,
             hook_id="pre-receive",
             hook_content=hook_content

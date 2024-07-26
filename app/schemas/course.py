@@ -10,6 +10,7 @@ class CourseSchema(BaseModel):
     start_at: datetime | None
     end_at: datetime | None
     master_remote_url: str
+    staging_remote_url: str
 
     class Config:
         orm_mode = True
@@ -19,6 +20,7 @@ class UpdateCourseSchema(BaseModel):
     start_at: datetime | None
     end_at: datetime | None
     master_remote_url: str = UNSET
+    staging_remote_url: str = UNSET
 
 class CourseWithInstructorsSchema(CourseSchema):
     instructors: List[InstructorSchema]

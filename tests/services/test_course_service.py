@@ -22,7 +22,7 @@ class TestCourseService(unittest.IsolatedAsyncioTestCase):
         self.mock_session = MagicMock(spec=Session)
 
         self.course_service = CourseService(session=self.mock_session)
-        self.mock_course = CourseModel(name="COMP 555", master_remote_url="")
+        self.mock_course = CourseModel(name="COMP 555", master_remote_url="", staging_remote_url="")
 
     async def test_get_course_single_result(self):
         self.mock_session.query().one.return_value = self.mock_course
@@ -44,13 +44,13 @@ class TestCourseService(unittest.IsolatedAsyncioTestCase):
             self.assertRaises(await self.course_service.get_course())
     
     async def test_get_course_with_instructors_schema_success(self):
-        mock_course = CourseModel(id=1, name="Math", master_remote_url="http://example.com")
+        mock_course = CourseModel(id=1, name="Math", master_remote_url="http://example.com", staging_remote_url="http;//example.com")
         instructorList = [InstructorModel(id=1, onyen="instructor_onyen", first_name="Ins", last_name="Tructor", email="email@unc.com")]
 
         self.mock_session.query().one.return_value = mock_course
         self.mock_session.query().all.return_value = instructorList
 
-        expected_course = CourseModel(id=1, name="Math", master_remote_url="http://example.com")
+        expected_course = CourseModel(id=1, name="Math", master_remote_url="http://example.com", staging_remote_url="http://example.com")
         expected_course.instructors=instructorList
 
         result = await self.course_service.get_course_with_instructors_schema()
@@ -96,6 +96,7 @@ class TestCourseService(unittest.IsolatedAsyncioTestCase):
             self.mock_session.commit.assert_called_once()
             self.assertEqual(result.name, self.mock_course.name)
             self.assertEqual(result.master_remote_url, "http://example.com")
+            self.assertEqual(result.staging_remote_url, "http://example.com")
 
 suite = unittest.TestLoader().loadTestsFromTestCase(TestCourseService)
 unittest.TextTestRunner(verbosity=2).run(suite)

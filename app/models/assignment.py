@@ -14,6 +14,7 @@ class AssignmentModel(Base):
     id = Column(Integer, Sequence("assignment_id_seq"), primary_key=True, index=True)
     name = Column(Text, nullable=False, unique=True)
     directory_path = Column(Text, nullable=False)
+    published_to_staging = Column(Boolean, server_default='f', nullable=False)
     # Relative to the assignment root (directory_path), i.e., the fully qualified path
     # of the file within the repo is `/{directory_path}/{master_notebook_path}`
     master_notebook_path = Column(Text, nullable=False)

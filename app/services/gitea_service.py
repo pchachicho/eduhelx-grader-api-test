@@ -297,7 +297,7 @@ class GiteaService:
             "content": hook_content
         })
 
-    async def get_master_repo_prereceive_hook(self) -> str:
+    async def get_staging_repo_prereceive_hook(self) -> str:
         prereceive_hooks = {
             "reject_protected": await self.get_reject_protected_files_hook(),
             "merge_control": await self.get_merge_control_hook()

@@ -218,23 +218,23 @@ class CanvasService:
             raise LMSFileUploadException("file upload returned confirmation redirect, which is currently unsupported")
         
         # VERY HACKY, no other choice...
-        try:
-            return int(urlparse(canvas_image_url).path.split("/")[-1])
-        except Exception as e:
-            raise LMSFileUploadException(str(e)) from e
+        # try:
+        #     return int(urlparse(canvas_image_url).path.split("/")[-1])
+        # except Exception as e:
+        #     raise LMSFileUploadException(str(e)) from e
         
 
         """ NOTE: The file access endpoint (which is the value of canvas_image_url) can only be used by the owner of the file.
         Until we can masquerade as the user (this permission can be granted to admin accounts) we can use the proper workflow.
         """
-        # if res.status_code >= 300 and res.status_code < 400:
-        #     # Upload is incomplete, need to perform a GET request to returned URL first.
-        #     res = await self.client.get(image_url)
-        #     await self._check_response(res)
+        if res.status_code >= 300 and res.status_code < 400:
+            # Upload is incomplete, need to perform a GET request to returned URL first.
+            res = await self.client.get(canvas_image_url)
+            await self._check_response(res)
         
-        # return await self._post(image_url, headers={
-        #     "Content-Length": "0"
-        # })
+        return await self._post(canvas_image_url, headers={
+            "Content-Length": "0"
+        })
     
     """ Not working at the moment.
     async def upload_user_file(

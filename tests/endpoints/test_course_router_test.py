@@ -25,6 +25,7 @@ class TestCourseEndpoints(unittest.IsolatedAsyncioTestCase):
         mock_course = MagicMock()
         mock_course.name = "Test Course"
         mock_course.master_remote_url = "http://example.com"
+        mock_course.staging_remote_url = "http://example.com"
         mock_course.instructors = ["Instructor 1", "Instructor 2"]
 
         # Mock the CourseService and specify its return value

@@ -82,12 +82,9 @@ class AssignmentService:
         requirements_content = f"otter-grader==5.5.0"
 
         files_to_modify = [
-            # Until toggleable workahead on assignments is implemented, there's no point in creating a master notebook
-            # for professors since they will need to make a new one to edit it anyways per the merge control policy.
-            # FileOperation(content=master_notebook_content, path=master_notebook_path, operation=FileOperationType.CREATE),
+            FileOperation(content=master_notebook_content, path=master_notebook_path, operation=FileOperationType.CREATE),
             FileOperation(content=gitignore_content, path=gitignore_path, operation=FileOperationType.CREATE),
-            # Same situation, professor probably wants readme under README.md so not helpful to create an empty one.
-            # FileOperation(content=readme_content, path=readme_path, operation=FileOperationType.CREATE),
+            FileOperation(content=readme_content, path=readme_path, operation=FileOperationType.CREATE),
             FileOperation(content=requirements_content, path=requirements_path, operation=FileOperationType.CREATE)
         ]
 
@@ -208,7 +205,7 @@ class AssignmentService:
 
     """ Compute the default gitignore for an assignment. """
     async def get_gitignore_content(self, assignment: AssignmentModel) -> str:
-        protected_files = ["\n".join(file) for file in await self.get_protected_files(assignment)]
+        protected_files_str = "\n".join(await self.get_protected_files(assignment))
 
         return f"""### Defaults ###
 __pycache__/
@@ -216,17 +213,18 @@ __pycache__/
 *$py.class
 *venv
 .ipynb_checkpoints
-.OTTER_LOG
+.OTTER_LOG*
+.nfs*
 
 ### Protected ###
-{ protected_files }
+{ protected_files_str }
 """
     
     """
     NOTE: File paths are not necessarily real files and may instead be globs.
     NOTE: File paths are relative to `assignment.directory_path`.
     """
-    async def get_protected_files(self, assignment: AssignmentModel) -> str:
+    async def get_protected_files(self, assignment: AssignmentModel) -> list[str]:
         return [
             "*grades.csv",
             "*grading_config.json",

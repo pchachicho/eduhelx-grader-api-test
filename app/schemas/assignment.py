@@ -7,6 +7,7 @@ class AssignmentSchema(BaseModel):
     id: int
     name: str
     directory_path: str
+    published_to_staging: bool
     # Relative to the assignment root (directory_path), i.e., the fully qualified path
     # of the file within the repo is `/{directory_path}/{master_notebook_path}`
     master_notebook_path: str

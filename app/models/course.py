@@ -10,3 +10,4 @@ class CourseModel(Base):
     start_at = Column(DateTime(timezone=True), nullable=True)
     end_at = Column(DateTime(timezone=True), nullable=True)
     master_remote_url = Column(Text, nullable=False)
+    staging_remote_url = Column(Text, nullable=False)
