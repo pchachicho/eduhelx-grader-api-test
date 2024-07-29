@@ -216,8 +216,7 @@ __pycache__/
 *venv
 .ipynb_checkpoints
 .OTTER_LOG
-# This pattern (file~<ISO>~) is used for backup files where stash conflicts are encountered.
-*~*~
+*~backup
 
 ### Protected ###
 { protected_files }
