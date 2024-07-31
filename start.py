@@ -9,7 +9,7 @@ from alembic import command
 from app.services import LmsSyncService
 from app.database import SessionLocal
 
-def main(host, port, reload):
+def main(host, port, reload, workers):
     # Mapping table for special case filename transformations
     special_cases = {
         "postgres-password": "POSTGRES_PASSWORD"
@@ -56,8 +56,9 @@ def main(host, port, reload):
     # Start the application
     uvicorn_args = ["uvicorn", "app.main:app", "--host", host, "--port", port]
     if reload: uvicorn_args.append("--reload")
+    if workers: uvicorn_args.append("--workers")
     # subprocess.run(uvicorn_args)
-    uvicorn.run(app, host=host, port=int(port), reload=reload)
+    uvicorn.run(app, host=host, port=int(port), reload=reload, workers=workers)
 
 
 if __name__ == "__main__":
@@ -65,10 +66,13 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-H", "--host", default="0.0.0.0", help="The host to bind to.")
     parser.add_argument("-p", "--port", default="8000", help="The port to bind to.")
-    parser.add_argument("-r", "--reload", action="store_true", help="Enable auto-reload.")
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("-r", "--reload", action="store_true", help="Enable auto-reload.")
+    group.add_argument("-w", "--workers", default="4", help="Workers help")
     args = parser.parse_args()
     
     host = args.host
     port = args.port
     reload = args.reload
-    main(host, port, reload)
+    workers = args.workers
+    main(host, port, reload, workers)
