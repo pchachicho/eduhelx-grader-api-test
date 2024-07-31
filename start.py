@@ -2,7 +2,6 @@ import os
 import glob
 import uvicorn
 import asyncio
-from app.main import app
 from dotenv import load_dotenv
 from alembic.config import Config
 from alembic import command
@@ -57,8 +56,10 @@ def main(host, port, reload, workers):
     uvicorn_args = ["uvicorn", "app.main:app", "--host", host, "--port", port]
     if reload: uvicorn_args.append("--reload")
     if workers: uvicorn_args.append("--workers")
+    if reload: workers = None
+    portInt = int(port)
     # subprocess.run(uvicorn_args)
-    uvicorn.run(app, host=host, port=int(port), reload=reload, workers=workers)
+    uvicorn.run("app.main:app", host=host, port=portInt, reload=reload, workers=workers)
 
 
 if __name__ == "__main__":
@@ -66,9 +67,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-H", "--host", default="0.0.0.0", help="The host to bind to.")
     parser.add_argument("-p", "--port", default="8000", help="The port to bind to.")
-    group = parser.add_mutually_exclusive_group()
+    parser.add_argument_group('Production vs. Development', 'One of these options must be chosen. --reload is most useful when developing; never use it in production. Use --workers in production.')
+    group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("-r", "--reload", action="store_true", help="Enable auto-reload.")
-    group.add_argument("-w", "--workers", default="4", help="Workers help")
+    group.add_argument("-w", "--workers", help="Workers help")
     args = parser.parse_args()
     
     host = args.host
