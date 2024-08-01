@@ -1,13 +1,24 @@
 from typing import List
 from datetime import datetime
 from pydantic import BaseModel
-from .instructor import InstructorSchema
+from .user import InstructorSchema
+from ._unset import UNSET
 
 class CourseSchema(BaseModel):
     id: int
     name: str
+    start_at: datetime | None
+    end_at: datetime | None
     master_remote_url: str
-    instructors: List[InstructorSchema]
 
     class Config:
         orm_mode = True
+
+class UpdateCourseSchema(BaseModel):
+    name: str = UNSET
+    start_at: datetime | None
+    end_at: datetime | None
+    master_remote_url: str = UNSET
+
+class CourseWithInstructorsSchema(CourseSchema):
+    instructors: List[InstructorSchema]

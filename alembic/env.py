@@ -22,8 +22,9 @@ from app.database import Base
 from app.models import assignment
 from app.models import course
 from app.models import extra_time
-from app.models import student
+from app.models.user import user, student, instructor, user_auth
 from app.models import submission
+from app.models.grade_report import *
 target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,

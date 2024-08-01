@@ -1,11 +1,13 @@
 import os
 import glob
-import subprocess
-import sys
+import uvicorn
+import asyncio
+from app.main import app
 from dotenv import load_dotenv
 from alembic.config import Config
 from alembic import command
-
+from app.services import LmsSyncService
+from app.database import SessionLocal
 
 def main(host, port, reload):
     # Mapping table for special case filename transformations
@@ -42,10 +44,20 @@ def main(host, port, reload):
     alembic_cfg = Config("alembic.ini")
     command.upgrade(alembic_cfg, "head")
 
+
+    # Run setup wizard, if required.
+    try:
+        with SessionLocal() as session:
+            lms_sync_service = LmsSyncService(session)
+            asyncio.run(lms_sync_service.downsync())
+    except ValueError as e:
+        print(str(e))
+
     # Start the application
     uvicorn_args = ["uvicorn", "app.main:app", "--host", host, "--port", port]
     if reload: uvicorn_args.append("--reload")
-    subprocess.run(uvicorn_args)
+    # subprocess.run(uvicorn_args)
+    uvicorn.run(app, host=host, port=int(port), reload=reload)
 
 
 if __name__ == "__main__":

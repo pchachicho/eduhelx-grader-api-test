@@ -1,44 +1,97 @@
-from typing import List
-from fastapi import APIRouter, Depends, HTTPException
-from fastapi_pagination import Page
-from fastapi_pagination.ext.sqlalchemy import paginate
-from sqlalchemy import select
+from pydantic import BaseModel
+from datetime import datetime
+from typing import List, Union
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
-
-from app.models import AssignmentModel, SubmissionModel, StudentModel, ExtraTimeModel
-from app.schemas import StudentAssignmentSchema, SubmissionSchema
-from app.api.deps import get_db
+from app.models import AssignmentModel, StudentModel, InstructorModel
+from app.schemas import InstructorAssignmentSchema, StudentAssignmentSchema, AssignmentSchema, UpdateAssignmentSchema, GradeReportSchema
+from app.schemas._unset import UNSET
+from app.services import (
+    AssignmentService, InstructorAssignmentService, StudentAssignmentService,
+    StudentService, UserService, LmsSyncService, GradingService
+)
+from app.core.dependencies import get_db, PermissionDependency, RequireLoginPermission, AssignmentModifyPermission, UserIsInstructorPermission
 
 router = APIRouter()
 
-@router.get("/assignments", response_model=List[StudentAssignmentSchema])
-def get_student_assignments(
+# Note: we don't want to reuse UpdateAssignmentSchema here because it is
+# intended for internal use only, and may have private values in the future.
+class UpdateAssignmentBody(BaseModel):
+    name: str = UNSET
+    directory_path: str = UNSET
+    master_notebook_path: str = UNSET
+    grader_question_feedback: bool = UNSET
+    available_date: datetime | None
+    due_date: datetime | None
+
+class GradingBody(BaseModel):
+    master_notebook_content: str
+    otter_config_content: str
+
+@router.patch("/assignments/{assignment_name}", response_model=AssignmentSchema)
+async def update_assignment_fields(
     *,
     db: Session = Depends(get_db),
-    onyen: str
+    assignment_name: str,
+    assignment_body: UpdateAssignmentBody,
+    perm: None = Depends(PermissionDependency(AssignmentModifyPermission))
 ):
-    assignments = db.query(AssignmentModel).all()
-    # Go through and add extra time to any assignments, if alloted.
-    for assignment in assignments:
-        assignment.adjusted_available_date = assignment.get_adjusted_available_date(db, onyen)
-        assignment.adjusted_due_date = assignment.get_adjusted_due_date(db, onyen)
-        assignment.is_deferred = assignment.adjusted_available_date != assignment.available_date
-        assignment.is_extended = assignment.adjusted_due_date != assignment.due_date
-        assignment.is_released = assignment.get_is_released()
-        assignment.is_available = assignment.get_is_available_for_student(db, onyen)
-        assignment.is_closed = assignment.get_is_closed_for_student(db, onyen)
+    # Assumption is that the Name is unique
+    assignment = await AssignmentService(db).get_assignment_by_name(assignment_name)
 
-    return assignments
+    # Differentiate between fields that are set as None and fields that are not set at all
+    updated_set_fields = assignment_body.dict(exclude_unset=True)
+    update_schema = UpdateAssignmentSchema(**updated_set_fields)
+    assignment = await AssignmentService(db).update_assignment(assignment, update_schema)
 
-@router.get("/assignment/{assignment_id}/submissions", response_model=List[SubmissionSchema])
-def get_assignment_submissions(
+    await LmsSyncService(db).upsync_assignment(assignment)
+
+    return assignment
+
+@router.get(
+    "/assignments/self",
+    response_model=List[Union[StudentAssignmentSchema, InstructorAssignmentSchema, AssignmentSchema]]
+)
+async def get_assignments(
     *,
+    request: Request,
     db: Session = Depends(get_db),
-    assignment_id: int,
-    onyen: str
+    perm: None = Depends(PermissionDependency(RequireLoginPermission))
 ):
-    return db.query(SubmissionModel) \
-        .filter_by(assignment_id=assignment_id) \
-        .join(StudentModel) \
-        .filter(StudentModel.student_onyen == onyen) \
-        .all()
+    onyen = request.user.onyen
+
+    user = await UserService(db).get_user_by_onyen(onyen)
+    assignments = await AssignmentService(db).get_assignments()
+
+    if isinstance(user, InstructorModel):
+        return [
+            await InstructorAssignmentService(db, user, assignment).get_instructor_assignment_schema()
+            for assignment in assignments
+        ]
+    elif isinstance(user, StudentModel):   
+        return [
+            await StudentAssignmentService(db, user, assignment).get_student_assignment_schema()
+            for assignment in assignments
+        ]
+    else:
+        return assignments
+    
+@router.post(
+    "/assignments/{assignment_name}/grade",
+    response_model=GradeReportSchema
+)
+async def grade_assignment(
+    *,
+    request: Request,
+    db: Session = Depends(get_db),
+    assignment_name: str,
+    grading_body: GradingBody,
+    perm: None = Depends(PermissionDependency(UserIsInstructorPermission))
+):
+    assignment = await AssignmentService(db).get_assignment_by_name(assignment_name)
+    grade_report = await GradingService(db).grade_assignment(
+        assignment,
+        grading_body.master_notebook_content,
+        grading_body.otter_config_content
+    )
+    return grade_report

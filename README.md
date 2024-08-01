@@ -2,6 +2,7 @@
 A microservice supporting student submissions to otter grader within EduHeLx
 
 
+
 ## Usage
 
 ### Installation
@@ -26,6 +27,10 @@ python -m app.main
 # or
 uvicorn --reload app.main:app --log-level=info
 ```
+
+### Documentation
+The OpenAPI UI is accessible under /docs. To login, first use the login endpoint to get access/refresh tokens.
+Then, under Authorize (lock icon), set the value to `Bearer {access_token}`.
 
 ## Application Startup
 
@@ -75,6 +80,10 @@ based on these environment variables.
 
 If the necessary environment variables are not set, the configuration falls back
 to the `sqlalchemy.url` specified in the `alembic.ini` file.
+
+### Database Schema
+
+<img src="/resources/DatabaseDesign.png" >
 
 ## Running Migrations
 

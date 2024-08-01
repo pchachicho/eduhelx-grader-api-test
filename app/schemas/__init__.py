@@ -1,6 +1,9 @@
-from .student import StudentSchema
-from .submission import SubmissionSchema
-from .assignment import AssignmentSchema, StudentAssignmentSchema
-from .extra_time import ExtraTimeSchema
-from .course import CourseSchema
-from .instructor import InstructorSchema
+from .user import *
+from .submission import *
+from .assignment import *
+from .extra_time import *
+from .course import *
+from .jwt import *
+from .commit import *
+from .settings import *
+from .grade_report import *
