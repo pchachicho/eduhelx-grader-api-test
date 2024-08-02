@@ -71,7 +71,7 @@ def main(host, port, reload, workers):
         if workersInt is not None and workersInt <= 0: raise ValueError()
     except ValueError:
         raise SystemExit("Error: Please use a positive integer value for the number of workers.")
-    
+
     # Start the application
     uvicorn.run("app.main:app", host=host, port=portInt, reload=reload, workers=workersInt)
 
