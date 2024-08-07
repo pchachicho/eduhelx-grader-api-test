@@ -17,8 +17,7 @@ class AssignmentSchema(BaseModel):
     available_date: datetime | None
     due_date: datetime | None
     last_modified_date: datetime
-    # Has both an available_date and due_date set
-    is_created: bool
+    is_published: bool
 
     class Config:
         orm_mode = True
