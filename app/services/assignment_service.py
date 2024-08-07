@@ -89,7 +89,7 @@ class AssignmentService:
             FileOperation(content=readme_content, path=readme_path, operation=FileOperationType.CREATE),
             FileOperation(content=requirements_content, path=requirements_path, operation=FileOperationType.CREATE)
         ]
-
+        
         try:
             await gitea_service.modify_repository_files(
                 name=master_repository_name,
@@ -207,7 +207,7 @@ class AssignmentService:
 
     """ Compute the default gitignore for an assignment. """
     async def get_gitignore_content(self, assignment: AssignmentModel) -> str:
-        protected_files = ["\n".join(file) for file in await self.get_protected_files(assignment)]
+        protected_files = "\n".join(await self.get_protected_files(assignment))
 
         return f"""### Defaults ###
 __pycache__/
