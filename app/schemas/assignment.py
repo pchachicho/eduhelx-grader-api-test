@@ -29,6 +29,7 @@ class UpdateAssignmentSchema(BaseModel):
     grader_question_feedback: bool = UNSET
     available_date: datetime | None
     due_date: datetime | None
+    is_published: bool = UNSET
 
 # Adds in fields relevant for JLP (tailored to the professor)
 class InstructorAssignmentSchema(AssignmentSchema):
