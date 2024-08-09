@@ -208,7 +208,7 @@ class AssignmentService:
 
     """ Compute the default gitignore for an assignment. """
     async def get_gitignore_content(self, assignment: AssignmentModel) -> str:
-        protected_files = ["\n".join(file) for file in await self.get_protected_files(assignment)]
+        protected_files_str = "\n".join(await self.get_protected_files(assignment))
 
         return f"""### Defaults ###
 __pycache__/
@@ -217,16 +217,19 @@ __pycache__/
 *venv
 .ipynb_checkpoints
 .OTTER_LOG
+.nfs*
+# Backup file naming scheme is <original_name>~<datetime>~
+*~*~
 
 ### Protected ###
-{ protected_files }
+{ protected_files_str }
 """
     
     """
     NOTE: File paths are not necessarily real files and may instead be globs.
     NOTE: File paths are relative to `assignment.directory_path`.
     """
-    async def get_protected_files(self, assignment: AssignmentModel) -> str:
+    async def get_protected_files(self, assignment: AssignmentModel) -> List[str]:
         return [
             "*grades.csv",
             "*grading_config.json",
