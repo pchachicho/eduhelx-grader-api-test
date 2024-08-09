@@ -1,5 +1,6 @@
 import json
 from typing import List
+from pydantic import PositiveInt
 from datetime import datetime, timedelta
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -12,7 +13,8 @@ from app.core.exceptions import (
     AssignmentNotCreatedException,
     AssignmentNotOpenException,
     AssignmentClosedException,
-    AssignmentDueBeforeOpenException
+    AssignmentDueBeforeOpenException,
+    SubmissionMaxAttemptsReachedException
 )
 
 class AssignmentService:
@@ -24,6 +26,7 @@ class AssignmentService:
         id: int,
         name: str,
         directory_path: str,
+        max_attempts: PositiveInt | None,
         available_date: datetime | None,
         due_date: datetime | None
     ) -> AssignmentModel:
@@ -41,6 +44,7 @@ class AssignmentService:
             directory_path=directory_path,
             # This is relative to directory_path
             master_notebook_path=f"{ name }.ipynb",
+            max_attempts=max_attempts,
             available_date=available_date,
             due_date=due_date
         )
@@ -170,6 +174,9 @@ class AssignmentService:
 
         if "grader_question_feedback" in update_fields:
             assignment.grader_question_feedback = update_fields["grader_question_feedback"]
+
+        if "max_attempts" in update_fields:
+            assignment.max_attempts = update_fields["max_attempts"]
 
         if "available_date" in update_fields:
             assignment.available_date = update_fields["available_date"]
@@ -322,7 +329,9 @@ class StudentAssignmentService(AssignmentService):
         current_timestamp = self.session.scalar(func.current_timestamp())
         return current_timestamp > self.get_adjusted_due_date()
 
-    def validate_student_can_submit(self):
+    async def validate_student_can_submit(self):
+        from app.services import SubmissionService
+
         if not self.assignment.is_created:
             raise AssignmentNotCreatedException()
 
@@ -331,9 +340,20 @@ class StudentAssignmentService(AssignmentService):
 
         if self.get_is_closed():
             raise AssignmentClosedException()
+        
+        if self.assignment.max_attempts is not None:
+            attempts = await SubmissionService(self.session).get_current_submission_attempt(self.student, self.assignment)
+            if attempts >= self.assignment.max_attempts:
+                raise SubmissionMaxAttemptsReachedException()
 
     async def get_student_assignment_schema(self) -> StudentAssignmentSchema:
+        from app.services import SubmissionService
+
         assignment = AssignmentSchema.from_orm(self.assignment).dict()
+        assignment["current_attempts"] = await SubmissionService(self.session).get_current_submission_attempt(
+            self.student,
+            self.assignment
+        )
         assignment["adjusted_available_date"] = self.get_adjusted_available_date()
         assignment["adjusted_due_date"] = self.get_adjusted_due_date()
         assignment["is_available"] = self.get_is_available()
