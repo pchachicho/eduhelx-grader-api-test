@@ -39,12 +39,14 @@ class CourseService:
             raise CourseAlreadyExistsException()
         except NoCourseExistsException:
             pass
+        
+        print("CREATING COURSE")
 
         master_remote_url = ""
 
         course = CourseModel(
             name=name,
-            master_remote_url=master_remote_url,
+            master_remote_url="",
             start_at=start_at,
             end_at=end_at
         )
@@ -60,8 +62,10 @@ class CourseService:
 
         try:
             await gitea_service.create_organization(instructor_organization_name)
+            print("CREATED GITEA ORGANIZATION")
         except Exception as e:
             await cleanup_service.undo_create_course(delete_database_course=True)
+            print("UNDO COURSE CREATE (db=True)")
             raise e
         
         try:
@@ -71,21 +75,27 @@ class CourseService:
                 owner=instructor_organization_name,
                 private=True
             )
+            print("CREATED CLASS MASTER REPOSITORY")
             await gitea_service.set_git_hook(
                 repository_name=master_repository_name,
                 owner=instructor_organization_name,
                 hook_id="pre-receive",
-                hook_content=await gitea_service.get_merge_control_hook()
+                hook_content=await gitea_service.get_master_repo_prereceive_hook()
             )
+            print("SET CLASS MASTER REPO HOOK")
+            course.master_remote_url = master_remote_url
+            self.session.commit()
+            
         except Exception as e:
             await cleanup_service.undo_create_course(delete_database_course=True, delete_gitea_organization=True)
+            print("UNDO CREATE COURSE (db=True, gitea_org=True)")
             raise e
         
         course.master_remote_url = master_remote_url
         self.session.commit()
 
         dispatch(CreateCourseCrudEvent(course=course))
-
+        print("DONE CREATING COURSE")
         return course
     
     async def update_course(self, update_course: UpdateCourseSchema) -> CourseModel:

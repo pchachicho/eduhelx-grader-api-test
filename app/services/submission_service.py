@@ -1,10 +1,13 @@
 from typing import List
-from sqlalchemy import desc
+from datetime import datetime
+from sqlalchemy import desc, func
 from sqlalchemy.orm import Session
 from app.events import dispatch
 from app.models import StudentModel, AssignmentModel, SubmissionModel
 from app.core.exceptions import SubmissionNotFoundException
+from app.core.utils.datetime import get_now_with_tzinfo
 from app.services import StudentService, StudentAssignmentService
+from app.schemas import SubmissionSchema, DatabaseSubmissionSchema
 from app.events import CreateSubmissionCrudEvent, ModifySubmissionCrudEvent, DeleteSubmissionCrudEvent
 
 class SubmissionService:
@@ -60,13 +63,16 @@ class SubmissionService:
 
         return submissions
 
-    async def get_latest_submission(
+    async def get_active_submission(
         self,
         student: StudentModel,
-        assignment: AssignmentModel
+        assignment: AssignmentModel,
+        moment: datetime | None = None
     ) -> SubmissionModel:
+        if moment is None: moment = get_now_with_tzinfo()
         submission = self.session.query(SubmissionModel) \
             .filter_by(student_id=student.id, assignment_id=assignment.id) \
+            .filter(SubmissionModel.submission_time <= moment) \
             .order_by(desc(SubmissionModel.submission_time)) \
             .limit(1) \
             .first()
@@ -74,7 +80,7 @@ class SubmissionService:
             raise SubmissionNotFoundException()
         return submission
         
-
+    """ NOTE: Marked for refactor. Not a fan of this workflow... """
     async def get_current_submission_attempt(
         self,
         student: StudentModel,
@@ -82,3 +88,9 @@ class SubmissionService:
     ) -> int:
         from app.services import LmsSyncService
         return await LmsSyncService(self.session).get_current_submission_attempt(assignment, student)
+        
+    async def get_submission_schema(self, submission: SubmissionModel) -> SubmissionSchema:
+        submission_schema = DatabaseSubmissionSchema.from_orm(submission).dict()
+        submission_schema["active"] = await self.get_active_submission(submission.student, submission.assignment) == submission
+        
+        return SubmissionSchema(**submission_schema)

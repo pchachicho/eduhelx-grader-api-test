@@ -1,7 +1,7 @@
 from sqlalchemy import (
     Column, Sequence, ForeignKey,
     Integer, String, DateTime,
-    func
+    Boolean, func
 )
 from sqlalchemy.orm import relationship
 from app.database import Base
@@ -13,6 +13,7 @@ class SubmissionModel(Base):
     student_id = Column(Integer, ForeignKey("student.id"), nullable=False)
     assignment_id = Column(Integer, ForeignKey("assignment.id"), nullable=False)
     commit_id = Column(String(255), nullable=False)
+    graded = Column(Boolean(), server_default="f", nullable=False)
     submission_time = Column(DateTime(timezone=True), server_default=func.current_timestamp())
 
     student = relationship("StudentModel", foreign_keys="SubmissionModel.student_id", back_populates="submissions")

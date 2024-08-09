@@ -4,4 +4,6 @@ from .assignment import *
 from .extra_time import *
 from .course import *
 from .jwt import *
+from .commit import *
 from .settings import *
+from .grade_report import *

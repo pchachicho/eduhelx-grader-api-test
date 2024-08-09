@@ -46,13 +46,13 @@ class CourseCrudEvent(CrudEvent):
 
 @registry.register
 class CreateCourseCrudEvent(CourseCrudEvent):
-    __event_name__ = CrudEvents.CREATE_COURSE
+    __event_name__ = CrudEvents.CREATE_COURSE.value
 @registry.register
 class ModifyCourseCrudEvent(CourseCrudEvent):
-    __event_name__ = CrudEvents.MODIFY_COURSE
+    __event_name__ = CrudEvents.MODIFY_COURSE.value
 @registry.register
 class DeleteCourseCrudEvent(CourseCrudEvent):
-    __event_name__ = CrudEvents.DELETE_COURSE
+    __event_name__ = CrudEvents.DELETE_COURSE.value
 
 
 class UserCrudEvent(CrudEvent):
@@ -70,13 +70,13 @@ class UserCrudEvent(CrudEvent):
 
 @registry.register
 class CreateUserCrudEvent(UserCrudEvent):
-    __event_name__ = CrudEvents.CREATE_USER
+    __event_name__ = CrudEvents.CREATE_USER.value
 @registry.register
 class ModifyUserCrudEvent(UserCrudEvent):
-    __event_name__ = CrudEvents.MODIFY_USER
+    __event_name__ = CrudEvents.MODIFY_USER.value
 @registry.register
 class DeleteUserCrudEvent(UserCrudEvent):
-    __event_name__ = CrudEvents.DELETE_USER
+    __event_name__ = CrudEvents.DELETE_USER.value
 
 
 class AssignmentCrudEvent(CrudEvent):
@@ -84,13 +84,13 @@ class AssignmentCrudEvent(CrudEvent):
 
 @registry.register
 class CreateAssignmentCrudEvent(AssignmentCrudEvent):
-    __event_name__ = CrudEvents.CREATE_ASSIGNMENT
+    __event_name__ = CrudEvents.CREATE_ASSIGNMENT.value
 @registry.register
 class ModifyAssignmentCrudEvent(AssignmentCrudEvent):
-    __event_name__ = CrudEvents.MODIFY_ASSIGNMENT
+    __event_name__ = CrudEvents.MODIFY_ASSIGNMENT.value
 @registry.register
 class DeleteAssignmentCrudEvent(AssignmentCrudEvent):
-    __event_name__ = CrudEvents.DELETE_ASSIGNMENT
+    __event_name__ = CrudEvents.DELETE_ASSIGNMENT.value
 
 
 class SubmissionCrudEvent(CrudEvent):
@@ -98,11 +98,11 @@ class SubmissionCrudEvent(CrudEvent):
 
 @registry.register
 class CreateSubmissionCrudEvent(SubmissionCrudEvent):
-    __event_name__ = CrudEvents.CREATE_SUBMISSION
+    __event_name__ = CrudEvents.CREATE_SUBMISSION.value
 @registry.register
 class ModifySubmissionCrudEvent(SubmissionCrudEvent):
-    __event_name__ = CrudEvents.MODIFY_SUBMISSION
+    __event_name__ = CrudEvents.MODIFY_SUBMISSION.value
 @registry.register
 class DeleteSubmissionCrudEvent(SubmissionCrudEvent):
-    __event_name__ = CrudEvents.DELETE_SUBMISSION
+    __event_name__ = CrudEvents.DELETE_SUBMISSION.value
 
