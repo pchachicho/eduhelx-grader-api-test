@@ -13,7 +13,7 @@ def positive_int(value):
     if ivalue <= 0: raise argparse.ArgumentTypeError(f"{ value } must be a positive integer")
     return ivalue
 
-def main(host, port, reload, workers):
+def main(host: str, port: int, reload: bool, workers: int | None=None):
     # Mapping table for special case filename transformations
     special_cases = {
         "postgres-password": "POSTGRES_PASSWORD"
@@ -73,13 +73,13 @@ if __name__ == "__main__":
         help="The port to bind to."
     )
     parser.add_argument_group('Production vs. Development', 'One of these options must be chosen. --reload is most useful when developing; never use it in production. Use --workers in production.')
-    # group = parser.add_mutually_exclusive_group(required=True)
-    parser.add_argument("-r", "--reload", action="store_true", help="Enable auto-reload.")
-    parser.add_argument(
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("-r", "--reload", action="store_true", help="Enable auto-reload.")
+    group.add_argument(
         "-w",
         "--workers",
         type=positive_int,
-        default=4,
+        required=False,
         help="Enable the use of workers. This option cannot be used with --reload."
     )
     args = parser.parse_args()
