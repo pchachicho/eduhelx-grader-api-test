@@ -8,6 +8,11 @@ from alembic import command
 from app.services import LmsSyncService
 from app.database import SessionLocal
 
+def positive_int(value):
+    ivalue = int(value)
+    if ivalue <= 0: raise argparse.ArgumentTypeError(f"{ value } must be a positive integer")
+    return ivalue
+
 def main(host, port, reload, workers):
     # Mapping table for special case filename transformations
     special_cases = {
@@ -52,43 +57,36 @@ def main(host, port, reload, workers):
     except ValueError as e:
         print(str(e))
 
-    # Start the application (old)
-    uvicorn_args = ["uvicorn", "app.main:app", "--host", host, "--port", port]
-    if reload: uvicorn_args.append("--reload")
-    if workers: uvicorn_args.append("--workers")
-    # subprocess.run(uvicorn_args)
-
-    # Check inputs
-    portInt: int = None
-    workersInt: int = None
-    try:
-        if port: portInt = int(port)
-        if portInt is not None and portInt <= 0: raise ValueError()
-    except ValueError:
-        raise SystemExit("Error: Please use a positive integer value for the port.")
-    try:
-        if workers: workersInt = int(workers)
-        if workersInt is not None and workersInt <= 0: raise ValueError()
-    except ValueError:
-        raise SystemExit("Error: Please use a positive integer value for the number of workers.")
-
     # Start the application
-    uvicorn.run("app.main:app", host=host, port=portInt, reload=reload, workers=workersInt)
+    uvicorn.run("app.main:app", host=host, port=port, reload=reload, workers=workers)
 
 
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("-H", "--host", default="0.0.0.0", help="The host to bind to.")
-    parser.add_argument("-p", "--port", default="8000", help="The port to bind to.")
+    parser.add_argument(
+        "-p",
+        "--port",
+        type=positive_int,
+        default=8000,
+        help="The port to bind to."
+    )
     parser.add_argument_group('Production vs. Development', 'One of these options must be chosen. --reload is most useful when developing; never use it in production. Use --workers in production.')
-    group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument("-r", "--reload", action="store_true", help="Enable auto-reload.")
-    group.add_argument("-w", "--workers", help="Enable the use of workers. This option cannot be used with --reload.")
+    # group = parser.add_mutually_exclusive_group(required=True)
+    parser.add_argument("-r", "--reload", action="store_true", help="Enable auto-reload.")
+    parser.add_argument(
+        "-w",
+        "--workers",
+        type=positive_int,
+        default=4,
+        help="Enable the use of workers. This option cannot be used with --reload."
+    )
     args = parser.parse_args()
     
     host = args.host
     port = args.port
     reload = args.reload
     workers = args.workers
+
     main(host, port, reload, workers)
