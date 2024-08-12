@@ -126,13 +126,15 @@ class AssignmentService:
             FileOperation(content="", path=f"{ directory_path }", operation=FileOperationType.DELETE)
         ]
 
-        await gitea_service.modify_repository_files(
-            name=master_repository_name,
-            owner=owner,
-            branch_name=branch_name,
-            commit_message=f"Delete assignment",
-            files=files_to_modify
-        )
+        """ (maybe) this can come back in the future.
+        But it violates the merge control policy if active, which is problematic at the moment."""
+        # await gitea_service.modify_repository_files(
+        #     name=master_repository_name,
+        #     owner=owner,
+        #     branch_name=branch_name,
+        #     commit_message=f"Delete assignment",
+        #     files=files_to_modify
+        # )
 
         self.session.delete(assignment)
         self.session.commit()
