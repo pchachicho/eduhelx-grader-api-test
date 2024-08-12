@@ -90,11 +90,10 @@ class AssignmentService:
             # for professors since they will need to make a new one to edit it anyways per the merge control policy.
             # FileOperation(content=master_notebook_content, path=master_notebook_path, operation=FileOperationType.CREATE),
             FileOperation(content=gitignore_content, path=gitignore_path, operation=FileOperationType.CREATE),
-            # Same situation, professor probably wants readme under README.md so not helpful to create an empty one.
-            # FileOperation(content=readme_content, path=readme_path, operation=FileOperationType.CREATE),
+            FileOperation(content=readme_content, path=readme_path, operation=FileOperationType.CREATE),
             FileOperation(content=requirements_content, path=requirements_path, operation=FileOperationType.CREATE)
         ]
-
+        
         try:
             await gitea_service.modify_repository_files(
                 name=master_repository_name,
@@ -127,13 +126,15 @@ class AssignmentService:
             FileOperation(content="", path=f"{ directory_path }", operation=FileOperationType.DELETE)
         ]
 
-        await gitea_service.modify_repository_files(
-            name=master_repository_name,
-            owner=owner,
-            branch_name=branch_name,
-            commit_message=f"Delete assignment",
-            files=files_to_modify
-        )
+        """ (maybe) this can come back in the future.
+        But it violates the merge control policy if active, which is problematic at the moment."""
+        # await gitea_service.modify_repository_files(
+        #     name=master_repository_name,
+        #     owner=owner,
+        #     branch_name=branch_name,
+        #     commit_message=f"Delete assignment",
+        #     files=files_to_modify
+        # )
 
         self.session.delete(assignment)
         self.session.commit()
@@ -224,9 +225,8 @@ __pycache__/
 *venv
 .ipynb_checkpoints
 .OTTER_LOG
+*~backup
 .nfs*
-# Backup file naming scheme is <original_name>~<datetime>~
-*~*~
 
 ### Protected ###
 { protected_files_str }
@@ -236,14 +236,27 @@ __pycache__/
     NOTE: File paths are not necessarily real files and may instead be globs.
     NOTE: File paths are relative to `assignment.directory_path`.
     """
-    async def get_protected_files(self, assignment: AssignmentModel) -> List[str]:
+    async def get_protected_files(self, assignment: AssignmentModel) -> list[str]:
         return [
             "*grades.csv",
             "*grading_config.json",
             assignment.master_notebook_path,
             f"{ assignment.name }-dist",
-            ".ssh",
+            "**/.ssh",
             "prof-scripts"
+        ]
+    
+    """
+    NOTE: File paths are not necessarily real files and may instead be globs.
+    NOTE: File paths are relative to `assignment.directory_path`
+    """
+    async def get_overwritable_files(self, assignment: AssignmentModel) -> list[str]:
+        return [
+            "README.md",
+            "helpers.*",
+            "requirements.txt",
+            "instruction*.txt",
+            ".gitignore",
         ]
     
     async def get_master_notebook_name(self, assignment: AssignmentModel) -> str:
@@ -273,6 +286,9 @@ class InstructorAssignmentService(AssignmentService):
     
     async def get_instructor_assignment_schema(self) -> InstructorAssignmentSchema:
         assignment = AssignmentSchema.from_orm(self.assignment).dict()
+        assignment["protected_files"] = await self.get_protected_files(self.assignment)
+        assignment["overwritable_files"] = await self.get_overwritable_files(self.assignment)
+
         assignment["is_available"] = self.get_is_available()
         assignment["is_closed"] = self.get_is_closed()
 
@@ -350,6 +366,8 @@ class StudentAssignmentService(AssignmentService):
         from app.services import SubmissionService
 
         assignment = AssignmentSchema.from_orm(self.assignment).dict()
+        assignment["protected_files"] = await self.get_protected_files(self.assignment)
+        assignment["overwritable_files"] = await self.get_overwritable_files(self.assignment)
         assignment["current_attempts"] = await SubmissionService(self.session).get_current_submission_attempt(
             self.student,
             self.assignment
