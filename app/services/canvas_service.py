@@ -141,7 +141,7 @@ class CanvasService:
         return submissions
     
     """ Get the current attempt count of the student for the assignment. If the student hasn't submitted, then 0. """
-    async def get_current_submission_attempts(
+    async def get_current_submission_attempt(
         self,
         assignment_id: int,
         student_id: int
