@@ -186,7 +186,7 @@ class GradingService:
                         # This submission is already graded. No point in reuploading it to Canvas.
                         continue
                     
-                    attempt = await submission_service.get_current_submission_attempt(submission)
+                    attempt = await submission_service.get_current_submission_attempt(submission.student, submission.assignment)
                     student_notebook = BytesIO(student_notebook_content)
                     student_notebook.name = f"{ submission.student.onyen }-submission-{ attempt }.ipynb"
                     await lms_sync_service.upsync_grade(
