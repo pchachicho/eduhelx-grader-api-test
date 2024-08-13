@@ -29,3 +29,8 @@ class AssignmentNotFoundException(CustomException):
     code = 404
     error_code = "ASSIGNMENT__NOT_FOUND"
     message = "assignment not found"
+
+class AssignmentAlreadyHasSubmissions(CustomException):
+    code = 400
+    error_code = "ASSIGNMENT__ALREADY_HAS_SUBMISSIONS"
+    message = "assignment already has submission"

@@ -3,6 +3,9 @@ from typing import List
 from datetime import datetime, timedelta
 from sqlalchemy import func
 from sqlalchemy.orm import Session
+from app.core.exceptions.assignment import AssignmentAlreadyHasSubmissions
+from app.enums import assignment_status
+from app.enums.canvas.workflow_state_filter import WorkflowStateFilter
 from app.events import dispatch
 from app.models import AssignmentModel, InstructorModel, StudentModel, ExtraTimeModel
 from app.models.course import CourseModel
@@ -18,6 +21,8 @@ from app.core.exceptions import (
 from app.schemas.course import CourseSchema
 from app.enums.assignment_status import AssignmentStatus
 from app.schemas.extra_time import ExtraTimeSchema
+from app.services import canvas_service
+from app.services.canvas_service import CanvasService
 
 class AssignmentService:
     def __init__(self, session: Session):
@@ -187,6 +192,11 @@ class AssignmentService:
             assignment.due_date = update_fields["due_date"]
 
         if "is_published" in update_fields:
+            if update_fields["is_published"] == False:
+                canvas_service = CanvasService(self.session)
+                submissions = await canvas_service.get_submissions(assignment.id)
+                if len([sub for sub in submissions if sub["workflow_state"] != "unsubmitted"]) > 0:
+                    raise AssignmentAlreadyHasSubmissions("assignment")
             assignment.is_published = update_fields["is_published"]
 
         if assignment.available_date is not None and assignment.due_date is not None and assignment.available_date >= assignment.due_date:
@@ -261,6 +271,41 @@ class InstructorAssignmentService(AssignmentService):
         self.instructor_model = instructor_model
         self.assignment_model = assignment_model
         self.course_model = course_model 
+
+    # The release date for a specific student, considering extra_time
+    def get_adjusted_available_date(self) -> datetime | None:
+        assignmentOpenDate = self.assignment_model.available_date or self.course_model.start_at
+        if assignmentOpenDate is None: return None
+        deferred_time = self.extra_time_model.deferred_time or timedelta(0)
+        
+        return assignmentOpenDate + deferred_time
+
+    # The due date for a specific student, considering extra_time
+    def get_adjusted_due_date(self) -> datetime | None:
+        assignmentDueDate = self.assignment_model.due_date or self.course_model.end_at
+        if assignmentDueDate is None: return None
+
+        # If a student does not have any extra time allotted for the assignment,
+        # allocate them a timedelta of 0.
+        if self.extra_time_model is not None:
+            deferred_time = self.extra_time_model.deferred_time
+            extra_time = self.extra_time_model.extra_time
+        else:
+            deferred_time = timedelta(0)
+            extra_time = timedelta(0)
+
+        return assignmentDueDate + deferred_time + extra_time + self.student_model.base_extra_time
+
+    def get_assignment_status(self) -> AssignmentStatus:
+        if not self.assignment.is_published: return AssignmentStatus.UNPUBLISHED
+
+        current_timestamp = self.session.scalar(func.current_timestamp())
+        adjusted_available_date = self.get_adjusted_available_date()
+        adjusted_due_date = self.get_adjusted_due_date()
+        
+        if adjusted_available_date >= current_timestamp: return AssignmentStatus.UPCOMING
+        if adjusted_due_date > current_timestamp: return AssignmentStatus.OPEN
+        else: return AssignmentStatus.CLOSED
     
     async def get_instructor_assignment_schema(self) -> InstructorAssignmentSchema:
         assignment = AssignmentSchema.from_orm(self.assignment_model).dict()
@@ -293,14 +338,16 @@ class StudentAssignmentService(AssignmentService):
 
     # The release date for a specific student, considering extra_time
     def get_adjusted_available_date(self) -> datetime | None:
-        assignmentOpenDate = self.assignment_model.available_date if self.assignment_model.available_date is not None else self.course_model.start_at
-        deferred_time = self.extra_time_model.deferred_time if self.extra_time_model is not None else timedelta(0)
+        assignmentOpenDate = self.assignment_model.available_date or self.course_model.start_at
+        if assignmentOpenDate is None: return None
+        deferred_time = self.extra_time_model.deferred_time or timedelta(0)
         
         return assignmentOpenDate + deferred_time
 
     # The due date for a specific student, considering extra_time
     def get_adjusted_due_date(self) -> datetime | None:
-        assignmentDueDate = self.assignment_model.due_date if self.assignment_model.due_date is not None else self.course_model.start_at 
+        assignmentDueDate = self.assignment_model.due_date or self.course_model.end_at
+        if assignmentDueDate is None: return None
 
         # If a student does not have any extra time allotted for the assignment,
         # allocate them a timedelta of 0.
@@ -314,35 +361,43 @@ class StudentAssignmentService(AssignmentService):
         return assignmentDueDate + deferred_time + extra_time + self.student_model.base_extra_time
 
     def _get_is_available(self) -> bool:
+        adjusted_available_date = self.get_adjusted_available_date()
+        if adjusted_available_date is None: return True
         current_timestamp = self.session.scalar(func.current_timestamp())
-        return current_timestamp >= self.get_adjusted_available_date()
+        return current_timestamp >= adjusted_available_date
     
     def _get_is_closed(self) -> bool:
+        adjusted_due_date = self.get_adjusted_due_date()
+        if adjusted_due_date is None: 
+            return not self._get_is_available()
         current_timestamp = self.session.scalar(func.current_timestamp())
-        return current_timestamp > self.get_adjusted_due_date()
+        return current_timestamp > adjusted_due_date
+    
+    def get_assignment_status(self) -> AssignmentStatus:
+        if not self.assignment.is_published: return AssignmentStatus.UNPUBLISHED
+
+        current_timestamp = self.session.scalar(func.current_timestamp())
+        adjusted_available_date = self.get_adjusted_available_date()
+        adjusted_due_date = self.get_adjusted_due_date()
+        
+        if adjusted_available_date >= current_timestamp: return AssignmentStatus.UPCOMING
+        if adjusted_due_date > current_timestamp: return AssignmentStatus.OPEN
+        else: return AssignmentStatus.CLOSED
 
     def validate_student_can_submit(self):
-        if not self.assignment_model.is_published:
+        assignment_status = self.get_assignment_status()
+        if assignment_status == AssignmentStatus.UNPUBLISHED:
             raise AssignmentNotPublishedException()
 
-        if not self._get_is_available():
+        if assignment_status == AssignmentStatus.UPCOMING:
             raise AssignmentNotOpenException()
 
-        if self._get_is_closed():
+        if assignment_status == AssignmentStatus.CLOSED:
             raise AssignmentClosedException()
 
     async def get_student_assignment_schema(self) -> StudentAssignmentSchema:
         assignment = AssignmentSchema.from_orm(self.assignment_model).dict()
-        course = CourseSchema.from_orm(self.course_model).dict()
-        current_timestamp = self.session.scalar(func.current_timestamp())
-        extra_time = ExtraTimeSchema.from_orm(self.extra_time_model).dict() if self.extra_time_model is not None else None
-        assignment_status = AssignmentStatus.get_value_for(
-            assignment, 
-            course, 
-            current_timestamp, 
-            extra_time=extra_time, 
-            base_extra_time=self.student_model.base_extra_time
-        )
+        assignment_status = self.get_assignment_status()
 
         assignment["adjusted_available_date"] = self.get_adjusted_available_date()
         assignment["adjusted_due_date"] = self.get_adjusted_due_date()

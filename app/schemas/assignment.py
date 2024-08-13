@@ -1,6 +1,8 @@
 from typing import List
 from datetime import datetime, timedelta
 from pydantic import BaseModel
+
+from app.enums.assignment_status import AssignmentStatus
 from ._unset import UNSET
 
 class AssignmentSchema(BaseModel):
@@ -35,6 +37,7 @@ class UpdateAssignmentSchema(BaseModel):
 class InstructorAssignmentSchema(AssignmentSchema):
     is_available: bool
     is_closed: bool
+    status: AssignmentStatus
 
 # Adds in student-specific fields to the assignment (tailored to a particular student)
 class StudentAssignmentSchema(AssignmentSchema):
@@ -46,3 +49,4 @@ class StudentAssignmentSchema(AssignmentSchema):
     is_deferred: bool
     # Due date is extended to a later date for the student
     is_extended: bool
+    status: AssignmentStatus

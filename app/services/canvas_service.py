@@ -12,6 +12,7 @@ from datetime import datetime
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from app.core.config import settings
+from app.enums.canvas.workflow_state_filter import WorkflowStateFilter
 from app.models import UserModel, OnyenPIDModel
 from app.services import UserService, UserType
 from app.core.utils.datetime import get_now_with_tzinfo
@@ -110,7 +111,8 @@ class CanvasService:
         include_comments: bool = False,
         include_rubric_assessment: bool = False,
         include_visibility: bool = False,
-        include_is_read: bool = False
+        include_is_read: bool = False,
+        workflow_state_filter: WorkflowStateFilter | None = None
     ):
         include = []
         if include_submission_history: include.append("submission_history")
@@ -122,8 +124,10 @@ class CanvasService:
         params = {
             "assignment_ids[]": assignment_ids,
             "student_ids[]": student_ids,
-            "include[]": include
+            "include[]": include,
         }
+        if workflow_state_filter is not None:
+            params["workflow_state"] = workflow_state_filter.value
         return await self._get(f"courses/{ settings.CANVAS_COURSE_ID }/students/submissions", params=params)
 
     """ NOTE: If student_id is provided, returns a single Submission object. """
