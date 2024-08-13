@@ -128,16 +128,22 @@ class GradingService:
                 )
                 with zipfile.ZipFile(archive_stream, "r") as zip:
                     zip.extractall(submission_archive_path)
-                otter_run(
-                    submission=str(submission_notebook_path),
-                    autograder=str(otter_config_path),
-                    output_dir=str(submission_graded_path),
-                    no_logo=True,
-                    debug=settings.DEV_PHASE == DevPhase.DEV
-                )
 
-                with open(submission_graded_path, "r") as f:
-                    grade_data = json.load(f)
+                try:
+                    otter_run(
+                        submission=str(submission_notebook_path),
+                        autograder=str(otter_config_path),
+                        output_dir=str(submission_graded_path),
+                        no_logo=True,
+                        debug=settings.DEV_PHASE == DevPhase.DEV
+                    )
+
+                    with open(submission_graded_path, "r") as f:
+                        grade_data = json.load(f)
+                
+                except Exception as e:
+                    print(f"could not grade submission for { submission.student.onyen }: { str(e) }")
+                    continue
 
                 tests = [test for test in grade_data["tests"] if "score" in test]
                 public_tests = [test for test in grade_data["tests"] if "score" not in test]
@@ -180,7 +186,7 @@ class GradingService:
                         # This submission is already graded. No point in reuploading it to Canvas.
                         continue
                     
-                    attempt = await submission_service.get_submission_attempts(submission)
+                    attempt = await submission_service.get_current_submission_attempt(submission)
                     student_notebook = BytesIO(student_notebook_content)
                     student_notebook.name = f"{ submission.student.onyen }-submission-{ attempt }.ipynb"
                     await lms_sync_service.upsync_grade(
