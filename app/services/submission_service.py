@@ -86,8 +86,10 @@ class SubmissionService:
         student: StudentModel,
         assignment: AssignmentModel
     ) -> int:
-        from app.services import LmsSyncService
-        return await LmsSyncService(self.session).get_current_submission_attempt(assignment, student)
+        student_submissions = self.session.query(SubmissionModel) \
+            .filter(SubmissionModel.assignment_id == assignment.id) \
+            .filter(SubmissionModel.student_id == student.id)
+        return student_submissions.count()
         
     async def get_submission_schema(self, submission: SubmissionModel) -> SubmissionSchema:
         submission_schema = DatabaseSubmissionSchema.from_orm(submission).dict()

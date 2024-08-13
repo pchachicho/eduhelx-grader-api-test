@@ -195,11 +195,6 @@ class LmsSyncService:
             available_date=assignment.available_date,
             due_date=assignment.due_date
         ))
-
-    async def get_current_submission_attempt(self, assignment: AssignmentModel, student: StudentModel):
-        pid = await self.canvas_service.get_pid_from_onyen(student.onyen)
-        student = await self.canvas_service.get_student_by_pid(pid)
-        return await self.canvas_service.get_current_submission_attempt(assignment.id, student["id"])
         
 
     async def downsync(self):
