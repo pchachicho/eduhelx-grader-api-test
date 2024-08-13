@@ -11,6 +11,7 @@ from app.services import (
     StudentService, UserService, LmsSyncService, GradingService
 )
 from app.core.dependencies import get_db, PermissionDependency, RequireLoginPermission, AssignmentModifyPermission, UserIsInstructorPermission
+from app.services.course_service import CourseService
 
 router = APIRouter()
 
@@ -63,15 +64,16 @@ async def get_assignments(
 
     user = await UserService(db).get_user_by_onyen(onyen)
     assignments = await AssignmentService(db).get_assignments()
+    course = await CourseService(db).get_course()
 
     if isinstance(user, InstructorModel):
         return [
-            await InstructorAssignmentService(db, user, assignment).get_instructor_assignment_schema()
+            await InstructorAssignmentService(db, user, assignment, course).get_instructor_assignment_schema()
             for assignment in assignments
         ]
-    elif isinstance(user, StudentModel):   
+    elif isinstance(user, StudentModel):
         return [
-            await StudentAssignmentService(db, user, assignment).get_student_assignment_schema()
+            await StudentAssignmentService(db, user, assignment, course).get_student_assignment_schema()
             for assignment in assignments
         ]
     else:

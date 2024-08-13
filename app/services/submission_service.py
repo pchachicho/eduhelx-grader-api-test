@@ -3,12 +3,14 @@ from datetime import datetime
 from sqlalchemy import desc, func
 from sqlalchemy.orm import Session
 from app.events import dispatch
-from app.models import StudentModel, AssignmentModel, SubmissionModel
+from app.models import StudentModel, AssignmentModel, SubmissionModel, CourseModel
 from app.core.exceptions import SubmissionNotFoundException
 from app.core.utils.datetime import get_now_with_tzinfo
+from app.models.course import CourseModel
 from app.services import StudentService, StudentAssignmentService
 from app.schemas import SubmissionSchema, DatabaseSubmissionSchema
 from app.events import CreateSubmissionCrudEvent, ModifySubmissionCrudEvent, DeleteSubmissionCrudEvent
+from app.services.course_service import CourseService
 
 class SubmissionService:
     def __init__(self, session: Session):
@@ -24,8 +26,10 @@ class SubmissionService:
         # We don't want another component of EduHeLx to assume the commit we return exists and crash when it doesn't.
         # Alternatively, we could bake this logic into the endpoints to get submissions, rather than into this one.
 
+        course = await CourseService(self.session).get_course()
+
         # Assert the assignment can be submitted to by the student.
-        StudentAssignmentService(self.session, student, assignment).validate_student_can_submit()
+        StudentAssignmentService(self.session, student, assignment, course).validate_student_can_submit()
 
         submission = SubmissionModel(
             student_id=student.id,

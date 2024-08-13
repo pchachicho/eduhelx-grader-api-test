@@ -1,11 +1,10 @@
 import datetime
 import unittest
 from unittest.mock import MagicMock
-from sqlalchemy.orm import Session
-from app.services import AssignmentService, StudentAssignmentService
+from app.models.course import CourseModel
+from app.services import StudentAssignmentService
 from app.models import AssignmentModel, StudentModel, ExtraTimeModel
 from app.core.exceptions import (
-    AssignmentNotFoundException, 
     AssignmentNotOpenException,
     AssignmentNotCreatedException,
     AssignmentClosedException
@@ -16,6 +15,7 @@ class TestStudentAssignmentService(unittest.IsolatedAsyncioTestCase):
         self.mock_session = MagicMock()
         self.mock_student = MagicMock(spec=StudentModel)
         self.mock_assignment = MagicMock(spec=AssignmentModel)
+        self.mock_course = MagicMock(spec=CourseModel)
         self.mock_extra_time_model = MagicMock(spec=ExtraTimeModel)
     
     def test_get_adjusted_available_date_without_extra_time(self):
@@ -24,8 +24,9 @@ class TestStudentAssignmentService(unittest.IsolatedAsyncioTestCase):
 
         student_assignment_service = StudentAssignmentService(
             session=self.mock_session,
-            student=self.mock_student,
-            assignment=self.mock_assignment
+            student_model=self.mock_student,
+            assignment_model=self.mock_assignment,
+            course_model=self.mock_course
         )
         result = student_assignment_service.get_adjusted_available_date()
 
@@ -38,8 +39,9 @@ class TestStudentAssignmentService(unittest.IsolatedAsyncioTestCase):
 
         student_assignment_service = StudentAssignmentService(
             session=self.mock_session,
-            student=self.mock_student,
-            assignment=self.mock_assignment
+            student_model=self.mock_student,
+            assignment_model=self.mock_assignment,
+            course_model=self.mock_course
         )
         result = student_assignment_service.get_adjusted_available_date()
 
@@ -51,8 +53,9 @@ class TestStudentAssignmentService(unittest.IsolatedAsyncioTestCase):
 
         student_assignment_service = StudentAssignmentService(
             session=self.mock_session,
-            student=self.mock_student,
-            assignment=self.mock_assignment
+            student_model=self.mock_student,
+            assignment_model=self.mock_assignment,
+            course_model=self.mock_course
         )
         result = student_assignment_service.get_adjusted_due_date()
 
@@ -67,8 +70,9 @@ class TestStudentAssignmentService(unittest.IsolatedAsyncioTestCase):
 
         student_assignment_service = StudentAssignmentService(
             session=self.mock_session,
-            student=self.mock_student,
-            assignment=self.mock_assignment
+            student_model=self.mock_student,
+            assignment_model=self.mock_assignment,
+            course_model=self.mock_course
         )
         result = student_assignment_service.get_adjusted_due_date()
 
@@ -82,8 +86,9 @@ class TestStudentAssignmentService(unittest.IsolatedAsyncioTestCase):
 
         student_assignment_service = StudentAssignmentService(
             session=self.mock_session,
-            student=self.mock_student,
-            assignment=self.mock_assignment
+            student_model=self.mock_student,
+            assignment_model=self.mock_assignment,
+            course_model=self.mock_course
         )
         result = student_assignment_service.get_adjusted_due_date()
 
@@ -96,8 +101,9 @@ class TestStudentAssignmentService(unittest.IsolatedAsyncioTestCase):
 
         student_assignment_service = StudentAssignmentService(
             session=self.mock_session,
-            student=self.mock_student,
-            assignment=self.mock_assignment
+            student_model=self.mock_student,
+            assignment_model=self.mock_assignment,
+            course_model=self.mock_course
         )
 
         result_is_available = student_assignment_service._get_is_available()
@@ -119,8 +125,9 @@ class TestStudentAssignmentService(unittest.IsolatedAsyncioTestCase):
 
         student_assignment_service = StudentAssignmentService(
             session=self.mock_session,
-            student=self.mock_student,
-            assignment=self.mock_assignment
+            student_model=self.mock_student,
+            assignment_model=self.mock_assignment,
+            course_model=self.mock_course
         )
         result_get_is_available = student_assignment_service._get_is_available()
         result_get_is_closed = student_assignment_service._get_is_closed()
@@ -144,8 +151,9 @@ class TestStudentAssignmentService(unittest.IsolatedAsyncioTestCase):
 
         student_assignment_service = StudentAssignmentService(
             session=self.mock_session,
-            student=self.mock_student,
-            assignment=self.mock_assignment
+            student_model=self.mock_student,
+            assignment_model=self.mock_assignment,
+            course_model=self.mock_course
         )
 
         with self.assertRaises(AssignmentNotCreatedException):
@@ -163,8 +171,9 @@ class TestStudentAssignmentService(unittest.IsolatedAsyncioTestCase):
 
         student_assignment_service = StudentAssignmentService(
             session=self.mock_session,
-            student=self.mock_student,
-            assignment=self.mock_assignment
+            student_model=self.mock_student,
+            assignment_model=self.mock_assignment,
+            course_model=self.mock_course
         )
 
         with self.assertRaises(AssignmentNotOpenException):
@@ -183,8 +192,9 @@ class TestStudentAssignmentService(unittest.IsolatedAsyncioTestCase):
 
         student_assignment_service = StudentAssignmentService(
             session=self.mock_session,
-            student=self.mock_student,
-            assignment=self.mock_assignment
+            student_model=self.mock_student,
+            assignment_model=self.mock_assignment,
+            course_model=self.mock_course
         )
 
         with self.assertRaises(AssignmentClosedException):

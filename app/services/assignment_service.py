@@ -5,6 +5,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 from app.events import dispatch
 from app.models import AssignmentModel, InstructorModel, StudentModel, ExtraTimeModel
+from app.models.course import CourseModel
 from app.schemas import AssignmentSchema, InstructorAssignmentSchema, StudentAssignmentSchema, UpdateAssignmentSchema
 from app.events import CreateAssignmentCrudEvent, ModifyAssignmentCrudEvent, DeleteAssignmentCrudEvent
 from app.core.exceptions import (
@@ -14,6 +15,9 @@ from app.core.exceptions import (
     AssignmentClosedException,
     AssignmentDueBeforeOpenException
 )
+from app.schemas.course import CourseSchema
+from app.enums.assignment_status import AssignmentStatus
+from app.schemas.extra_time import ExtraTimeSchema
 
 class AssignmentService:
     def __init__(self, session: Session):
@@ -252,57 +256,51 @@ __pycache__/
         return f"{ assignment_name }-prof.ipynb"
 
 class InstructorAssignmentService(AssignmentService):
-    def __init__(self, session: Session, instructor: InstructorModel, assignment: AssignmentModel):
+    def __init__(self, session: Session, instructor_model: InstructorModel, assignment_model: AssignmentModel, course_model: CourseModel):
         super().__init__(session)
-        self.instructor = instructor
-        self.assignment = assignment
-
-    def _get_is_available(self) -> bool:
-        if not self.assignment.is_published: return False
-
-        current_timestamp = self.session.scalar(func.current_timestamp())
-        return current_timestamp >= self.assignment.available_date
-    
-    def _get_is_closed(self) -> bool:
-        if not self.assignment.is_published: return False
-
-        current_timestamp = self.session.scalar(func.current_timestamp())
-        return current_timestamp > self.assignment.due_date
+        self.instructor_model = instructor_model
+        self.assignment_model = assignment_model
+        self.course_model = course_model 
     
     async def get_instructor_assignment_schema(self) -> InstructorAssignmentSchema:
-        assignment = AssignmentSchema.from_orm(self.assignment).dict()
-        assignment["is_available"] = self._get_is_available()
-        assignment["is_closed"] = self._get_is_closed()
+        assignment = AssignmentSchema.from_orm(self.assignment_model).dict()
+        course = CourseSchema.from_orm(self.course_model).dict()
+        current_timestamp = self.session.scalar(func.current_timestamp())
+
+        assignment_status = AssignmentStatus.get_value_for(assignment, course, current_timestamp)
+        assignment["is_available"] = assignment_status == AssignmentStatus.OPEN
+        assignment["is_closed"] = assignment_status == AssignmentStatus.CLOSED
+        assignment["is_published"] = assignment != AssignmentStatus.UNPUBLISHED
 
         return InstructorAssignmentSchema(**assignment)
     
 class StudentAssignmentService(AssignmentService):
-    def __init__(self, session: Session, student: StudentModel, assignment: AssignmentModel):
+    def __init__(self, session: Session, student_model: StudentModel, assignment_model: AssignmentModel, course_model: CourseModel):
         super().__init__(session)
-        self.student = student
-        self.assignment = assignment
+        self.student_model = student_model
+        self.assignment_model = assignment_model
+        self.course_model = course_model
         self.extra_time_model = self._get_extra_time_model()
 
     def _get_extra_time_model(self) -> ExtraTimeModel | None:
         extra_time_model = self.session.query(ExtraTimeModel) \
             .filter(
-                (ExtraTimeModel.assignment_id == self.assignment.id) &
-                (ExtraTimeModel.student_id == self.student.id)
+                (ExtraTimeModel.assignment_id == self.assignment_model.id) &
+                (ExtraTimeModel.student_id == self.student_model.id)
             ) \
             .first()
         return extra_time_model
 
     # The release date for a specific student, considering extra_time
     def get_adjusted_available_date(self) -> datetime | None:
-        if self.assignment.available_date is None: return None
-
+        assignmentOpenDate = self.assignment_model.available_date if self.assignment_model.available_date is not None else self.course_model.start_at
         deferred_time = self.extra_time_model.deferred_time if self.extra_time_model is not None else timedelta(0)
         
-        return self.assignment.available_date + deferred_time
+        return assignmentOpenDate + deferred_time
 
     # The due date for a specific student, considering extra_time
     def get_adjusted_due_date(self) -> datetime | None:
-        if self.assignment.due_date is None: return None
+        assignmentDueDate = self.assignment_model.due_date if self.assignment_model.due_date is not None else self.course_model.start_at 
 
         # If a student does not have any extra time allotted for the assignment,
         # allocate them a timedelta of 0.
@@ -313,7 +311,7 @@ class StudentAssignmentService(AssignmentService):
             deferred_time = timedelta(0)
             extra_time = timedelta(0)
 
-        return self.assignment.due_date + deferred_time + extra_time + self.student.base_extra_time
+        return assignmentDueDate + deferred_time + extra_time + self.student_model.base_extra_time
 
     def _get_is_available(self) -> bool:
         current_timestamp = self.session.scalar(func.current_timestamp())
@@ -324,7 +322,7 @@ class StudentAssignmentService(AssignmentService):
         return current_timestamp > self.get_adjusted_due_date()
 
     def validate_student_can_submit(self):
-        if not self.assignment.is_published:
+        if not self.assignment_model.is_published:
             raise AssignmentNotPublishedException()
 
         if not self._get_is_available():
@@ -334,11 +332,23 @@ class StudentAssignmentService(AssignmentService):
             raise AssignmentClosedException()
 
     async def get_student_assignment_schema(self) -> StudentAssignmentSchema:
-        assignment = AssignmentSchema.from_orm(self.assignment).dict()
+        assignment = AssignmentSchema.from_orm(self.assignment_model).dict()
+        course = CourseSchema.from_orm(self.course_model).dict()
+        current_timestamp = self.session.scalar(func.current_timestamp())
+        extra_time = ExtraTimeSchema.from_orm(self.extra_time_model).dict() if self.extra_time_model is not None else None
+        assignment_status = AssignmentStatus.get_value_for(
+            assignment, 
+            course, 
+            current_timestamp, 
+            extra_time=extra_time, 
+            base_extra_time=self.student_model.base_extra_time
+        )
+
         assignment["adjusted_available_date"] = self.get_adjusted_available_date()
         assignment["adjusted_due_date"] = self.get_adjusted_due_date()
-        assignment["is_available"] = self._get_is_available()
-        assignment["is_closed"] = self._get_is_closed()
+        assignment["is_available"] = assignment_status == AssignmentStatus.OPEN
+        assignment["is_closed"] = assignment_status == AssignmentStatus.CLOSED
+        assignment["is_published"] = assignment != AssignmentStatus.UNPUBLISHED
         assignment["is_deferred"] = assignment["adjusted_available_date"] != assignment["available_date"]
         assignment["is_extended"] = assignment["adjusted_due_date"] != assignment["due_date"]
 
