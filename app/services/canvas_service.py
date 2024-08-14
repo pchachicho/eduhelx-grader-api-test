@@ -335,7 +335,8 @@ class CanvasService:
         self,
         assignment_id: int,
         user_id: int,
-        grade: float,
+        # not, literally, but \in [0,1]
+        grade_percent: float,
         student_notebook: BinaryIO,
         comments: str | None = None,
     ):
@@ -362,7 +363,7 @@ class CanvasService:
             "submission": {
                 "user_id": user_id,
                 "submission_type": "online_upload",
-                "posted_grade": grade,
+                "posted_grade": f"{ grade_percent }%",
                 "file_ids": [student_notebook_file_id],
                 "submitted_at": iso_now
             },

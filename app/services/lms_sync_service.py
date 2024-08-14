@@ -172,7 +172,7 @@ class LmsSyncService:
     async def upsync_grade(
         self,
         submission: SubmissionModel,
-        grade: float,
+        grade_percent: float,
         student_notebook: BinaryIO,
         comments: str | None = None,
     ):
@@ -181,7 +181,7 @@ class LmsSyncService:
         await self.canvas_service.upload_grade(
             assignment_id=submission.assignment.id,
             user_id=student["id"],
-            grade=grade,
+            grade_percent=grade_percent,
             student_notebook=student_notebook,
             comments=comments
         )
