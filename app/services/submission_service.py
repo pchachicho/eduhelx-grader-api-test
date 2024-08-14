@@ -7,7 +7,7 @@ from app.models import StudentModel, AssignmentModel, SubmissionModel, CourseMod
 from app.core.exceptions import SubmissionNotFoundException
 from app.core.utils.datetime import get_now_with_tzinfo
 from app.models.course import CourseModel
-from app.services import StudentService, StudentAssignmentService
+from app.services import StudentService
 from app.schemas import SubmissionSchema, DatabaseSubmissionSchema
 from app.events import CreateSubmissionCrudEvent, ModifySubmissionCrudEvent, DeleteSubmissionCrudEvent
 from app.services.course_service import CourseService
@@ -27,6 +27,8 @@ class SubmissionService:
         # Alternatively, we could bake this logic into the endpoints to get submissions, rather than into this one.
 
         course = await CourseService(self.session).get_course()
+
+        from app.services import StudentAssignmentService
 
         # Assert the assignment can be submitted to by the student.
         await StudentAssignmentService(self.session, student, assignment, course).validate_student_can_submit()

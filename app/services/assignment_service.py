@@ -25,7 +25,6 @@ from app.enums.assignment_status import AssignmentStatus
 from app.schemas.extra_time import ExtraTimeSchema
 from app.services import canvas_service
 from app.services.canvas_service import CanvasService
-from app.services.submission_service import SubmissionService
 
 class AssignmentService:
     def __init__(self, session: Session):
@@ -418,6 +417,8 @@ class StudentAssignmentService(AssignmentService):
 
         if assignment_status == AssignmentStatus.CLOSED:
             raise AssignmentClosedException()
+        
+        from app.services.submission_service import SubmissionService
         
         if self.assignment.max_attempts is not None:
             attempts = await SubmissionService(self.session).get_current_submission_attempt(self.student, self.assignment)
