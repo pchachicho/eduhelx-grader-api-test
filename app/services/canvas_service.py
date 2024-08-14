@@ -358,12 +358,14 @@ class CanvasService:
             "",
             on_duplicate=DuplicateFileAction.OVERWRITE
         )
+
+        posted_grade = f"{ grade_percent * 100 }%"
         
         payload = {
             "submission": {
                 "user_id": user_id,
                 "submission_type": "online_upload",
-                "posted_grade": f"{ grade_percent }%",
+                "posted_grade": posted_grade,
                 "file_ids": [student_notebook_file_id],
                 "submitted_at": iso_now
             },
@@ -378,7 +380,7 @@ class CanvasService:
         await self._put(f"{ url }/{ user_id }", json={
             "submission": {
                 "user_id": user_id,
-                "posted_grade": grade
+                "posted_grade": posted_grade
             },
             "prefer_points_over_scheme": True
         })
