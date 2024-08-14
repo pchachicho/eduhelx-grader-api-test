@@ -70,7 +70,7 @@ class Settings(BaseSettings):
     SQLALCHEMY_DATABASE_URI: Optional[PostgresDsn] = None
 
 
-    @validator("IMPERSONATE_USER", pre=True, allow_reuse=True)
+    @validator("IMPERSONATE_USER", pre=True)
     def convert_blank_impersonate_user_to_none(cls, v: Optional[str]) -> Any:
         if v == "":
             return None
