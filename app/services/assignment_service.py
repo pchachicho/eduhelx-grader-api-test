@@ -6,7 +6,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 from app.core.exceptions.assignment import AssignmentAlreadyHasSubmissions
 from app.enums import assignment_status
-from app.enums.canvas.workflow_state_filter import WorkflowStateFilter
+from app.enums.canvas.canvas_workflow_state_filter import CanvasWorkflowStateFilter
 from app.events import dispatch
 from app.models import AssignmentModel, InstructorModel, StudentModel, ExtraTimeModel
 from app.models.course import CourseModel

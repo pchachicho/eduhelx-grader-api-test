@@ -1,6 +1,6 @@
 from enum import StrEnum
 
-class WorkflowStateFilter(StrEnum):
+class CanvasWorkflowStateFilter(StrEnum):
     SUBMITTED      = 'submitted'
     UNSUBMITTED    = 'unsubmitted'
     GRADED         = 'graded'

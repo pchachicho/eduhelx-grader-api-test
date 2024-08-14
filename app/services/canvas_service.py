@@ -12,7 +12,7 @@ from datetime import datetime
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from app.core.config import settings
-from app.enums.canvas.workflow_state_filter import WorkflowStateFilter
+from app.enums.canvas.canvas_workflow_state_filter import CanvasWorkflowStateFilter
 from app.models import UserModel, OnyenPIDModel
 from app.services import UserService, UserType
 from app.core.utils.datetime import get_now_with_tzinfo
@@ -112,7 +112,7 @@ class CanvasService:
         include_rubric_assessment: bool = False,
         include_visibility: bool = False,
         include_is_read: bool = False,
-        workflow_state_filter: WorkflowStateFilter | None = None
+        workflow_state_filter: CanvasWorkflowStateFilter | None = None
     ):
         include = []
         if include_submission_history: include.append("submission_history")
