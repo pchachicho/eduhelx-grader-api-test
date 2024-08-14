@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, PositiveInt
 from datetime import datetime
 from typing import List, Union
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -22,6 +22,7 @@ class UpdateAssignmentBody(BaseModel):
     directory_path: str = UNSET
     master_notebook_path: str = UNSET
     grader_question_feedback: bool = UNSET
+    max_attempts: PositiveInt | None
     available_date: datetime | None
     due_date: datetime | None
     is_published: bool = UNSET

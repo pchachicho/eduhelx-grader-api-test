@@ -1,5 +1,6 @@
 import json
 from typing import List
+from pydantic import PositiveInt
 from datetime import datetime, timedelta
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -16,13 +17,15 @@ from app.core.exceptions import (
     AssignmentNotPublishedException,
     AssignmentNotOpenException,
     AssignmentClosedException,
-    AssignmentDueBeforeOpenException
+    AssignmentDueBeforeOpenException,
+    SubmissionMaxAttemptsReachedException
 )
 from app.schemas.course import CourseSchema
 from app.enums.assignment_status import AssignmentStatus
 from app.schemas.extra_time import ExtraTimeSchema
 from app.services import canvas_service
 from app.services.canvas_service import CanvasService
+from app.services.submission_service import SubmissionService
 
 class AssignmentService:
     def __init__(self, session: Session):
@@ -33,6 +36,7 @@ class AssignmentService:
         id: int,
         name: str,
         directory_path: str,
+        max_attempts: PositiveInt | None,
         available_date: datetime | None,
         due_date: datetime | None,
         is_published: bool
@@ -51,6 +55,7 @@ class AssignmentService:
             directory_path=directory_path,
             # This is relative to directory_path
             master_notebook_path=f"{ name }.ipynb",
+            max_attempts=max_attempts,
             available_date=available_date,
             due_date=due_date,
             is_published=is_published
@@ -89,8 +94,8 @@ class AssignmentService:
         gitignore_content = await self.get_gitignore_content(assignment)
         
         # See comment above commented out FileOperation below
-        # readme_path = f"{ directory_path }/README.md"
-        # readme_content = f"# { name }"
+        readme_path = f"{ directory_path }/README.md"
+        readme_content = f"# { name }"
 
         requirements_path = f"{ directory_path }/requirements.txt"
         requirements_content = f"otter-grader==5.5.0"
@@ -100,11 +105,10 @@ class AssignmentService:
             # for professors since they will need to make a new one to edit it anyways per the merge control policy.
             # FileOperation(content=master_notebook_content, path=master_notebook_path, operation=FileOperationType.CREATE),
             FileOperation(content=gitignore_content, path=gitignore_path, operation=FileOperationType.CREATE),
-            # Same situation, professor probably wants readme under README.md so not helpful to create an empty one.
-            # FileOperation(content=readme_content, path=readme_path, operation=FileOperationType.CREATE),
+            FileOperation(content=readme_content, path=readme_path, operation=FileOperationType.CREATE),
             FileOperation(content=requirements_content, path=requirements_path, operation=FileOperationType.CREATE)
         ]
-
+        
         try:
             await gitea_service.modify_repository_files(
                 name=master_repository_name,
@@ -137,13 +141,15 @@ class AssignmentService:
             FileOperation(content="", path=f"{ directory_path }", operation=FileOperationType.DELETE)
         ]
 
-        await gitea_service.modify_repository_files(
-            name=master_repository_name,
-            owner=owner,
-            branch_name=branch_name,
-            commit_message=f"Delete assignment",
-            files=files_to_modify
-        )
+        """ (maybe) this can come back in the future.
+        But it violates the merge control policy if active, which is problematic at the moment."""
+        # await gitea_service.modify_repository_files(
+        #     name=master_repository_name,
+        #     owner=owner,
+        #     branch_name=branch_name,
+        #     commit_message=f"Delete assignment",
+        #     files=files_to_modify
+        # )
 
         self.session.delete(assignment)
         self.session.commit()
@@ -184,6 +190,9 @@ class AssignmentService:
 
         if "grader_question_feedback" in update_fields:
             assignment.grader_question_feedback = update_fields["grader_question_feedback"]
+
+        if "max_attempts" in update_fields:
+            assignment.max_attempts = update_fields["max_attempts"]
 
         if "available_date" in update_fields:
             assignment.available_date = update_fields["available_date"]
@@ -230,7 +239,7 @@ class AssignmentService:
 
     """ Compute the default gitignore for an assignment. """
     async def get_gitignore_content(self, assignment: AssignmentModel) -> str:
-        protected_files = ["\n".join(file) for file in await self.get_protected_files(assignment)]
+        protected_files_str = "\n".join(await self.get_protected_files(assignment))
 
         return f"""### Defaults ###
 __pycache__/
@@ -239,23 +248,38 @@ __pycache__/
 *venv
 .ipynb_checkpoints
 .OTTER_LOG
+*~backup
+.nfs*
 
 ### Protected ###
-{ protected_files }
+{ protected_files_str }
 """
     
     """
     NOTE: File paths are not necessarily real files and may instead be globs.
     NOTE: File paths are relative to `assignment.directory_path`.
     """
-    async def get_protected_files(self, assignment: AssignmentModel) -> str:
+    async def get_protected_files(self, assignment: AssignmentModel) -> list[str]:
         return [
             "*grades.csv",
             "*grading_config.json",
             assignment.master_notebook_path,
             f"{ assignment.name }-dist",
-            ".ssh",
+            "**/.ssh",
             "prof-scripts"
+        ]
+    
+    """
+    NOTE: File paths are not necessarily real files and may instead be globs.
+    NOTE: File paths are relative to `assignment.directory_path`
+    """
+    async def get_overwritable_files(self, assignment: AssignmentModel) -> list[str]:
+        return [
+            "README.md",
+            "helpers.*",
+            "requirements.txt",
+            "instruction*.txt",
+            ".gitignore",
         ]
     
     async def get_master_notebook_name(self, assignment: AssignmentModel) -> str:
@@ -384,7 +408,7 @@ class StudentAssignmentService(AssignmentService):
         if adjusted_due_date > current_timestamp: return AssignmentStatus.OPEN
         else: return AssignmentStatus.CLOSED
 
-    def validate_student_can_submit(self):
+    async def validate_student_can_submit(self):
         assignment_status = self.get_assignment_status()
         if assignment_status == AssignmentStatus.UNPUBLISHED:
             raise AssignmentNotPublishedException()
@@ -394,11 +418,22 @@ class StudentAssignmentService(AssignmentService):
 
         if assignment_status == AssignmentStatus.CLOSED:
             raise AssignmentClosedException()
+        
+        if self.assignment.max_attempts is not None:
+            attempts = await SubmissionService(self.session).get_current_submission_attempt(self.student, self.assignment)
+            if attempts >= self.assignment.max_attempts:
+                raise SubmissionMaxAttemptsReachedException()
 
     async def get_student_assignment_schema(self) -> StudentAssignmentSchema:
         assignment = AssignmentSchema.from_orm(self.assignment_model).dict()
         assignment_status = self.get_assignment_status()
 
+        assignment["protected_files"] = await self.get_protected_files(self.assignment_model)
+        assignment["overwritable_files"] = await self.get_overwritable_files(self.assignment_model)
+        assignment["current_attempts"] = await SubmissionService(self.session).get_current_submission_attempt(
+            self.student_model,
+            self.assignment_model
+        )
         assignment["adjusted_available_date"] = self.get_adjusted_available_date()
         assignment["adjusted_due_date"] = self.get_adjusted_due_date()
         assignment["is_available"] = assignment_status == AssignmentStatus.OPEN

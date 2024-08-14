@@ -144,16 +144,6 @@ class CanvasService:
         if student_id is not None: return submissions[0]
         return submissions
     
-    """ Get the current attempt count of the student for the assignment. If the student hasn't submitted, then 0. """
-    async def get_current_submission_attempts(
-        self,
-        assignment_id: int,
-        student_id: int
-    ):
-        submission = await self.get_submissions(assignment_id, student_id)
-        if submission["submitted_at"] is None: return 0
-        return len(submission["submission_history"])
-    
     async def get_students(self):
         return await self.get_users(user_type=UserType.STUDENT)
 

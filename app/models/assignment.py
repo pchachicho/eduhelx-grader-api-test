@@ -18,6 +18,7 @@ class AssignmentModel(Base):
     # of the file within the repo is `/{directory_path}/{master_notebook_path}`
     master_notebook_path = Column(Text, nullable=False)
     grader_question_feedback = Column(Boolean, server_default='t', nullable=False)
+    max_attempts = Column(Integer, nullable=True)
     created_date = Column(DateTime(timezone=True), server_default=func.current_timestamp())
     available_date = Column(DateTime(timezone=True))
     due_date = Column(DateTime(timezone=True))

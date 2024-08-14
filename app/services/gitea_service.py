@@ -38,7 +38,8 @@ class GiteaService:
         self.client = httpx.AsyncClient(
             base_url=f"{ self.api_url }",
             headers={
-                "User-Agent": f"eduhelx_grader_api"
+                "User-Agent": f"eduhelx_grader_api",
+                "Authorization": f"Bearer { settings.GITEA_ASSIST_AUTH_TOKEN }"
             },
             timeout=httpx.Timeout(10)
         )
@@ -361,6 +362,15 @@ fi
         assignment_service = AssignmentService(self.session)
 
         assignments = await assignment_service.get_assignments()
+        
+        init_overwritable_patterns = []
+        for assignment in assignments:
+            overwritable_patterns = await assignment_service.get_overwritable_files(assignment)
+            for pattern in overwritable_patterns:
+                declaration = f'overwritable_patterns+=("{ assignment.directory_path }/{ pattern }")'
+                init_overwritable_patterns.append(declaration)
+        init_overwritable_patterns = "\n".join(init_overwritable_patterns)
+
         init_assignments_assoc = []
         for assignment in assignments:
             if assignment.available_date is not None and assignment.due_date is not None:
@@ -377,8 +387,23 @@ z40=0000000000000000000000000000000000000000
 # Epoch time
 current_timestamp=$(date -u +%s)
 declare -a violations
+declare -a overwritable_patterns
 declare -A assignments
+{ init_overwritable_patterns }
 { init_assignments_assoc }
+
+function is_overwritable() {{
+    local file="$1"
+
+    for glob in "${{overwritable_patterns[@]}}"; do
+        if [[ "$file" == $glob ]]; then
+            return 0
+        fi
+    done
+
+    return 1
+}}
+
 while read oldrev newrev refname; do
     if [ $oldrev == $z40 ]; then
         # Commit being pushed is for a new branch, use empty tree SHA
@@ -389,9 +414,11 @@ while read oldrev newrev refname; do
     while IFS= read -r file; do
         for directory_path in "${{!assignments[@]}}"; do
             if [[ "${{file}}" == "${{directory_path}}"* ]]; then
-                # Assignment has already opened to some students, so can't modify this file.
+                # Assignment has already opened to some students, so can't modify this file, unless overwritable.
                 if [ "${{current_timestamp}}" -gt "${{assignments[$directory_path]}}" ]; then
-                    violations+=("$file")
+                    if ! is_overwritable "$file"; then
+                        violations+=("$file")
+                    fi
                 fi
             fi
         done

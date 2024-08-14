@@ -29,7 +29,7 @@ class SubmissionService:
         course = await CourseService(self.session).get_course()
 
         # Assert the assignment can be submitted to by the student.
-        StudentAssignmentService(self.session, student, assignment, course).validate_student_can_submit()
+        await StudentAssignmentService(self.session, student, assignment, course).validate_student_can_submit()
 
         submission = SubmissionModel(
             student_id=student.id,
@@ -83,14 +83,17 @@ class SubmissionService:
         if submission is None:
             raise SubmissionNotFoundException()
         return submission
-    
-    async def get_submission_attempts(
+        
+    """ NOTE: Marked for refactor. Not a fan of this workflow... """
+    async def get_current_submission_attempt(
         self,
-        submission: SubmissionModel
-    ):
-        return self.session.query(SubmissionModel) \
-            .filter(SubmissionModel.submission_time < submission.submission_time) \
-            .count() + 1
+        student: StudentModel,
+        assignment: AssignmentModel
+    ) -> int:
+        student_submissions = self.session.query(SubmissionModel) \
+            .filter(SubmissionModel.assignment_id == assignment.id) \
+            .filter(SubmissionModel.student_id == student.id)
+        return student_submissions.count()
         
     async def get_submission_schema(self, submission: SubmissionModel) -> SubmissionSchema:
         submission_schema = DatabaseSubmissionSchema.from_orm(submission).dict()

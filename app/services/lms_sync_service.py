@@ -8,8 +8,7 @@ from app.services.ldap_service import LDAPService
 from app.services.assignment_service import AssignmentService
 from app.services.user.student_service import StudentService
 from app.services.user.instructor_service import InstructorService
-from app.models.submission import SubmissionModel
-from app.models.assignment import AssignmentModel
+from app.models import AssignmentModel, StudentModel, SubmissionModel
 from app.schemas.course import UpdateCourseSchema
 from app.schemas.assignment import UpdateAssignmentSchema
 from app.core.exceptions import (
@@ -63,6 +62,8 @@ class LmsSyncService:
                 await self.assignment_service.delete_assignment(assignment)
 
         for assignment in canvas_assignments:
+            # Canvas uses -1 for unlimited attempts.
+            max_attempts = assignment["allowed_attempts"] if assignment["allowed_attempts"] >= 0 else None
             try:
                 db_assignment = await self.assignment_service.get_assignment_by_id(assignment['id'])
 
@@ -70,7 +71,8 @@ class LmsSyncService:
                     name=assignment["name"],
                     available_date=assignment["unlock_at"],
                     due_date=assignment["due_at"],
-                    is_published=assignment["published"]
+                    is_published=assignment["published"],
+                    max_attempts=max_attempts
                 ))
 
             except AssignmentNotFoundException as e:
@@ -81,7 +83,8 @@ class LmsSyncService:
                     due_date=assignment['due_at'], 
                     available_date=assignment['unlock_at'],
                     directory_path=assignment['name'],
-                    is_published=assignment['published']
+                    is_published=assignment['published'],
+                    max_attempts=max_attempts
                 )
         
         return canvas_assignments

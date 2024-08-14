@@ -1,6 +1,5 @@
-from typing import List
-from datetime import datetime, timedelta
-from pydantic import BaseModel
+from datetime import datetime
+from pydantic import BaseModel, PositiveInt
 
 from app.enums.assignment_status import AssignmentStatus
 from ._unset import UNSET
@@ -15,6 +14,7 @@ class AssignmentSchema(BaseModel):
     # Relative to the assignment root (directory_path)
     student_notebook_path: str
     grader_question_feedback: bool
+    max_attempts: PositiveInt | None
     created_date: datetime
     available_date: datetime | None
     due_date: datetime | None
@@ -29,18 +29,29 @@ class UpdateAssignmentSchema(BaseModel):
     directory_path: str = UNSET
     master_notebook_path: str = UNSET
     grader_question_feedback: bool = UNSET
+    max_attempts: PositiveInt | None
     available_date: datetime | None
     due_date: datetime | None
     is_published: bool = UNSET
 
 # Adds in fields relevant for JLP (tailored to the professor)
 class InstructorAssignmentSchema(AssignmentSchema):
+    # These are globs, not necessarily actual file paths.
+    overwritable_files: list[str]
+    # These are globs, not necessarily actual file paths.
+    protected_files: list[str]
+    
     is_available: bool
     is_closed: bool
     status: AssignmentStatus
 
 # Adds in student-specific fields to the assignment (tailored to a particular student)
 class StudentAssignmentSchema(AssignmentSchema):
+    # These are globs, not necessarily actual file paths.
+    overwritable_files: list[str]
+    # These are globs, not necessarily actual file paths.
+    protected_files: list[str]
+    current_attempts: int
     adjusted_available_date: datetime | None
     adjusted_due_date: datetime | None
     is_available: bool

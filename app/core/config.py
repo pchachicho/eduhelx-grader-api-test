@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     # Gitea
     GITEA_SSH_URL: str
     GITEA_ASSIST_API_URL: str
+    GITEA_ASSIST_AUTH_TOKEN: str
 
     # Appstore
     STUDENT_APPSTORE_HOST: str
@@ -69,7 +70,7 @@ class Settings(BaseSettings):
     SQLALCHEMY_DATABASE_URI: Optional[PostgresDsn] = None
 
 
-    @validator("IMPERSONATE_USER", pre=True)
+    @validator("IMPERSONATE_USER", pre=True, allow_reuse=True)
     def convert_blank_impersonate_user_to_none(cls, v: Optional[str]) -> Any:
         if v == "":
             return None
