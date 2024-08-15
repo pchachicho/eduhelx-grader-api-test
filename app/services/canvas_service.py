@@ -71,6 +71,12 @@ class CanvasService:
         return res.json()
     
     async def _get(self, endpoint: str, **kwargs):
+        if 'params' not in kwargs:
+            kwargs['params'] = {}
+        
+        # Set or override the 'per_page' parameter to 100
+        kwargs['params']['per_page'] = 100
+
         return await self._make_request("GET", endpoint, **kwargs)
 
     async def _post(self, endpoint: str, **kwargs):
