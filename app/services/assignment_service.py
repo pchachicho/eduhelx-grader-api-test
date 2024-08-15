@@ -323,10 +323,9 @@ class InstructorAssignmentService(AssignmentService):
     
     async def get_instructor_assignment_schema(self) -> InstructorAssignmentSchema:
         assignment = AssignmentSchema.from_orm(self.assignment_model).dict()
-        course = CourseSchema.from_orm(self.course_model).dict()
-        current_timestamp = self.session.scalar(func.current_timestamp())
 
         assignment_status = self.get_assignment_status()
+        assignment["status"] = assignment_status.lower
         assignment["is_available"] = assignment_status == AssignmentStatus.OPEN
         assignment["is_closed"] = assignment_status == AssignmentStatus.CLOSED
         assignment["is_published"] = assignment != AssignmentStatus.UNPUBLISHED
@@ -424,6 +423,7 @@ class StudentAssignmentService(AssignmentService):
             self.student_model,
             self.assignment_model
         )
+        assignment["status"] = assignment_status.lower
         assignment["adjusted_available_date"] = self.get_adjusted_available_date()
         assignment["adjusted_due_date"] = self.get_adjusted_due_date()
         assignment["is_available"] = assignment_status == AssignmentStatus.OPEN
