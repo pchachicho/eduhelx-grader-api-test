@@ -26,6 +26,9 @@ class LmsSyncService:
         self.ldap_service = LDAPService()
         self.session = session
 
+    async def get_assignment(self, assignment_id):
+        await self.canvas_service.get_assignment(assignment_id)
+
     async def sync_course(self):
         print("SYNC COURSE")
         try:
@@ -195,7 +198,9 @@ class LmsSyncService:
         await self.canvas_service.update_assignment(assignment.id, UpdateCanvasAssignmentBody(
             name=assignment.name,
             available_date=assignment.available_date,
-            due_date=assignment.due_date
+            due_date=assignment.due_date,
+            is_published=assignment.is_published,
+            max_attempts=assignment.max_attempts
         ))
         
 

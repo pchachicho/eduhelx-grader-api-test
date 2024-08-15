@@ -30,7 +30,7 @@ class AssignmentNotFoundException(CustomException):
     error_code = "ASSIGNMENT__NOT_FOUND"
     message = "assignment not found"
 
-class AssignmentAlreadyHasSubmissions(CustomException):
+class AssignmentCannotBeUnpublished(CustomException):
     code = 400
-    error_code = "ASSIGNMENT__ALREADY_HAS_SUBMISSIONS"
-    message = "assignment already has submission"
+    error_code = "ASSIGNMENT__CANNOT_BE_UNPUBLISHED"
+    message = "assignment cannot be unpublished"

@@ -7,13 +7,18 @@ from mimetypes import guess_type
 from pathlib import Path
 from enum import Enum
 from urllib.parse import urlparse
-from pydantic import BaseModel
+from pydantic import BaseModel, PositiveInt
 from datetime import datetime
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from app.core.config import settings
+from app.core.exceptions.assignment import AssignmentNotPublishedException
+from app.enums.assignment_status import AssignmentStatus
 from app.enums.canvas.canvas_workflow_state_filter import CanvasWorkflowStateFilter
 from app.models import UserModel, OnyenPIDModel
+from app.models.assignment import AssignmentModel
+from app.models.course import CourseModel
+from app.models.user.student import StudentModel
 from app.services import UserService, UserType
 from app.core.utils.datetime import get_now_with_tzinfo
 from app.core.exceptions import (
@@ -30,6 +35,8 @@ class UpdateCanvasAssignmentBody(BaseModel):
     name: str | None
     available_date: datetime | None
     due_date: datetime | None
+    max_attempts: PositiveInt | None
+    is_published: bool | None
 
 class CanvasService:
     def __init__(self, db: Session):
@@ -101,7 +108,7 @@ class CanvasService:
     
     """ NOTE: Will return a Submission for every specified student_id, even if they have not submitted (submitted_at = None). """
     """ NOTE: include_submission_history includes the returned Submission as its final element. """
-    async def get_submissions_for_assignments(
+    async def _get_submissions_for_assignments(
         self,
         assignment_ids: list[int],
         student_ids: list[int],
@@ -140,7 +147,7 @@ class CanvasService:
         **kwargs
     ):
         student_ids = [student_id] if student_id is not None else []
-        submissions = await self.get_submissions_for_assignments([assignment_id], student_ids, **kwargs)
+        submissions = await self._get_submissions_for_assignments([assignment_id], student_ids, **kwargs)
         if student_id is not None: return submissions[0]
         return submissions
     
@@ -397,6 +404,9 @@ class CanvasService:
         if "due_date" in payload:
             due_at = payload.pop("due_date")
             payload["due_at"] = due_at.isoformat() if due_at is not None else None
+        if "max_attempts" in payload:
+            allowed_attempts = payload.pop("max_attempts")
+            payload["allowed_attempts"] = allowed_attempts if allowed_attempts is not None else -1
         return await self._put(url, json={
             "assignment": payload
         })

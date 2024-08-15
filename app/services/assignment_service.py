@@ -4,9 +4,7 @@ from pydantic import PositiveInt
 from datetime import datetime, timedelta
 from sqlalchemy import func
 from sqlalchemy.orm import Session
-from app.core.exceptions.assignment import AssignmentAlreadyHasSubmissions
-from app.enums import assignment_status
-from app.enums.canvas.canvas_workflow_state_filter import CanvasWorkflowStateFilter
+from app.core.exceptions.assignment import AssignmentCannotBeUnpublished
 from app.events import dispatch
 from app.models import AssignmentModel, InstructorModel, StudentModel, ExtraTimeModel
 from app.models.course import CourseModel
@@ -22,9 +20,10 @@ from app.core.exceptions import (
 )
 from app.schemas.course import CourseSchema
 from app.enums.assignment_status import AssignmentStatus
-from app.schemas.extra_time import ExtraTimeSchema
-from app.services import canvas_service
+from app.services import lms_sync_service
 from app.services.canvas_service import CanvasService
+from app.services.lms_sync_service import LmsSyncService
+from app.services.submission_service import SubmissionService
 
 class AssignmentService:
     def __init__(self, session: Session):
@@ -175,7 +174,12 @@ class AssignmentService:
             raise AssignmentNotFoundException()
         return assignment
     
-    async def update_assignment(self, assignment: AssignmentModel, update_assignment: UpdateAssignmentSchema) -> AssignmentModel:
+    async def update_assignment(
+            self, 
+            assignment: AssignmentModel, 
+            update_assignment: UpdateAssignmentSchema, 
+            student_id: int | None = None
+    ) -> AssignmentModel:
         update_fields = update_assignment.dict(exclude_unset=True)
         
         if "name" in update_fields:
@@ -201,14 +205,13 @@ class AssignmentService:
 
         if "is_published" in update_fields:
             if update_fields["is_published"] == False:
-                canvas_service = CanvasService(self.session)
-                submissions = await canvas_service.get_submissions(assignment.id)
-                if len([sub for sub in submissions if sub["workflow_state"] != "unsubmitted"]) > 0:
-                    raise AssignmentAlreadyHasSubmissions("assignment")
+                canvas_assignment = LmsSyncService(self.session).get_assignment(assignment.id)
+                if canvas_assignment["unpublishable"] == False:
+                    raise AssignmentCannotBeUnpublished
             assignment.is_published = update_fields["is_published"]
 
         if assignment.available_date is not None and assignment.due_date is not None and assignment.available_date >= assignment.due_date:
-            raise AssignmentDueBeforeOpenException
+            raise AssignmentDueBeforeOpenException()
 
         self.session.commit()
 
@@ -299,28 +302,18 @@ class InstructorAssignmentService(AssignmentService):
     def get_adjusted_available_date(self) -> datetime | None:
         assignmentOpenDate = self.assignment_model.available_date or self.course_model.start_at
         if assignmentOpenDate is None: return None
-        deferred_time = self.extra_time_model.deferred_time or timedelta(0)
         
-        return assignmentOpenDate + deferred_time
+        return assignmentOpenDate
 
     # The due date for a specific student, considering extra_time
     def get_adjusted_due_date(self) -> datetime | None:
         assignmentDueDate = self.assignment_model.due_date or self.course_model.end_at
         if assignmentDueDate is None: return None
 
-        # If a student does not have any extra time allotted for the assignment,
-        # allocate them a timedelta of 0.
-        if self.extra_time_model is not None:
-            deferred_time = self.extra_time_model.deferred_time
-            extra_time = self.extra_time_model.extra_time
-        else:
-            deferred_time = timedelta(0)
-            extra_time = timedelta(0)
-
-        return assignmentDueDate + deferred_time + extra_time + self.student_model.base_extra_time
+        return assignmentDueDate
 
     def get_assignment_status(self) -> AssignmentStatus:
-        if not self.assignment.is_published: return AssignmentStatus.UNPUBLISHED
+        if not self.assignment_model.is_published: return AssignmentStatus.UNPUBLISHED
 
         current_timestamp = self.session.scalar(func.current_timestamp())
         adjusted_available_date = self.get_adjusted_available_date()
@@ -335,7 +328,7 @@ class InstructorAssignmentService(AssignmentService):
         course = CourseSchema.from_orm(self.course_model).dict()
         current_timestamp = self.session.scalar(func.current_timestamp())
 
-        assignment_status = AssignmentStatus.get_value_for(assignment, course, current_timestamp)
+        assignment_status = self.get_assignment_status()
         assignment["is_available"] = assignment_status == AssignmentStatus.OPEN
         assignment["is_closed"] = assignment_status == AssignmentStatus.CLOSED
         assignment["is_published"] = assignment != AssignmentStatus.UNPUBLISHED
@@ -397,7 +390,7 @@ class StudentAssignmentService(AssignmentService):
         return current_timestamp > adjusted_due_date
     
     def get_assignment_status(self) -> AssignmentStatus:
-        if not self.assignment.is_published: return AssignmentStatus.UNPUBLISHED
+        if not self.assignment_model.is_published: return AssignmentStatus.UNPUBLISHED
 
         current_timestamp = self.session.scalar(func.current_timestamp())
         adjusted_available_date = self.get_adjusted_available_date()
@@ -420,9 +413,9 @@ class StudentAssignmentService(AssignmentService):
         
         from app.services.submission_service import SubmissionService
         
-        if self.assignment.max_attempts is not None:
-            attempts = await SubmissionService(self.session).get_current_submission_attempt(self.student, self.assignment)
-            if attempts >= self.assignment.max_attempts:
+        if self.assignment_model.max_attempts is not None:
+            attempts = await SubmissionService(self.session).get_current_submission_attempt(self.student_model, self.assignment_model)
+            if attempts >= self.assignment_model.max_attempts:
                 raise SubmissionMaxAttemptsReachedException()
 
     async def get_student_assignment_schema(self) -> StudentAssignmentSchema:
