@@ -20,9 +20,6 @@ from app.core.exceptions import (
 )
 from app.schemas.course import CourseSchema
 from app.enums.assignment_status import AssignmentStatus
-from app.services import lms_sync_service
-from app.services.canvas_service import CanvasService
-from app.services.lms_sync_service import LmsSyncService
 from app.services.submission_service import SubmissionService
 
 class AssignmentService:
@@ -91,7 +88,6 @@ class AssignmentService:
         gitignore_path = f"{ directory_path }/.gitignore"
         gitignore_content = await self.get_gitignore_content(assignment)
         
-        # See comment above commented out FileOperation below
         readme_path = f"{ directory_path }/README.md"
         readme_content = f"# { name }"
 
@@ -180,6 +176,8 @@ class AssignmentService:
             update_assignment: UpdateAssignmentSchema, 
             student_id: int | None = None
     ) -> AssignmentModel:
+        from app.services.lms_sync_service import LmsSyncService
+
         update_fields = update_assignment.dict(exclude_unset=True)
         
         if "name" in update_fields:
@@ -205,7 +203,7 @@ class AssignmentService:
 
         if "is_published" in update_fields:
             if update_fields["is_published"] == False:
-                canvas_assignment = LmsSyncService(self.session).get_assignment(assignment.id)
+                canvas_assignment = await LmsSyncService(self.session).get_assignment(assignment.id)
                 if canvas_assignment["unpublishable"] == False:
                     raise AssignmentCannotBeUnpublished
             assignment.is_published = update_fields["is_published"]
@@ -300,17 +298,17 @@ class InstructorAssignmentService(AssignmentService):
 
     # The release date for a specific student, considering extra_time
     def get_adjusted_available_date(self) -> datetime | None:
-        assignmentOpenDate = self.assignment_model.available_date or self.course_model.start_at
-        if assignmentOpenDate is None: return None
+        assignment_open_date = self.assignment_model.available_date or self.course_model.start_at
+        if assignment_open_date is None: return None
         
-        return assignmentOpenDate
+        return assignment_open_date
 
     # The due date for a specific student, considering extra_time
     def get_adjusted_due_date(self) -> datetime | None:
-        assignmentDueDate = self.assignment_model.due_date or self.course_model.end_at
-        if assignmentDueDate is None: return None
+        assignment_due_date = self.assignment_model.due_date or self.course_model.end_at
+        if assignment_due_date is None: return None
 
-        return assignmentDueDate
+        return assignment_due_date
 
     def get_assignment_status(self) -> AssignmentStatus:
         if not self.assignment_model.is_published: return AssignmentStatus.UNPUBLISHED
@@ -354,16 +352,16 @@ class StudentAssignmentService(AssignmentService):
 
     # The release date for a specific student, considering extra_time
     def get_adjusted_available_date(self) -> datetime | None:
-        assignmentOpenDate = self.assignment_model.available_date or self.course_model.start_at
-        if assignmentOpenDate is None: return None
+        assignment_open_date = self.assignment_model.available_date or self.course_model.start_at
+        if assignment_open_date is None: return None
         deferred_time = self.extra_time_model.deferred_time or timedelta(0)
         
-        return assignmentOpenDate + deferred_time
+        return assignment_open_date + deferred_time
 
     # The due date for a specific student, considering extra_time
     def get_adjusted_due_date(self) -> datetime | None:
-        assignmentDueDate = self.assignment_model.due_date or self.course_model.end_at
-        if assignmentDueDate is None: return None
+        assignment_due_date = self.assignment_model.due_date or self.course_model.end_at
+        if assignment_due_date is None: return None
 
         # If a student does not have any extra time allotted for the assignment,
         # allocate them a timedelta of 0.
@@ -374,7 +372,7 @@ class StudentAssignmentService(AssignmentService):
             deferred_time = timedelta(0)
             extra_time = timedelta(0)
 
-        return assignmentDueDate + deferred_time + extra_time + self.student_model.base_extra_time
+        return assignment_due_date + deferred_time + extra_time + self.student_model.base_extra_time
 
     def _get_is_available(self) -> bool:
         adjusted_available_date = self.get_adjusted_available_date()
@@ -410,8 +408,6 @@ class StudentAssignmentService(AssignmentService):
 
         if assignment_status == AssignmentStatus.CLOSED:
             raise AssignmentClosedException()
-        
-        from app.services.submission_service import SubmissionService
         
         if self.assignment_model.max_attempts is not None:
             attempts = await SubmissionService(self.session).get_current_submission_attempt(self.student_model, self.assignment_model)

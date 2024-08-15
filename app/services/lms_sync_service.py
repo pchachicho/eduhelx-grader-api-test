@@ -27,7 +27,7 @@ class LmsSyncService:
         self.session = session
 
     async def get_assignment(self, assignment_id):
-        await self.canvas_service.get_assignment(assignment_id)
+        return await self.canvas_service.get_assignment(assignment_id)
 
     async def sync_course(self):
         print("SYNC COURSE")
