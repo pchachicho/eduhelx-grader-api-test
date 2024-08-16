@@ -1,6 +1,6 @@
-from enum import StrEnum
+from enum import Enum
 
-class CanvasEnrollmentType(StrEnum):
+class CanvasEnrollmentType(str, Enum):
     STUDENT     = 'student'
     TEACHER     = 'teacher'
     TA          = 'ta'

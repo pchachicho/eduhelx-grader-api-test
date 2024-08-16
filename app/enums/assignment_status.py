@@ -1,6 +1,6 @@
-from enum import StrEnum
+from enum import Enum
 
-class AssignmentStatus(StrEnum):
+class AssignmentStatus(str, Enum):
     UNPUBLISHED = 'UNPUBLISHED'
     UPCOMING    = 'UPCOMING'
     OPEN        = 'OPEN'
