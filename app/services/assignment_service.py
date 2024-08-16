@@ -324,8 +324,11 @@ class InstructorAssignmentService(AssignmentService):
     async def get_instructor_assignment_schema(self) -> InstructorAssignmentSchema:
         assignment = AssignmentSchema.from_orm(self.assignment_model).dict()
 
+        assignment["protected_files"] = await self.get_protected_files(self.assignment_model)
+        assignment["overwritable_files"] = await self.get_overwritable_files(self.assignment_model)
+
         assignment_status = self.get_assignment_status()
-        assignment["status"] = assignment_status.lower
+        assignment["status"] = assignment_status.value
         assignment["is_available"] = assignment_status == AssignmentStatus.OPEN
         assignment["is_closed"] = assignment_status == AssignmentStatus.CLOSED
         assignment["is_published"] = assignment != AssignmentStatus.UNPUBLISHED
@@ -424,7 +427,7 @@ class StudentAssignmentService(AssignmentService):
             self.student_model,
             self.assignment_model
         )
-        assignment["status"] = assignment_status.lower
+        assignment["status"] = assignment_status.value
         assignment["adjusted_available_date"] = self.get_adjusted_available_date()
         assignment["adjusted_due_date"] = self.get_adjusted_due_date()
         assignment["is_available"] = assignment_status == AssignmentStatus.OPEN
