@@ -315,10 +315,15 @@ class InstructorAssignmentService(AssignmentService):
         current_timestamp = self.session.scalar(func.current_timestamp())
         adjusted_available_date = self.get_adjusted_available_date()
         adjusted_due_date = self.get_adjusted_due_date()
-        
-        if adjusted_available_date is None or adjusted_available_date >= current_timestamp: return AssignmentStatus.UPCOMING
 
-        if adjusted_due_date and adjusted_due_date > current_timestamp: return AssignmentStatus.OPEN
+        # Until a course is properly configured (has start_at,end_at dates),
+        # all published assignments will display as upcoming. 
+        if adjusted_available_date is None or adjusted_due_date is None:
+            return AssignmentStatus.UPCOMING
+        
+        if adjusted_available_date >= current_timestamp: return AssignmentStatus.UPCOMING
+
+        if adjusted_due_date > current_timestamp: return AssignmentStatus.OPEN
         else: return AssignmentStatus.CLOSED
     
     async def get_instructor_assignment_schema(self) -> InstructorAssignmentSchema:
@@ -356,7 +361,7 @@ class StudentAssignmentService(AssignmentService):
     def get_adjusted_available_date(self) -> datetime | None:
         assignment_open_date = self.assignment_model.available_date or self.course_model.start_at
         if assignment_open_date is None: return None
-        deferred_time = self.extra_time_model.deferred_time or timedelta(0)
+        deferred_time = self.extra_time_model.deferred_time if self.extra_time_model is not None else timedelta(0)
         
         return assignment_open_date + deferred_time
 
@@ -374,6 +379,7 @@ class StudentAssignmentService(AssignmentService):
             deferred_time = timedelta(0)
             extra_time = timedelta(0)
 
+        # Base due date + have to defer by whatever amount the available date was deferred by + extra time + base extra time
         return assignment_due_date + deferred_time + extra_time + self.student_model.base_extra_time
 
     def _get_is_available(self) -> bool:
@@ -395,10 +401,15 @@ class StudentAssignmentService(AssignmentService):
         current_timestamp = self.session.scalar(func.current_timestamp())
         adjusted_available_date = self.get_adjusted_available_date()
         adjusted_due_date = self.get_adjusted_due_date()
-        
-        if adjusted_available_date is None or adjusted_available_date >= current_timestamp: return AssignmentStatus.UPCOMING
 
-        if adjusted_due_date and adjusted_due_date > current_timestamp: return AssignmentStatus.OPEN
+        # Until a course is properly configured (has start_at,end_at dates),
+        # all published assignments will display as upcoming. 
+        if adjusted_available_date is None or adjusted_due_date is None:
+            return AssignmentStatus.UPCOMING
+        
+        if adjusted_available_date >= current_timestamp: return AssignmentStatus.UPCOMING
+
+        if adjusted_due_date > current_timestamp: return AssignmentStatus.OPEN
         else: return AssignmentStatus.CLOSED
 
     async def validate_student_can_submit(self):
