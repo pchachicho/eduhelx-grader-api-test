@@ -316,8 +316,9 @@ class InstructorAssignmentService(AssignmentService):
         adjusted_available_date = self.get_adjusted_available_date()
         adjusted_due_date = self.get_adjusted_due_date()
         
-        if adjusted_available_date >= current_timestamp: return AssignmentStatus.UPCOMING
-        if adjusted_due_date > current_timestamp: return AssignmentStatus.OPEN
+        if adjusted_available_date is None or adjusted_available_date >= current_timestamp: return AssignmentStatus.UPCOMING
+
+        if adjusted_due_date and adjusted_due_date > current_timestamp: return AssignmentStatus.OPEN
         else: return AssignmentStatus.CLOSED
     
     async def get_instructor_assignment_schema(self) -> InstructorAssignmentSchema:
