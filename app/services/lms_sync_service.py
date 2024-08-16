@@ -92,10 +92,10 @@ class LmsSyncService:
         canvas_students = await self.canvas_service.get_students()
 
         # If this course runs on a 2U Digital Campus instance, remove ":UNC" from the PID
-        for instructor in canvas_students:
-            sis_user_id = instructor.get("sis_user_id")
+        for student in canvas_students:
+            sis_user_id = student.get("sis_user_id")
             if sis_user_id and ':' in sis_user_id:
-                instructor["sis_user_id"] = sis_user_id.split(':')[0]
+                student["sis_user_id"] = sis_user_id.split(':')[0]
 
         canvas_student_pids = [s["sis_user_id"] for s in canvas_students]
         
