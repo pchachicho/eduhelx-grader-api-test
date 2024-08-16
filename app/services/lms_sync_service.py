@@ -90,6 +90,13 @@ class LmsSyncService:
     async def sync_students(self):
         db_students = await self.student_service.list_students()
         canvas_students = await self.canvas_service.get_students()
+
+        # If this course runs on a 2U Digital Campus instance, remove ":UNC" from the PID
+        for student in canvas_students:
+            sis_user_id = student.get("sis_user_id")
+            if sis_user_id and ':' in sis_user_id:
+                student["sis_user_id"] = sis_user_id.split(':')[0]
+
         canvas_student_pids = [s["sis_user_id"] for s in canvas_students]
         
         # Delete students that are in the database but not in Canvas
@@ -131,6 +138,13 @@ class LmsSyncService:
     async def sync_instructors(self):
         db_instructors = await self.instructor_service.list_instructors()
         canvas_instructors = await self.canvas_service.get_instructors()
+
+        # If this course runs on a 2U Digital Campus instance, remove ":UNC" from the PID
+        for instructor in canvas_instructors:
+            sis_user_id = instructor.get("sis_user_id")
+            if sis_user_id and ':' in sis_user_id:
+                instructor["sis_user_id"] = sis_user_id.split(':')[0]
+
         canvas_instructor_pids = [i["sis_user_id"] for i in canvas_instructors]
        
         # Delete instructors that are in the database but not in Canvas
@@ -177,6 +191,11 @@ class LmsSyncService:
         comments: str | None = None,
     ):
         user_pid = await self.canvas_service.get_pid_from_onyen(submission.student.onyen)
+        
+        # If this course runs on a 2U Digital Campus instance, append ":UNC" to the PID
+        if "digitalcampus" in settings.CANVAS_API_URL:
+            user_pid += ":UNC"
+
         student = await self.canvas_service.get_student_by_pid(user_pid)
         await self.canvas_service.upload_grade(
             assignment_id=submission.assignment.id,
@@ -203,3 +222,4 @@ class LmsSyncService:
         await self.sync_assignments()
         await self.sync_students()
         await self.sync_instructors()
+        print("Syncing complete")
