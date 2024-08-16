@@ -3,13 +3,11 @@ from datetime import datetime
 from sqlalchemy import desc, func
 from sqlalchemy.orm import Session
 from app.events import dispatch
-from app.models import StudentModel, AssignmentModel, SubmissionModel, CourseModel
+from app.models import StudentModel, AssignmentModel, SubmissionModel
 from app.core.exceptions import SubmissionNotFoundException
 from app.core.utils.datetime import get_now_with_tzinfo
-from app.models.course import CourseModel
-from app.services import StudentService
 from app.schemas import SubmissionSchema, DatabaseSubmissionSchema
-from app.events import CreateSubmissionCrudEvent, ModifySubmissionCrudEvent, DeleteSubmissionCrudEvent
+from app.events import CreateSubmissionCrudEvent
 from app.services.course_service import CourseService
 
 class SubmissionService:

@@ -2,27 +2,18 @@ import requests
 import httpx
 import os.path
 from typing import BinaryIO
-from io import BytesIO
-from mimetypes import guess_type
 from pathlib import Path
 from enum import Enum
 from urllib.parse import urlparse
 from pydantic import BaseModel, PositiveInt
 from datetime import datetime
-from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from app.core.config import settings
-from app.core.exceptions.assignment import AssignmentNotPublishedException
-from app.enums.assignment_status import AssignmentStatus
 from app.enums.canvas.canvas_workflow_state_filter import CanvasWorkflowStateFilter
 from app.models import UserModel, OnyenPIDModel
-from app.models.assignment import AssignmentModel
-from app.models.course import CourseModel
-from app.models.user.student import StudentModel
 from app.services import UserService, UserType
 from app.core.utils.datetime import get_now_with_tzinfo
 from app.core.exceptions import (
-    LMSNoCourseFetchedException, LMSNoAssignmentFetchedException, LMSNoStudentsFetchedException,
     LMSUserNotFoundException, LMSUserPIDAlreadyAssociatedException, LMSBackendException,
     LMSFolderNotFoundException, LMSFileUploadException
 )

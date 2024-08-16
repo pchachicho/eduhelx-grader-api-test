@@ -18,7 +18,6 @@ from app.core.exceptions import (
     AssignmentDueBeforeOpenException,
     SubmissionMaxAttemptsReachedException
 )
-from app.schemas.course import CourseSchema
 from app.enums.assignment_status import AssignmentStatus
 from app.services.submission_service import SubmissionService
 
@@ -205,7 +204,7 @@ class AssignmentService:
             if update_fields["is_published"] == False:
                 canvas_assignment = await LmsSyncService(self.session).get_assignment(assignment.id)
                 if canvas_assignment["unpublishable"] == False:
-                    raise AssignmentCannotBeUnpublished
+                    raise AssignmentCannotBeUnpublished("Canvas is not allowing this assignment to be unpublished")
             assignment.is_published = update_fields["is_published"]
 
         if assignment.available_date is not None and assignment.due_date is not None and assignment.available_date >= assignment.due_date:
@@ -393,8 +392,9 @@ class StudentAssignmentService(AssignmentService):
         adjusted_available_date = self.get_adjusted_available_date()
         adjusted_due_date = self.get_adjusted_due_date()
         
-        if adjusted_available_date >= current_timestamp: return AssignmentStatus.UPCOMING
-        if adjusted_due_date > current_timestamp: return AssignmentStatus.OPEN
+        if adjusted_available_date is None or adjusted_available_date >= current_timestamp: return AssignmentStatus.UPCOMING
+
+        if adjusted_due_date and adjusted_due_date > current_timestamp: return AssignmentStatus.OPEN
         else: return AssignmentStatus.CLOSED
 
     async def validate_student_can_submit(self):

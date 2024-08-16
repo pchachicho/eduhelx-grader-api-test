@@ -8,7 +8,7 @@ from app.services.ldap_service import LDAPService
 from app.services.assignment_service import AssignmentService
 from app.services.user.student_service import StudentService
 from app.services.user.instructor_service import InstructorService
-from app.models import AssignmentModel, StudentModel, SubmissionModel
+from app.models import AssignmentModel, SubmissionModel
 from app.schemas.course import UpdateCourseSchema
 from app.schemas.assignment import UpdateAssignmentSchema
 from app.core.exceptions import (

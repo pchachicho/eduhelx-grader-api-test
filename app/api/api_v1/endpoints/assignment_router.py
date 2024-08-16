@@ -8,7 +8,7 @@ from app.schemas import InstructorAssignmentSchema, StudentAssignmentSchema, Ass
 from app.schemas._unset import UNSET
 from app.services import (
     AssignmentService, InstructorAssignmentService, StudentAssignmentService,
-    StudentService, UserService, LmsSyncService, GradingService
+    UserService, LmsSyncService, GradingService
 )
 from app.core.dependencies import get_db, PermissionDependency, RequireLoginPermission, AssignmentModifyPermission, UserIsInstructorPermission
 from app.services.course_service import CourseService
