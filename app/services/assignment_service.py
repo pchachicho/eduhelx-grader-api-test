@@ -331,7 +331,7 @@ class InstructorAssignmentService(AssignmentService):
         assignment["status"] = assignment_status.value
         assignment["is_available"] = assignment_status == AssignmentStatus.OPEN
         assignment["is_closed"] = assignment_status == AssignmentStatus.CLOSED
-        assignment["is_published"] = assignment != AssignmentStatus.UNPUBLISHED
+        assignment["is_published"] = assignment_status != AssignmentStatus.UNPUBLISHED
 
         return InstructorAssignmentSchema(**assignment)
     
@@ -432,7 +432,7 @@ class StudentAssignmentService(AssignmentService):
         assignment["adjusted_due_date"] = self.get_adjusted_due_date()
         assignment["is_available"] = assignment_status == AssignmentStatus.OPEN
         assignment["is_closed"] = assignment_status == AssignmentStatus.CLOSED
-        assignment["is_published"] = assignment != AssignmentStatus.UNPUBLISHED
+        assignment["is_published"] = assignment_status != AssignmentStatus.UNPUBLISHED
         assignment["is_deferred"] = assignment["adjusted_available_date"] != assignment["available_date"]
         assignment["is_extended"] = assignment["adjusted_due_date"] != assignment["due_date"]
 
