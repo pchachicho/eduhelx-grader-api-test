@@ -169,6 +169,8 @@ class GradingService:
                 master_notebook_content=master_notebook_content,
                 otter_config_content=otter_config_content
             )
+            print(f"Generated grade report:\ntotal points = { grade_report.total_points }\navg = { grade_report.average }")
+
             # If it's a dry run, stop right here and return the grade report.
             if dry_run: return grade_report
 
@@ -191,7 +193,7 @@ class GradingService:
                     student_notebook.name = f"{ submission.student.onyen }-submission-{ attempt }.ipynb"
                     await lms_sync_service.upsync_grade(
                         submission=submission,
-                        grade=submission_grade.score,
+                        grade_percent=submission_grade.score / grade_report.total_points,
                         student_notebook=student_notebook,
                         comments=submission_grade.comments if assignment.grader_question_feedback else None,
                     )

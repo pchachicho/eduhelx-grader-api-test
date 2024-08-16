@@ -70,6 +70,12 @@ class CanvasService:
         return res.json()
     
     async def _get(self, endpoint: str, **kwargs):
+        if 'params' not in kwargs:
+            kwargs['params'] = {}
+        
+        # Set or override the 'per_page' parameter to 100
+        kwargs['params']['per_page'] = 100
+
         return await self._make_request("GET", endpoint, **kwargs)
 
     async def _post(self, endpoint: str, **kwargs):
@@ -337,7 +343,8 @@ class CanvasService:
         self,
         assignment_id: int,
         user_id: int,
-        grade: float,
+        # not, literally, but \in [0,1]
+        grade_percent: float,
         student_notebook: BinaryIO,
         comments: str | None = None,
     ):
@@ -359,12 +366,14 @@ class CanvasService:
             "",
             on_duplicate=DuplicateFileAction.OVERWRITE
         )
+
+        posted_grade = f"{ grade_percent * 100 }%"
         
         payload = {
             "submission": {
                 "user_id": user_id,
                 "submission_type": "online_upload",
-                "posted_grade": grade,
+                "posted_grade": posted_grade,
                 "file_ids": [student_notebook_file_id],
                 "submitted_at": iso_now
             },
@@ -379,7 +388,7 @@ class CanvasService:
         await self._put(f"{ url }/{ user_id }", json={
             "submission": {
                 "user_id": user_id,
-                "posted_grade": grade
+                "posted_grade": posted_grade
             },
             "prefer_points_over_scheme": True
         })
