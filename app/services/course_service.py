@@ -149,7 +149,10 @@ class CourseService:
 
     @staticmethod
     def _compute_instructor_gitea_organization_name(course_name: str) -> str:
-        return f"{ course_name.replace(' ', '_') }-instructors"
+        course_name_string = course_name.replace(' ', '_')
+        parts = course_name_string.split('_', 3)
+        short_name = '_'.join(parts[:3])
+        return f"{ short_name }-instructors"
     
     @staticmethod
     def _compute_master_repository_name(course_name: str) -> str:
