@@ -115,9 +115,13 @@ class LmsSyncService:
                 print("Skipping over pending student", name or "<unknown>")
                 continue
 
-            print("getting user info for ", pid)
-            user_info = self.ldap_service.get_user_info(pid)
-            print(pid, "->", user_info.onyen)
+            try:
+                print("getting user info for ", pid)
+                user_info = self.ldap_service.get_user_info(pid)
+                print(pid, "->", user_info.onyen)
+            except:
+                print("Skipping over student not in LDAP: ", pid or "<unknown>")
+                continue
 
             try:
                 await self.student_service.get_user_by_onyen(user_info.onyen)
