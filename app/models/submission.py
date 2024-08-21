@@ -3,7 +3,7 @@ from sqlalchemy import (
     Integer, String, DateTime,
     Boolean, func
 )
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, backref
 from app.database import Base
 
 class SubmissionModel(Base):
@@ -17,4 +17,8 @@ class SubmissionModel(Base):
     submission_time = Column(DateTime(timezone=True), server_default=func.current_timestamp())
 
     student = relationship("StudentModel", foreign_keys="SubmissionModel.student_id", back_populates="submissions")
-    assignment = relationship("AssignmentModel", foreign_keys="SubmissionModel.assignment_id")
+    assignment = relationship(
+        "AssignmentModel",
+        foreign_keys="SubmissionModel.assignment_id",
+        backref=backref("submissions", cascade="all,delete")
+    )
