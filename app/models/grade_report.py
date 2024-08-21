@@ -1,6 +1,6 @@
 from __future__ import annotations
 from sqlalchemy import Column, Sequence, ForeignKey, Integer, Float, DateTime, ARRAY, Text, func
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, backref
 from app.database import Base
 from app.models.assignment import AssignmentModel
 from app.schemas.grade_report import SubmissionGradeSchema
@@ -26,7 +26,11 @@ class GradeReportModel(Base):
     created_date = Column(DateTime(timezone=True), nullable=False, server_default=func.current_timestamp())
 
     assignment_id = Column(Integer, ForeignKey("assignment.id"), nullable=False)
-    assignment = relationship("AssignmentModel", foreign_keys="GradeReportModel.assignment_id")
+    assignment = relationship(
+        "AssignmentModel",
+        foreign_keys="GradeReportModel.assignment_id",
+        backref=backref("grade_reports", cascade="all,delete")
+    )
 
     @staticmethod
     def from_submission_grades(
