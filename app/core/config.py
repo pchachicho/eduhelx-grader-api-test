@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     DEV_PHASE: DevPhase = DevPhase.PROD
     DISABLE_AUTHENTICATION: bool = False
     IMPERSONATE_USER: Optional[str] = None
+    DOCUMENTATION_URL: Optional[str] = None
 
     # Setup wizard (JSON-serialized string)
     SETUP_WIZARD_DATA: Optional[SetupWizardData] = None
