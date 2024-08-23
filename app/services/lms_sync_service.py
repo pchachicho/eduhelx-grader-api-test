@@ -8,7 +8,7 @@ from app.services.ldap_service import LDAPService
 from app.services.assignment_service import AssignmentService
 from app.services.user.student_service import StudentService
 from app.services.user.instructor_service import InstructorService
-from app.models import AssignmentModel, StudentModel, SubmissionModel
+from app.models import AssignmentModel, SubmissionModel
 from app.schemas.course import UpdateCourseSchema
 from app.schemas.assignment import UpdateAssignmentSchema
 from app.core.exceptions import (
@@ -25,6 +25,9 @@ class LmsSyncService:
         self.instructor_service = InstructorService(session)
         self.ldap_service = LDAPService()
         self.session = session
+
+    async def get_assignment(self, assignment_id):
+        return await self.canvas_service.get_assignment(assignment_id)
 
     async def sync_course(self):
         print("SYNC COURSE")
@@ -71,6 +74,7 @@ class LmsSyncService:
                     name=assignment["name"],
                     available_date=assignment["unlock_at"],
                     due_date=assignment["due_at"],
+                    is_published=assignment["published"],
                     max_attempts=max_attempts
                 ))
 
@@ -82,6 +86,7 @@ class LmsSyncService:
                     due_date=assignment['due_at'], 
                     available_date=assignment['unlock_at'],
                     directory_path=assignment['name'],
+                    is_published=assignment['published'],
                     max_attempts=max_attempts
                 )
         
@@ -216,7 +221,9 @@ class LmsSyncService:
         await self.canvas_service.update_assignment(assignment.id, UpdateCanvasAssignmentBody(
             name=assignment.name,
             available_date=assignment.available_date,
-            due_date=assignment.due_date
+            due_date=assignment.due_date,
+            is_published=assignment.is_published,
+            max_attempts=assignment.max_attempts
         ))
         
 
