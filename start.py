@@ -2,14 +2,18 @@ import os
 import glob
 import uvicorn
 import asyncio
-from app.main import app
 from dotenv import load_dotenv
 from alembic.config import Config
 from alembic import command
 from app.services import LmsSyncService
 from app.database import SessionLocal
 
-def main(host, port, reload):
+def positive_int(value):
+    ivalue = int(value)
+    if ivalue <= 0: raise argparse.ArgumentTypeError(f"{ value } must be a positive integer")
+    return ivalue
+
+def main(host: str, port: int, reload: bool, workers: int | None=None):
     # Mapping table for special case filename transformations
     special_cases = {
         "postgres-password": "POSTGRES_PASSWORD"
@@ -54,21 +58,35 @@ def main(host, port, reload):
         print(str(e))
 
     # Start the application
-    uvicorn_args = ["uvicorn", "app.main:app", "--host", host, "--port", port]
-    if reload: uvicorn_args.append("--reload")
-    # subprocess.run(uvicorn_args)
-    uvicorn.run(app, host=host, port=int(port), reload=reload)
+    uvicorn.run("app.main:app", host=host, port=port, reload=reload, workers=workers)
 
 
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("-H", "--host", default="0.0.0.0", help="The host to bind to.")
-    parser.add_argument("-p", "--port", default="8000", help="The port to bind to.")
-    parser.add_argument("-r", "--reload", action="store_true", help="Enable auto-reload.")
+    parser.add_argument(
+        "-p",
+        "--port",
+        type=positive_int,
+        default=8000,
+        help="The port to bind to."
+    )
+    parser.add_argument_group('Production vs. Development', 'One of these options must be chosen. --reload is most useful when developing; never use it in production. Use --workers in production.')
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("-r", "--reload", action="store_true", help="Enable auto-reload.")
+    group.add_argument(
+        "-w",
+        "--workers",
+        type=positive_int,
+        required=False,
+        help="Enable the use of workers. This option cannot be used with --reload."
+    )
     args = parser.parse_args()
     
     host = args.host
     port = args.port
     reload = args.reload
-    main(host, port, reload)
+    workers = args.workers
+
+    main(host, port, reload, workers)

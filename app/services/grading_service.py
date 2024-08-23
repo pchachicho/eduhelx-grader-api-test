@@ -2,8 +2,10 @@ import tempfile
 import zipfile
 import glob
 import json
+from typing import BinaryIO
 from otter.assign import main as otter_assign
 from otter.run import main as otter_run
+from otter.export import export_notebook
 from pydantic import BaseModel
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -39,6 +41,26 @@ class GradingService:
                 pass
             
         return submissions
+
+    async def get_student_notebook_upload(self, submission: SubmissionModel, student_notebook_content: bytes) -> BinaryIO:
+        attempt = await SubmissionService(self.session).get_current_submission_attempt(submission.student, submission.assignment)
+        try:
+            # Convert to PDF
+            with tempfile.TemporaryDirectory() as temp_dir:
+                temp_dir = Path(temp_dir)
+                student_notebook_path = temp_dir / "submission.ipynb"
+                student_notebook_pdf_path = temp_dir / f"{ submission.student.onyen }-submission-{ attempt }.pdf"
+                
+                student_notebook_path.write_bytes(student_notebook_content)
+                export_notebook(student_notebook_path, student_notebook_pdf_path)
+                with open(student_notebook_pdf_path, "rb") as f:
+                    student_notebook = BytesIO(f.read())
+                    student_notebook.name = f.name
+        except Exception as e:
+            print("Couldn't generate PDF of student submission: ", e)
+            student_notebook = BytesIO(student_notebook_content)
+            student_notebook.name = f"{ submission.student.onyen }-submission-{ attempt }.ipynb"
+        return student_notebook
     
     async def generate_config(
         self,
@@ -128,16 +150,22 @@ class GradingService:
                 )
                 with zipfile.ZipFile(archive_stream, "r") as zip:
                     zip.extractall(submission_archive_path)
-                otter_run(
-                    submission=str(submission_notebook_path),
-                    autograder=str(otter_config_path),
-                    output_dir=str(submission_graded_path),
-                    no_logo=True,
-                    debug=settings.DEV_PHASE == DevPhase.DEV
-                )
 
-                with open(submission_graded_path, "r") as f:
-                    grade_data = json.load(f)
+                try:
+                    otter_run(
+                        submission=str(submission_notebook_path),
+                        autograder=str(otter_config_path),
+                        output_dir=str(submission_graded_path),
+                        no_logo=True,
+                        debug=settings.DEV_PHASE == DevPhase.DEV
+                    )
+
+                    with open(submission_graded_path, "r") as f:
+                        grade_data = json.load(f)
+                
+                except Exception as e:
+                    print(f"could not grade submission for { submission.student.onyen }: { str(e) }")
+                    continue
 
                 tests = [test for test in grade_data["tests"] if "score" in test]
                 public_tests = [test for test in grade_data["tests"] if "score" not in test]
@@ -163,6 +191,8 @@ class GradingService:
                 master_notebook_content=master_notebook_content,
                 otter_config_content=otter_config_content
             )
+            print(f"Generated grade report:\ntotal points = { grade_report.total_points }\navg = { grade_report.average }")
+
             # If it's a dry run, stop right here and return the grade report.
             if dry_run: return grade_report
 
@@ -180,13 +210,11 @@ class GradingService:
                         # This submission is already graded. No point in reuploading it to Canvas.
                         continue
                     
-                    attempt = await submission_service.get_submission_attempts(submission)
-                    student_notebook = BytesIO(student_notebook_content)
-                    student_notebook.name = f"{ submission.student.onyen }-submission-{ attempt }.ipynb"
+                    student_notebook_upload = await self.get_student_notebook_upload(submission, student_notebook_content)
                     await lms_sync_service.upsync_grade(
                         submission=submission,
-                        grade=submission_grade.score,
-                        student_notebook=student_notebook,
+                        grade_percent=submission_grade.score / grade_report.total_points,
+                        student_notebook=student_notebook_upload,
                         comments=submission_grade.comments if assignment.grader_question_feedback else None,
                     )
                     submission.graded = True

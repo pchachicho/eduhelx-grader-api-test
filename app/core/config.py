@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     DEV_PHASE: DevPhase = DevPhase.PROD
     DISABLE_AUTHENTICATION: bool = False
     IMPERSONATE_USER: Optional[str] = None
+    DOCUMENTATION_URL: Optional[str] = None
 
     # Setup wizard (JSON-serialized string)
     SETUP_WIZARD_DATA: Optional[SetupWizardData] = None
@@ -33,6 +34,7 @@ class Settings(BaseSettings):
     # Gitea
     GITEA_SSH_URL: str
     GITEA_ASSIST_API_URL: str
+    GITEA_ASSIST_AUTH_TOKEN: str
 
     # Appstore
     STUDENT_APPSTORE_HOST: str

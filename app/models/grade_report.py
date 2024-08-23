@@ -1,6 +1,6 @@
 from __future__ import annotations
 from sqlalchemy import Column, Sequence, ForeignKey, Integer, Float, DateTime, ARRAY, Text, func
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, backref
 from app.database import Base
 from app.models.assignment import AssignmentModel
 from app.schemas.grade_report import SubmissionGradeSchema
@@ -26,7 +26,11 @@ class GradeReportModel(Base):
     created_date = Column(DateTime(timezone=True), nullable=False, server_default=func.current_timestamp())
 
     assignment_id = Column(Integer, ForeignKey("assignment.id"), nullable=False)
-    assignment = relationship("AssignmentModel", foreign_keys="GradeReportModel.assignment_id")
+    assignment = relationship(
+        "AssignmentModel",
+        foreign_keys="GradeReportModel.assignment_id",
+        backref=backref("grade_reports", cascade="all,delete")
+    )
 
     @staticmethod
     def from_submission_grades(
@@ -36,9 +40,9 @@ class GradeReportModel(Base):
         otter_config_content: str
     ) -> GradeReportModel:
         scores = [grade.score for grade in submission_grades]
-        average = np.mean(scores)
-        median = np.median(scores)
-        stdev = np.std(scores)
+        average = float(np.mean(scores))
+        median = float(np.median(scores))
+        stdev = float(np.std(scores))
         minimum, maximum = min(scores), max(scores)
         num_submitted = len(submission_grades)
         num_skipped = sum([grade.submission_already_graded for grade in submission_grades])

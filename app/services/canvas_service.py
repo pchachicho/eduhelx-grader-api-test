@@ -2,21 +2,18 @@ import requests
 import httpx
 import os.path
 from typing import BinaryIO
-from io import BytesIO
-from mimetypes import guess_type
 from pathlib import Path
 from enum import Enum
 from urllib.parse import urlparse
-from pydantic import BaseModel
+from pydantic import BaseModel, PositiveInt
 from datetime import datetime
-from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from app.core.config import settings
+from app.enums.canvas.canvas_workflow_state_filter import CanvasWorkflowStateFilter
 from app.models import UserModel, OnyenPIDModel
 from app.services import UserService, UserType
 from app.core.utils.datetime import get_now_with_tzinfo
 from app.core.exceptions import (
-    LMSNoCourseFetchedException, LMSNoAssignmentFetchedException, LMSNoStudentsFetchedException,
     LMSUserNotFoundException, LMSUserPIDAlreadyAssociatedException, LMSBackendException,
     LMSFolderNotFoundException, LMSFileUploadException
 )
@@ -29,6 +26,8 @@ class UpdateCanvasAssignmentBody(BaseModel):
     name: str | None
     available_date: datetime | None
     due_date: datetime | None
+    max_attempts: PositiveInt | None
+    is_published: bool | None
 
 class CanvasService:
     def __init__(self, db: Session):
@@ -71,6 +70,12 @@ class CanvasService:
         return res.json()
     
     async def _get(self, endpoint: str, **kwargs):
+        if 'params' not in kwargs:
+            kwargs['params'] = {}
+        
+        # Set or override the 'per_page' parameter to 100
+        kwargs['params']['per_page'] = 100
+
         return await self._make_request("GET", endpoint, **kwargs)
 
     async def _post(self, endpoint: str, **kwargs):
@@ -100,7 +105,7 @@ class CanvasService:
     
     """ NOTE: Will return a Submission for every specified student_id, even if they have not submitted (submitted_at = None). """
     """ NOTE: include_submission_history includes the returned Submission as its final element. """
-    async def get_submissions_for_assignments(
+    async def _get_submissions_for_assignments(
         self,
         assignment_ids: list[int],
         student_ids: list[int],
@@ -110,7 +115,8 @@ class CanvasService:
         include_comments: bool = False,
         include_rubric_assessment: bool = False,
         include_visibility: bool = False,
-        include_is_read: bool = False
+        include_is_read: bool = False,
+        workflow_state_filter: CanvasWorkflowStateFilter | None = None
     ):
         include = []
         if include_submission_history: include.append("submission_history")
@@ -122,8 +128,10 @@ class CanvasService:
         params = {
             "assignment_ids[]": assignment_ids,
             "student_ids[]": student_ids,
-            "include[]": include
+            "include[]": include,
         }
+        if workflow_state_filter is not None:
+            params["workflow_state"] = workflow_state_filter.value
         return await self._get(f"courses/{ settings.CANVAS_COURSE_ID }/students/submissions", params=params)
 
     """ NOTE: If student_id is provided, returns a single Submission object. """
@@ -136,19 +144,9 @@ class CanvasService:
         **kwargs
     ):
         student_ids = [student_id] if student_id is not None else []
-        submissions = await self.get_submissions_for_assignments([assignment_id], student_ids, **kwargs)
+        submissions = await self._get_submissions_for_assignments([assignment_id], student_ids, **kwargs)
         if student_id is not None: return submissions[0]
         return submissions
-    
-    """ Get the current attempt count of the student for the assignment. If the student hasn't submitted, then 0. """
-    async def get_current_submission_attempts(
-        self,
-        assignment_id: int,
-        student_id: int
-    ):
-        submission = await self.get_submissions(assignment_id, student_id)
-        if submission["submitted_at"] is None: return 0
-        return len(submission["submission_history"])
     
     async def get_students(self):
         return await self.get_users(user_type=UserType.STUDENT)
@@ -345,7 +343,8 @@ class CanvasService:
         self,
         assignment_id: int,
         user_id: int,
-        grade: float,
+        # not, literally, but \in [0,1]
+        grade_percent: float,
         student_notebook: BinaryIO,
         comments: str | None = None,
     ):
@@ -367,12 +366,14 @@ class CanvasService:
             "",
             on_duplicate=DuplicateFileAction.OVERWRITE
         )
+
+        posted_grade = f"{ grade_percent * 100 }%"
         
         payload = {
             "submission": {
                 "user_id": user_id,
                 "submission_type": "online_upload",
-                "posted_grade": grade,
+                "posted_grade": posted_grade,
                 "file_ids": [student_notebook_file_id],
                 "submitted_at": iso_now
             },
@@ -387,7 +388,7 @@ class CanvasService:
         await self._put(f"{ url }/{ user_id }", json={
             "submission": {
                 "user_id": user_id,
-                "posted_grade": grade
+                "posted_grade": posted_grade
             },
             "prefer_points_over_scheme": True
         })
@@ -403,6 +404,9 @@ class CanvasService:
         if "due_date" in payload:
             due_at = payload.pop("due_date")
             payload["due_at"] = due_at.isoformat() if due_at is not None else None
+        if "max_attempts" in payload:
+            allowed_attempts = payload.pop("max_attempts")
+            payload["allowed_attempts"] = allowed_attempts if allowed_attempts is not None else -1
         return await self._put(url, json={
             "assignment": payload
         })

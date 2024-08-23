@@ -12,5 +12,6 @@ def get_settings(
     db: Session = Depends(get_db)
 ):
     return SettingsSchema(
-        gitea_ssh_url=settings.GITEA_SSH_URL
+        gitea_ssh_url=settings.GITEA_SSH_URL,
+        documentation_url=settings.DOCUMENTATION_URL
     )

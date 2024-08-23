@@ -20,7 +20,17 @@ class AssignmentNotCreatedException(CustomException):
     error_code = "ASSIGNMENT__NOT_CREATED"
     message = "assignment not created"
 
+class AssignmentNotPublishedException(CustomException):
+    code = 403
+    error_code = "ASSIGNMENT__NOT_PUBLISHED"
+    message = "assignment not published"
+
 class AssignmentNotFoundException(CustomException):
     code = 404
     error_code = "ASSIGNMENT__NOT_FOUND"
     message = "assignment not found"
+
+class AssignmentCannotBeUnpublished(CustomException):
+    code = 400
+    error_code = "ASSIGNMENT__CANNOT_BE_UNPUBLISHED"
+    message = "assignment cannot be unpublished"

@@ -8,8 +8,7 @@ from app.services.ldap_service import LDAPService
 from app.services.assignment_service import AssignmentService
 from app.services.user.student_service import StudentService
 from app.services.user.instructor_service import InstructorService
-from app.models.submission import SubmissionModel
-from app.models.assignment import AssignmentModel
+from app.models import AssignmentModel, SubmissionModel
 from app.schemas.course import UpdateCourseSchema
 from app.schemas.assignment import UpdateAssignmentSchema
 from app.core.exceptions import (
@@ -26,6 +25,9 @@ class LmsSyncService:
         self.instructor_service = InstructorService(session)
         self.ldap_service = LDAPService()
         self.session = session
+
+    async def get_assignment(self, assignment_id):
+        return await self.canvas_service.get_assignment(assignment_id)
 
     async def sync_course(self):
         print("SYNC COURSE")
@@ -63,13 +65,17 @@ class LmsSyncService:
                 await self.assignment_service.delete_assignment(assignment)
 
         for assignment in canvas_assignments:
+            # Canvas uses -1 for unlimited attempts.
+            max_attempts = assignment["allowed_attempts"] if assignment["allowed_attempts"] >= 0 else None
             try:
                 db_assignment = await self.assignment_service.get_assignment_by_id(assignment['id'])
 
                 await self.assignment_service.update_assignment(db_assignment, UpdateAssignmentSchema(
                     name=assignment["name"],
                     available_date=assignment["unlock_at"],
-                    due_date=assignment["due_at"]
+                    due_date=assignment["due_at"],
+                    is_published=assignment["published"],
+                    max_attempts=max_attempts
                 ))
 
             except AssignmentNotFoundException as e:
@@ -79,7 +85,9 @@ class LmsSyncService:
                     name=assignment['name'], 
                     due_date=assignment['due_at'], 
                     available_date=assignment['unlock_at'],
-                    directory_path=assignment['name']
+                    directory_path=assignment['name'],
+                    is_published=assignment['published'],
+                    max_attempts=max_attempts
                 )
         
         return canvas_assignments
@@ -87,6 +95,13 @@ class LmsSyncService:
     async def sync_students(self):
         db_students = await self.student_service.list_students()
         canvas_students = await self.canvas_service.get_students()
+
+        # If this course runs on a 2U Digital Campus instance, remove ":UNC" from the PID
+        for student in canvas_students:
+            sis_user_id = student.get("sis_user_id")
+            if sis_user_id and ':' in sis_user_id:
+                student["sis_user_id"] = sis_user_id.split(':')[0]
+
         canvas_student_pids = [s["sis_user_id"] for s in canvas_students]
         
         # Delete students that are in the database but not in Canvas
@@ -105,9 +120,13 @@ class LmsSyncService:
                 print("Skipping over pending student", name or "<unknown>")
                 continue
 
-            print("getting user info for ", pid)
-            user_info = self.ldap_service.get_user_info(pid)
-            print(pid, "->", user_info.onyen)
+            try:
+                print("getting user info for ", pid)
+                user_info = self.ldap_service.get_user_info(pid)
+                print(pid, "->", user_info.onyen)
+            except:
+                print("Skipping over student not in LDAP: ", pid or "<unknown>")
+                continue
 
             try:
                 await self.student_service.get_user_by_onyen(user_info.onyen)
@@ -128,6 +147,13 @@ class LmsSyncService:
     async def sync_instructors(self):
         db_instructors = await self.instructor_service.list_instructors()
         canvas_instructors = await self.canvas_service.get_instructors()
+
+        # If this course runs on a 2U Digital Campus instance, remove ":UNC" from the PID
+        for instructor in canvas_instructors:
+            sis_user_id = instructor.get("sis_user_id")
+            if sis_user_id and ':' in sis_user_id:
+                instructor["sis_user_id"] = sis_user_id.split(':')[0]
+
         canvas_instructor_pids = [i["sis_user_id"] for i in canvas_instructors]
        
         # Delete instructors that are in the database but not in Canvas
@@ -169,16 +195,21 @@ class LmsSyncService:
     async def upsync_grade(
         self,
         submission: SubmissionModel,
-        grade: float,
+        grade_percent: float,
         student_notebook: BinaryIO,
         comments: str | None = None,
     ):
         user_pid = await self.canvas_service.get_pid_from_onyen(submission.student.onyen)
+        
+        # If this course runs on a 2U Digital Campus instance, append ":UNC" to the PID
+        if "digitalcampus" in settings.CANVAS_API_URL:
+            user_pid += ":UNC"
+
         student = await self.canvas_service.get_student_by_pid(user_pid)
         await self.canvas_service.upload_grade(
             assignment_id=submission.assignment.id,
             user_id=student["id"],
-            grade=grade,
+            grade_percent=grade_percent,
             student_notebook=student_notebook,
             comments=comments
         )
@@ -190,7 +221,9 @@ class LmsSyncService:
         await self.canvas_service.update_assignment(assignment.id, UpdateCanvasAssignmentBody(
             name=assignment.name,
             available_date=assignment.available_date,
-            due_date=assignment.due_date
+            due_date=assignment.due_date,
+            is_published=assignment.is_published,
+            max_attempts=assignment.max_attempts
         ))
         
 
@@ -200,3 +233,4 @@ class LmsSyncService:
         await self.sync_assignments()
         await self.sync_students()
         await self.sync_instructors()
+        print("Syncing complete")

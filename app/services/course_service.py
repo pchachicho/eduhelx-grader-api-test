@@ -32,7 +32,7 @@ class CourseService:
 
     
     async def create_course(self, name: str, start_at: datetime = None, end_at: datetime = None) -> CourseModel:
-        from app.services import GiteaService, CleanupService
+        from app.services import GiteaService, CleanupService, FileOperation, FileOperationType
 
         try:
             await self.get_course()
@@ -59,6 +59,10 @@ class CourseService:
 
         master_repository_name = self._compute_master_repository_name(name)
         instructor_organization_name = self._compute_instructor_gitea_organization_name(name)
+        master_branch_name = self._compute_master_branch_name()
+        file_operations = [
+            FileOperation(content=".ssh\n", path=".gitignore", operation=FileOperationType.CREATE)
+        ]
 
         try:
             await gitea_service.create_organization(instructor_organization_name)
@@ -76,6 +80,13 @@ class CourseService:
                 private=True
             )
             print("CREATED CLASS MASTER REPOSITORY")
+            await gitea_service.modify_repository_files(
+                name=master_repository_name,
+                owner=instructor_organization_name,
+                branch_name=master_branch_name,
+                commit_message="Initial commit",
+                files=file_operations
+            )
             await gitea_service.set_git_hook(
                 repository_name=master_repository_name,
                 owner=instructor_organization_name,
@@ -138,7 +149,10 @@ class CourseService:
 
     @staticmethod
     def _compute_instructor_gitea_organization_name(course_name: str) -> str:
-        return f"{ course_name.replace(' ', '_') }-instructors"
+        course_name_string = course_name.replace(' ', '_')
+        parts = course_name_string.split('_', 3)
+        short_name = '_'.join(parts[:3])
+        return f"{ short_name }-instructors"
     
     @staticmethod
     def _compute_master_repository_name(course_name: str) -> str:
