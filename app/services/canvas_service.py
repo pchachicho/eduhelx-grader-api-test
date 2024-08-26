@@ -181,29 +181,32 @@ class CanvasService:
         self,
         upload_url: str,
         file: BinaryIO,
-        parent_folder_path_or_id: str | int,
-        on_duplicate: DuplicateFileAction,
-        *,
-        headers={}
+        parent_folder_path_or_id: Path | str | int | None = None,
+        on_duplicate: DuplicateFileAction = DuplicateFileAction.OVERWRITE
     ):
         use_id = isinstance(parent_folder_path_or_id, int)
+        use_path = isinstance(parent_folder_path_or_id, (str, Path))
         
         # Seek to end of file buffer
         file.seek(0, 2)
         payload = {
             "name": file.name,
             "size": file.tell(),
+            "content_type": "",
+            "no_redirect": True,
             "on_duplicate": on_duplicate.value
         }
-        if use_id: payload["parent_folder_id"] = parent_folder_path_or_id
-        else: payload["parent_folder_path"] = parent_folder_path_or_id
         
-        data = await self._post(upload_url, json=payload, headers=headers)
+        if use_id: payload["parent_folder_id"] = parent_folder_path_or_id
+        if use_path: payload["parent_folder_path"] = str(parent_folder_path_or_id)
+        
+        data = await self._post(upload_url, json=payload)
         upload_url = data["upload_url"]
+        file_param = data.get("file_param", file)
 
         file.seek(0)
         res = await self.client.post(upload_url, data=data["upload_params"], files={
-            "file": (file.name, file.read())
+            file_param: (file.name, file.read())
         })
         
         await self._check_response(res)
@@ -271,20 +274,13 @@ class CanvasService:
         assignment_id: int,
         user_id: int,
         file: BinaryIO,
-        parent_folder_path_or_id: str | int,
         on_duplicate: DuplicateFileAction = DuplicateFileAction.OVERWRITE
     ):
         url = f"courses/{ settings.CANVAS_COURSE_ID }/assignments/{ assignment_id }/submissions/{ user_id }/files"
         return await self._upload_file(
             url,
             file,
-            parent_folder_path_or_id,
-            on_duplicate,
-            headers={
-                # I have no idea why this is required (the documentation doesn't mention it),
-                # but file upload endpoints return a 403 if using wrong content-type
-                "Content-Type": "unknown/unknown"
-            }
+            on_duplicate=on_duplicate
         )
     
     async def get_course_folder(
@@ -360,7 +356,6 @@ class CanvasService:
             assignment_id,
             user_id,
             student_notebook,
-            "",
             on_duplicate=DuplicateFileAction.OVERWRITE
         )
         
