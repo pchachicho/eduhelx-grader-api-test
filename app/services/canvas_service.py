@@ -352,13 +352,6 @@ class CanvasService:
         iso_now = get_now_with_tzinfo().isoformat()
 
         student_course_submissions_folder = await self.get_student_course_submissions_folder_path()
-        # You can't attach course files to submissions, this is so that
-        # instructors have an alternative place to view/download submissions
-        await self.upload_course_file(
-            student_notebook,
-            os.path.join(student_course_submissions_folder, str(assignment_id)),
-            on_duplicate=DuplicateFileAction.OVERWRITE
-        )
         student_notebook_file_id = await self.upload_submission_file(
             assignment_id,
             user_id,
@@ -454,7 +447,6 @@ class CanvasService:
 
     async def get_private_course_folder_path(self) -> str:
         return self._compute_private_course_folder_path()
-
     
     async def get_student_course_submissions_folder_path(self) -> str:
         return self._compute_student_course_submissions_folder_path(await self.get_private_course_folder_path())

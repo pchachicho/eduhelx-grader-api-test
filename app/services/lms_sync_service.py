@@ -2,7 +2,7 @@ import asyncio
 from typing import BinaryIO
 from sqlalchemy.orm import Session
 from app.core.config import settings
-from app.services.canvas_service import CanvasService, UpdateCanvasAssignmentBody
+from app.services.canvas_service import CanvasService, UpdateCanvasAssignmentBody, DuplicateFileAction
 from app.services.course_service import CourseService
 from app.services.ldap_service import LDAPService
 from app.services.assignment_service import AssignmentService
@@ -225,6 +225,18 @@ class LmsSyncService:
             is_published=assignment.is_published,
             max_attempts=assignment.max_attempts
         ))
+
+    async def upsync_course_file(
+        self,
+        file: BinaryIO,
+        parent_folder_path_or_id: str | int,
+        on_duplicate: DuplicateFileAction = DuplicateFileAction.OVERWRITE
+    ):
+        return await self.canvas_service.upload_course_file(
+            file,
+            parent_folder_path_or_id,
+            on_duplicate
+        )
         
 
     async def downsync(self):
@@ -234,3 +246,10 @@ class LmsSyncService:
         await self.sync_students()
         await self.sync_instructors()
         print("Syncing complete")
+        
+
+    async def get_private_course_folder_path(self) -> str:
+        return await self.canvas_service.get_private_course_folder_path()
+    
+    async def get_student_course_submissions_folder_path(self) -> str:
+        return await self.canvas_service.get_student_course_submissions_folder_path()

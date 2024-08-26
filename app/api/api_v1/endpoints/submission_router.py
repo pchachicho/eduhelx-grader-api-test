@@ -13,6 +13,7 @@ router = APIRouter()
 class SubmissionBody(BaseModel):
     assignment_id: int
     commit_id: str
+    student_notebook_content: str
 
 @router.post("/submissions", response_model=SubmissionSchema)
 async def create_submission(
@@ -30,7 +31,8 @@ async def create_submission(
     submission = await submission_service.create_submission(
         student,
         assignment,
-        commit_id=submission.commit_id
+        commit_id=submission.commit_id,
+        student_notebook_content=submission.student_notebook_content
     )
 
     return await submission_service.get_submission_schema(submission)

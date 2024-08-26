@@ -55,7 +55,7 @@ class GradingService:
                 export_notebook(student_notebook_path, student_notebook_pdf_path)
                 with open(student_notebook_pdf_path, "rb") as f:
                     student_notebook = BytesIO(f.read())
-                    student_notebook.name = f.name
+                    student_notebook.name = student_notebook_pdf_path.name
         except Exception as e:
             print("Couldn't generate PDF of student submission: ", e)
             student_notebook = BytesIO(student_notebook_content)
@@ -106,6 +106,31 @@ class GradingService:
 
 
         return final_graded_notebook_content, config_zip.getvalue()
+    
+    """ Returns path to the loaded submission notebook """
+    async def load_submission_archive(
+        self,
+        submission: SubmissionModel,
+        parent_dir: Path | str
+    ) -> tuple[Path, BinaryIO]:
+        parent_dir = Path(parent_dir)
+
+        submission_archive_path = parent_dir / str(submission.id)
+        submission_notebook_path = submission_archive_path / submission.assignment.student_notebook_path
+        student_repo_name = await CourseService(self.session).get_student_repository_name(submission.student.onyen)
+        archive_stream = await GiteaService(self.session).download_repository(
+            name=student_repo_name,
+            owner=submission.student.onyen,
+            treeish_id=submission.commit_id,
+            path=submission.assignment.directory_path
+        )
+        with zipfile.ZipFile(archive_stream, "r") as zip:
+            zip.extractall(submission_archive_path)
+
+        with open(submission_notebook_path, "rb") as f:
+            submission_notebook_content = f.read()
+
+        return (submission_notebook_path, submission_notebook_content)
 
     async def grade_assignment(
         self,
@@ -116,9 +141,6 @@ class GradingService:
         *,
         dry_run=False
     ) -> GradeReportModel:
-        course_service = CourseService(self.session)
-        gitea_service = GiteaService(self.session)
-        submission_service = SubmissionService(self.session)
         lms_sync_service = LmsSyncService(self.session)
 
         submissions = await self.compute_submissions_at_moment(assignment)
@@ -138,18 +160,8 @@ class GradingService:
             with open(otter_config_path, "wb+") as f:
                 f.write(zip_config_bytes)
             for submission in submissions:
-                submission_archive_path = temp_dir / str(submission.id)
+                (submission_notebook_path, student_notebook_content) = await self.load_submission_archive(submission, temp_dir)
                 submission_graded_path = temp_dir / f"{ submission.id }-graded.json"
-                submission_notebook_path = submission_archive_path / submission.assignment.student_notebook_path
-                student_repo_name = await course_service.get_student_repository_name(submission.student.onyen)
-                archive_stream = await gitea_service.download_repository(
-                    name=student_repo_name,
-                    owner=submission.student.onyen,
-                    treeish_id=submission.commit_id,
-                    path=submission.assignment.directory_path
-                )
-                with zipfile.ZipFile(archive_stream, "r") as zip:
-                    zip.extractall(submission_archive_path)
 
                 try:
                     otter_run(
@@ -173,8 +185,7 @@ class GradingService:
 
                 score = sum([question["score"] for question in tests])
                 max_score = sum([question["max_score"] for question in tests])
-                with open(submission_notebook_path, "rb") as f:
-                    student_notebook_content = f.read()
+
                 final_scores[submission] = (
                     SubmissionGradeSchema(
                         score=score,
