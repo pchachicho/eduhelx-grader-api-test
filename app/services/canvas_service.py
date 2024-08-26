@@ -339,19 +339,23 @@ class CanvasService:
             locked
         )
     
-    async def upload_grade(
+    async def upload_submission(
         self,
         assignment_id: int,
         user_id: int,
-        # not, literally, but \in [0,1]
-        grade_percent: float,
         student_notebook: BinaryIO,
-        comments: str | None = None,
+        comments: str | None = None
     ):
         url = f"courses/{ settings.CANVAS_COURSE_ID }/assignments/{ assignment_id }/submissions"
         iso_now = get_now_with_tzinfo().isoformat()
 
+        assignment = await self.get_assignment(assignment_id)
         student_course_submissions_folder = await self.get_student_course_submissions_folder_path()
+        await self.upload_course_file(
+            student_notebook,
+            os.path.join(student_course_submissions_folder, assignment["name"]),
+            on_duplicate=DuplicateFileAction.OVERWRITE
+        )
         student_notebook_file_id = await self.upload_submission_file(
             assignment_id,
             user_id,
@@ -359,34 +363,47 @@ class CanvasService:
             "",
             on_duplicate=DuplicateFileAction.OVERWRITE
         )
-
-        posted_grade = f"{ grade_percent * 100 }%"
         
         payload = {
             "submission": {
                 "user_id": user_id,
                 "submission_type": "online_upload",
-                "posted_grade": posted_grade,
                 "file_ids": [student_notebook_file_id],
                 "submitted_at": iso_now
             },
-            "comment": {},
-            "prefer_points_over_scheme": True
+            "comment": {}
         }
         if comments is not None: payload["comment"]["text_comment"] = comments
 
-        # Although posted_grade is listed as a supported argument of the endpoint,
-        # it only works to set the grade for the first submission by the student.
-        submission = await self._post(url, json=payload)
-        await self._put(f"{ url }/{ user_id }", json={
+        await self._post(url, json=payload)
+
+    """
+    Note that Canvas does not support associating grades with submissions.
+    You can only set the overall assignment grade for the student.
+    Comments will be attached to the active submission.
+    """
+    async def upload_assignment_grade(
+        self,
+        assignment_id: int,
+        user_id: int,
+        # between [0,1]
+        grade_proportion: float,
+        comments: str | None = None,
+    ):
+        url = f"courses/{ settings.CANVAS_COURSE_ID }/assignments/{ assignment_id }/submissions/{ user_id }"
+        
+        posted_grade = f"{ grade_proportion * 100 }%"
+
+        payload = {
             "submission": {
                 "user_id": user_id,
                 "posted_grade": posted_grade
             },
-            "prefer_points_over_scheme": True
-        })
-        return submission
+            "comment": {}
+        }
+        if comments is not None: payload["comment"]["text_comment"] = comments
 
+        await self._put(url, json=payload)
 
     async def update_assignment(self, assignment_id: int, body: UpdateCanvasAssignmentBody):
         url = f"courses/{ settings.CANVAS_COURSE_ID }/assignments/{ assignment_id }"

@@ -25,6 +25,8 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
     DEV_PHASE: DevPhase = DevPhase.PROD
     DISABLE_AUTHENTICATION: bool = False
+    # For dev work, this thing is super super annoying. May cause instability.
+    DISABLE_LOGGER: bool = False
     IMPERSONATE_USER: Optional[str] = None
     DOCUMENTATION_URL: Optional[str] = None
 

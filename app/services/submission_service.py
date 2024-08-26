@@ -20,13 +20,9 @@ class SubmissionService:
         self,
         student: StudentModel,
         assignment: AssignmentModel,
-        commit_id: str,
-        student_notebook_content: str
+        commit_id: str
     ) -> SubmissionModel:
-        from app.services import StudentAssignmentService, CourseService, GradingService, LmsSyncService, DuplicateFileAction
-
-        grading_service = GradingService(self.session)
-        lms_sync_service = LmsSyncService(self.session)
+        from app.services import StudentAssignmentService, CourseService
 
         # TODO: We should validate that the submitted commit id actually exists in gitea before persisting it in the database.
         # We don't want another component of EduHeLx to assume the commit we return exists and crash when it doesn't.
@@ -46,14 +42,6 @@ class SubmissionService:
 
         self.session.add(submission)
         self.session.commit()
-
-        student_notebook_upload = await grading_service.get_student_notebook_upload(submission, student_notebook_content.encode())
-        student_course_submissions_folder = await lms_sync_service.get_student_course_submissions_folder_path()
-        await lms_sync_service.upsync_course_file(
-            student_notebook_upload,
-            os.path.join(student_course_submissions_folder, submission.assignment.name),
-            on_duplicate=DuplicateFileAction.OVERWRITE
-        )
 
         dispatch(CreateSubmissionCrudEvent(submission=submission))
 
