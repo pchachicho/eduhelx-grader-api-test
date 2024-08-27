@@ -207,6 +207,9 @@ class AssignmentService:
                     raise AssignmentCannotBeUnpublished("Canvas is not allowing this assignment to be unpublished")
             assignment.is_published = update_fields["is_published"]
 
+        if "manual_grading" in update_fields:
+            assignment.manual_grading = update_fields["manual_grading"]
+
         if assignment.available_date is not None and assignment.due_date is not None and assignment.available_date >= assignment.due_date:
             raise AssignmentDueBeforeOpenException()
 

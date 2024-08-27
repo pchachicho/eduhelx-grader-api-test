@@ -29,6 +29,7 @@ class UpdateAssignmentBody(BaseModel):
     available_date: datetime | None
     due_date: datetime | None
     is_published: bool = UNSET
+    manual_grading: bool = UNSET
 
 class OtterGradingBody(BaseModel):
     master_notebook_content: str
