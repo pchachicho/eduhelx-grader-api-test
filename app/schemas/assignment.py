@@ -20,6 +20,7 @@ class AssignmentSchema(BaseModel):
     due_date: datetime | None
     last_modified_date: datetime
     is_published: bool
+    manual_grading: bool
 
     class Config:
         orm_mode = True

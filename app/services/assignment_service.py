@@ -259,14 +259,17 @@ __pycache__/
     NOTE: File paths are relative to `assignment.directory_path`.
     """
     async def get_protected_files(self, assignment: AssignmentModel) -> list[str]:
-        return [
+        files = [
             "*grades.csv",
             "*grading_config.json",
-            assignment.master_notebook_path,
             f"{ assignment.name }-dist",
             "**/.ssh",
             "prof-scripts"
         ]
+        # In a manually graded assignment, the notebook is shared among all users.
+        if not assignment.manual_grading: files.append(assignment.master_notebook_path)
+        
+        return files
     
     """
     NOTE: File paths are not necessarily real files and may instead be globs.
@@ -280,13 +283,6 @@ __pycache__/
             "instruction*.txt",
             ".gitignore",
         ]
-    
-    async def get_master_notebook_name(self, assignment: AssignmentModel) -> str:
-        return self._compute_master_notebook_name(assignment.name)
-    
-    @staticmethod
-    def _compute_master_notebook_name(assignment_name: str) -> str:
-        return f"{ assignment_name }-prof.ipynb"
 
 class InstructorAssignmentService(AssignmentService):
     def __init__(self, session: Session, instructor_model: InstructorModel, assignment_model: AssignmentModel, course_model: CourseModel):
