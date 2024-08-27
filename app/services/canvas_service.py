@@ -2,21 +2,18 @@ import requests
 import httpx
 import os.path
 from typing import BinaryIO
-from io import BytesIO
-from mimetypes import guess_type
 from pathlib import Path
 from enum import Enum
 from urllib.parse import urlparse
-from pydantic import BaseModel
+from pydantic import BaseModel, PositiveInt
 from datetime import datetime
-from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from app.core.config import settings
+from app.enums.canvas.canvas_workflow_state_filter import CanvasWorkflowStateFilter
 from app.models import UserModel, OnyenPIDModel
 from app.services import UserService, UserType
 from app.core.utils.datetime import get_now_with_tzinfo
 from app.core.exceptions import (
-    LMSNoCourseFetchedException, LMSNoAssignmentFetchedException, LMSNoStudentsFetchedException,
     LMSUserNotFoundException, LMSUserPIDAlreadyAssociatedException, LMSBackendException,
     LMSFolderNotFoundException, LMSFileUploadException
 )
@@ -29,6 +26,8 @@ class UpdateCanvasAssignmentBody(BaseModel):
     name: str | None
     available_date: datetime | None
     due_date: datetime | None
+    max_attempts: PositiveInt | None
+    is_published: bool | None
 
 class CanvasService:
     def __init__(self, db: Session):
@@ -106,7 +105,7 @@ class CanvasService:
     
     """ NOTE: Will return a Submission for every specified student_id, even if they have not submitted (submitted_at = None). """
     """ NOTE: include_submission_history includes the returned Submission as its final element. """
-    async def get_submissions_for_assignments(
+    async def _get_submissions_for_assignments(
         self,
         assignment_ids: list[int],
         student_ids: list[int],
@@ -116,7 +115,8 @@ class CanvasService:
         include_comments: bool = False,
         include_rubric_assessment: bool = False,
         include_visibility: bool = False,
-        include_is_read: bool = False
+        include_is_read: bool = False,
+        workflow_state_filter: CanvasWorkflowStateFilter | None = None
     ):
         include = []
         if include_submission_history: include.append("submission_history")
@@ -128,8 +128,10 @@ class CanvasService:
         params = {
             "assignment_ids[]": assignment_ids,
             "student_ids[]": student_ids,
-            "include[]": include
+            "include[]": include,
         }
+        if workflow_state_filter is not None:
+            params["workflow_state"] = workflow_state_filter.value
         return await self._get(f"courses/{ settings.CANVAS_COURSE_ID }/students/submissions", params=params)
 
     """ NOTE: If student_id is provided, returns a single Submission object. """
@@ -142,7 +144,7 @@ class CanvasService:
         **kwargs
     ):
         student_ids = [student_id] if student_id is not None else []
-        submissions = await self.get_submissions_for_assignments([assignment_id], student_ids, **kwargs)
+        submissions = await self._get_submissions_for_assignments([assignment_id], student_ids, **kwargs)
         if student_id is not None: return submissions[0]
         return submissions
     
@@ -402,6 +404,9 @@ class CanvasService:
         if "due_date" in payload:
             due_at = payload.pop("due_date")
             payload["due_at"] = due_at.isoformat() if due_at is not None else None
+        if "max_attempts" in payload:
+            allowed_attempts = payload.pop("max_attempts")
+            payload["allowed_attempts"] = allowed_attempts if allowed_attempts is not None else -1
         return await self._put(url, json={
             "assignment": payload
         })

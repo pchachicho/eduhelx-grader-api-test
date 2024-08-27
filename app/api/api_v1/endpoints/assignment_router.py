@@ -8,9 +8,10 @@ from app.schemas import InstructorAssignmentSchema, StudentAssignmentSchema, Ass
 from app.schemas._unset import UNSET
 from app.services import (
     AssignmentService, InstructorAssignmentService, StudentAssignmentService,
-    StudentService, UserService, LmsSyncService, GradingService
+    UserService, LmsSyncService, GradingService
 )
 from app.core.dependencies import get_db, PermissionDependency, RequireLoginPermission, AssignmentModifyPermission, UserIsInstructorPermission
+from app.services.course_service import CourseService
 
 router = APIRouter()
 
@@ -24,6 +25,7 @@ class UpdateAssignmentBody(BaseModel):
     max_attempts: PositiveInt | None
     available_date: datetime | None
     due_date: datetime | None
+    is_published: bool = UNSET
 
 class GradingBody(BaseModel):
     master_notebook_content: str
@@ -63,15 +65,16 @@ async def get_assignments(
 
     user = await UserService(db).get_user_by_onyen(onyen)
     assignments = await AssignmentService(db).get_assignments()
+    course = await CourseService(db).get_course()
 
     if isinstance(user, InstructorModel):
         return [
-            await InstructorAssignmentService(db, user, assignment).get_instructor_assignment_schema()
+            await InstructorAssignmentService(db, user, assignment, course).get_instructor_assignment_schema()
             for assignment in assignments
         ]
-    elif isinstance(user, StudentModel):   
+    elif isinstance(user, StudentModel):
         return [
-            await StudentAssignmentService(db, user, assignment).get_student_assignment_schema()
+            await StudentAssignmentService(db, user, assignment, course).get_student_assignment_schema()
             for assignment in assignments
         ]
     else:

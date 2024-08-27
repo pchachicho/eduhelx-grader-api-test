@@ -4,18 +4,22 @@ from pydantic import PositiveInt
 from datetime import datetime, timedelta
 from sqlalchemy import func
 from sqlalchemy.orm import Session
+from app.core.exceptions.assignment import AssignmentCannotBeUnpublished
 from app.events import dispatch
 from app.models import AssignmentModel, InstructorModel, StudentModel, ExtraTimeModel
+from app.models.course import CourseModel
 from app.schemas import AssignmentSchema, InstructorAssignmentSchema, StudentAssignmentSchema, UpdateAssignmentSchema
 from app.events import CreateAssignmentCrudEvent, ModifyAssignmentCrudEvent, DeleteAssignmentCrudEvent
 from app.core.exceptions import (
     AssignmentNotFoundException,
-    AssignmentNotCreatedException,
+    AssignmentNotPublishedException,
     AssignmentNotOpenException,
     AssignmentClosedException,
     AssignmentDueBeforeOpenException,
     SubmissionMaxAttemptsReachedException
 )
+from app.enums.assignment_status import AssignmentStatus
+from app.services.submission_service import SubmissionService
 
 class AssignmentService:
     def __init__(self, session: Session):
@@ -28,7 +32,8 @@ class AssignmentService:
         directory_path: str,
         max_attempts: PositiveInt | None,
         available_date: datetime | None,
-        due_date: datetime | None
+        due_date: datetime | None,
+        is_published: bool
     ) -> AssignmentModel:
         from app.services import GiteaService, FileOperation, FileOperationType, CourseService
 
@@ -46,7 +51,8 @@ class AssignmentService:
             master_notebook_path=f"{ name }.ipynb",
             max_attempts=max_attempts,
             available_date=available_date,
-            due_date=due_date
+            due_date=due_date,
+            is_published=is_published
         )
 
         self.session.add(assignment)
@@ -74,7 +80,9 @@ class AssignmentService:
                 f"# { assignment.name }\n",
             ]
         }
-        master_notebook_content = json.dumps({ "cells": [otter_config_cell, title_cell], "metadata": {  "kernelspec": {   "display_name": "Python 3 (ipykernel)",   "language": "python",   "name": "python3"  },  "language_info": {   "codemirror_mode": {    "name": "ipython",    "version": 3   },   "file_extension": ".py",   "mimetype": "text/x-python",   "name": "python",   "nbconvert_exporter": "python",   "pygments_lexer": "ipython3",   "version": "3.11.5"  } }, "nbformat": 4, "nbformat_minor": 5})
+        
+        # See comment above commented out FileOperation below
+        # master_notebook_content = json.dumps({ "cells": [otter_config_cell, title_cell], "metadata": {  "kernelspec": {   "display_name": "Python 3 (ipykernel)",   "language": "python",   "name": "python3"  },  "language_info": {   "codemirror_mode": {    "name": "ipython",    "version": 3   },   "file_extension": ".py",   "mimetype": "text/x-python",   "name": "python",   "nbconvert_exporter": "python",   "pygments_lexer": "ipython3",   "version": "3.11.5"  } }, "nbformat": 4, "nbformat_minor": 5})
 
         gitignore_path = f"{ directory_path }/.gitignore"
         gitignore_content = await self.get_gitignore_content(assignment)
@@ -161,7 +169,14 @@ class AssignmentService:
             raise AssignmentNotFoundException()
         return assignment
     
-    async def update_assignment(self, assignment: AssignmentModel, update_assignment: UpdateAssignmentSchema) -> AssignmentModel:
+    async def update_assignment(
+            self, 
+            assignment: AssignmentModel, 
+            update_assignment: UpdateAssignmentSchema, 
+            student_id: int | None = None
+    ) -> AssignmentModel:
+        from app.services.lms_sync_service import LmsSyncService
+
         update_fields = update_assignment.dict(exclude_unset=True)
         
         if "name" in update_fields:
@@ -185,8 +200,15 @@ class AssignmentService:
         if "due_date" in update_fields:
             assignment.due_date = update_fields["due_date"]
 
+        if "is_published" in update_fields:
+            if update_fields["is_published"] == False:
+                canvas_assignment = await LmsSyncService(self.session).get_assignment(assignment.id)
+                if canvas_assignment["unpublishable"] == False:
+                    raise AssignmentCannotBeUnpublished("Canvas is not allowing this assignment to be unpublished")
+            assignment.is_published = update_fields["is_published"]
+
         if assignment.available_date is not None and assignment.due_date is not None and assignment.available_date >= assignment.due_date:
-            raise AssignmentDueBeforeOpenException
+            raise AssignmentDueBeforeOpenException()
 
         self.session.commit()
 
@@ -267,60 +289,86 @@ __pycache__/
         return f"{ assignment_name }-prof.ipynb"
 
 class InstructorAssignmentService(AssignmentService):
-    def __init__(self, session: Session, instructor: InstructorModel, assignment: AssignmentModel):
+    def __init__(self, session: Session, instructor_model: InstructorModel, assignment_model: AssignmentModel, course_model: CourseModel):
         super().__init__(session)
-        self.instructor = instructor
-        self.assignment = assignment
+        self.instructor_model = instructor_model
+        self.assignment_model = assignment_model
+        self.course_model = course_model 
 
-    def get_is_available(self) -> bool:
-        if not self.assignment.is_created: return False
+    # The release date for a specific student, considering extra_time
+    def get_adjusted_available_date(self) -> datetime | None:
+        assignment_open_date = self.assignment_model.available_date or self.course_model.start_at
+        if assignment_open_date is None: return None
+        
+        return assignment_open_date
+
+    # The due date for a specific student, considering extra_time
+    def get_adjusted_due_date(self) -> datetime | None:
+        assignment_due_date = self.assignment_model.due_date or self.course_model.end_at
+        if assignment_due_date is None: return None
+
+        return assignment_due_date
+
+    def get_assignment_status(self) -> AssignmentStatus:
+        if not self.assignment_model.is_published: return AssignmentStatus.UNPUBLISHED
 
         current_timestamp = self.session.scalar(func.current_timestamp())
-        return current_timestamp >= self.assignment.available_date
-    
-    def get_is_closed(self) -> bool:
-        if not self.assignment.is_created: return False
+        adjusted_available_date = self.get_adjusted_available_date()
+        adjusted_due_date = self.get_adjusted_due_date()
 
-        current_timestamp = self.session.scalar(func.current_timestamp())
-        return current_timestamp > self.assignment.due_date
+        # Until a course is properly configured (has start_at,end_at dates),
+        # all published assignments will display as upcoming. 
+        if adjusted_available_date is None or adjusted_due_date is None:
+            return AssignmentStatus.UPCOMING
+        
+        if adjusted_available_date >= current_timestamp: return AssignmentStatus.UPCOMING
+
+        if adjusted_due_date > current_timestamp: return AssignmentStatus.OPEN
+        else: return AssignmentStatus.CLOSED
     
     async def get_instructor_assignment_schema(self) -> InstructorAssignmentSchema:
-        assignment = AssignmentSchema.from_orm(self.assignment).dict()
-        assignment["protected_files"] = await self.get_protected_files(self.assignment)
-        assignment["overwritable_files"] = await self.get_overwritable_files(self.assignment)
+        assignment = AssignmentSchema.from_orm(self.assignment_model).dict()
 
-        assignment["is_available"] = self.get_is_available()
-        assignment["is_closed"] = self.get_is_closed()
+        assignment["protected_files"] = await self.get_protected_files(self.assignment_model)
+        assignment["overwritable_files"] = await self.get_overwritable_files(self.assignment_model)
+
+        assignment_status = self.get_assignment_status()
+        assignment["status"] = assignment_status.value
+        assignment["is_available"] = assignment_status == AssignmentStatus.OPEN
+        assignment["is_closed"] = assignment_status == AssignmentStatus.CLOSED
+        assignment["is_published"] = assignment_status != AssignmentStatus.UNPUBLISHED
 
         return InstructorAssignmentSchema(**assignment)
     
 class StudentAssignmentService(AssignmentService):
-    def __init__(self, session: Session, student: StudentModel, assignment: AssignmentModel):
+    def __init__(self, session: Session, student_model: StudentModel, assignment_model: AssignmentModel, course_model: CourseModel):
         super().__init__(session)
-        self.student = student
-        self.assignment = assignment
+        self.student_model = student_model
+        self.assignment_model = assignment_model
+        self.course_model = course_model
         self.extra_time_model = self._get_extra_time_model()
 
     def _get_extra_time_model(self) -> ExtraTimeModel | None:
         extra_time_model = self.session.query(ExtraTimeModel) \
             .filter(
-                (ExtraTimeModel.assignment_id == self.assignment.id) &
-                (ExtraTimeModel.student_id == self.student.id)
+                (ExtraTimeModel.assignment_id == self.assignment_model.id) &
+                (ExtraTimeModel.student_id == self.student_model.id)
             ) \
             .first()
         return extra_time_model
 
     # The release date for a specific student, considering extra_time
     def get_adjusted_available_date(self) -> datetime | None:
-        if self.assignment.available_date is None: return None
-
+        assignment_open_date = self.assignment_model.available_date or self.course_model.start_at
+        if assignment_open_date is None: return None
         deferred_time = self.extra_time_model.deferred_time if self.extra_time_model is not None else timedelta(0)
         
-        return self.assignment.available_date + deferred_time
+        return assignment_open_date + deferred_time
 
     # The due date for a specific student, considering extra_time
     def get_adjusted_due_date(self) -> datetime | None:
-        if self.assignment.due_date is None: return None
+        assignment_due_date = self.assignment_model.due_date or self.course_model.end_at
+        if assignment_due_date is None: return None
 
         # If a student does not have any extra time allotted for the assignment,
         # allocate them a timedelta of 0.
@@ -331,51 +379,71 @@ class StudentAssignmentService(AssignmentService):
             deferred_time = timedelta(0)
             extra_time = timedelta(0)
 
-        return self.assignment.due_date + deferred_time + extra_time + self.student.base_extra_time
+        # Base due date + have to defer by whatever amount the available date was deferred by + extra time + base extra time
+        return assignment_due_date + deferred_time + extra_time + self.student_model.base_extra_time
 
-    def get_is_available(self) -> bool:
-        if not self.assignment.is_created: return False
-
+    def _get_is_available(self) -> bool:
+        adjusted_available_date = self.get_adjusted_available_date()
+        if adjusted_available_date is None: return True
         current_timestamp = self.session.scalar(func.current_timestamp())
-        return current_timestamp >= self.get_adjusted_available_date()
+        return current_timestamp >= adjusted_available_date
     
-    def get_is_closed(self) -> bool:
-        if not self.assignment.is_created: return False
+    def _get_is_closed(self) -> bool:
+        adjusted_due_date = self.get_adjusted_due_date()
+        if adjusted_due_date is None: 
+            return not self._get_is_available()
+        current_timestamp = self.session.scalar(func.current_timestamp())
+        return current_timestamp > adjusted_due_date
+    
+    def get_assignment_status(self) -> AssignmentStatus:
+        if not self.assignment_model.is_published: return AssignmentStatus.UNPUBLISHED
 
         current_timestamp = self.session.scalar(func.current_timestamp())
-        return current_timestamp > self.get_adjusted_due_date()
+        adjusted_available_date = self.get_adjusted_available_date()
+        adjusted_due_date = self.get_adjusted_due_date()
+
+        # Until a course is properly configured (has start_at,end_at dates),
+        # all published assignments will display as upcoming. 
+        if adjusted_available_date is None or adjusted_due_date is None:
+            return AssignmentStatus.UPCOMING
+        
+        if adjusted_available_date >= current_timestamp: return AssignmentStatus.UPCOMING
+
+        if adjusted_due_date > current_timestamp: return AssignmentStatus.OPEN
+        else: return AssignmentStatus.CLOSED
 
     async def validate_student_can_submit(self):
-        from app.services import SubmissionService
+        assignment_status = self.get_assignment_status()
+        if assignment_status == AssignmentStatus.UNPUBLISHED:
+            raise AssignmentNotPublishedException()
 
-        if not self.assignment.is_created:
-            raise AssignmentNotCreatedException()
-
-        if not self.get_is_available():
+        if assignment_status == AssignmentStatus.UPCOMING:
             raise AssignmentNotOpenException()
 
-        if self.get_is_closed():
+        if assignment_status == AssignmentStatus.CLOSED:
             raise AssignmentClosedException()
         
-        if self.assignment.max_attempts is not None:
-            attempts = await SubmissionService(self.session).get_current_submission_attempt(self.student, self.assignment)
-            if attempts >= self.assignment.max_attempts:
+        if self.assignment_model.max_attempts is not None:
+            attempts = await SubmissionService(self.session).get_current_submission_attempt(self.student_model, self.assignment_model)
+            if attempts >= self.assignment_model.max_attempts:
                 raise SubmissionMaxAttemptsReachedException()
 
     async def get_student_assignment_schema(self) -> StudentAssignmentSchema:
-        from app.services import SubmissionService
+        assignment = AssignmentSchema.from_orm(self.assignment_model).dict()
+        assignment_status = self.get_assignment_status()
 
-        assignment = AssignmentSchema.from_orm(self.assignment).dict()
-        assignment["protected_files"] = await self.get_protected_files(self.assignment)
-        assignment["overwritable_files"] = await self.get_overwritable_files(self.assignment)
+        assignment["protected_files"] = await self.get_protected_files(self.assignment_model)
+        assignment["overwritable_files"] = await self.get_overwritable_files(self.assignment_model)
         assignment["current_attempts"] = await SubmissionService(self.session).get_current_submission_attempt(
-            self.student,
-            self.assignment
+            self.student_model,
+            self.assignment_model
         )
+        assignment["status"] = assignment_status.value
         assignment["adjusted_available_date"] = self.get_adjusted_available_date()
         assignment["adjusted_due_date"] = self.get_adjusted_due_date()
-        assignment["is_available"] = self.get_is_available()
-        assignment["is_closed"] = self.get_is_closed()
+        assignment["is_available"] = assignment_status == AssignmentStatus.OPEN
+        assignment["is_closed"] = assignment_status == AssignmentStatus.CLOSED
+        assignment["is_published"] = assignment_status != AssignmentStatus.UNPUBLISHED
         assignment["is_deferred"] = assignment["adjusted_available_date"] != assignment["available_date"]
         assignment["is_extended"] = assignment["adjusted_due_date"] != assignment["due_date"]
 
