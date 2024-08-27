@@ -102,30 +102,41 @@ async def grade_assignment(
     request: Request,
     db: Session = Depends(get_db),
     assignment_name: str,
-    grading_body: OtterGradingBody | ManualGradingBody,
+    grading_body: OtterGradingBody,
     perm: None = Depends(PermissionDependency(UserIsInstructorPermission))
 ):
     assignment = await AssignmentService(db).get_assignment_by_name(assignment_name)
+    return await GradingService(db).grade_assignment(
+        assignment,
+        grading_body.master_notebook_content,
+        grading_body.otter_config_content
+    )
 
-    if assignment.manual_grading:
-        grade_submissions = []
-        for manual_grade in grading_body.grade_data:
-            submission = await SubmissionService(db).get_submission_by_id(manual_grade.submission_id)
-            grade_submissions.append(IdentifiableSubmissionGradeSchema(
-                score=manual_grade.grade_percent * 100,
-                total_points=100,
-                comments=manual_grade.comments,
-                submission_already_graded=submission.graded,
-                submission_id=submission.id
-            ))
-        return await GradingService(db).grade_assignment_manual(
-            assignment,
-            grade_submissions
-        )
-
-    else:
-        return await GradingService(db).grade_assignment(
-            assignment,
-            grading_body.master_notebook_content,
-            grading_body.otter_config_content
-        )
+@router.post(
+    "/assignments/{assignment_name}/grade_manual",
+    response_model=GradeReportSchema
+)
+async def grade_assignment(
+    *,
+    request: Request,
+    db: Session = Depends(get_db),
+    assignment_name: str,
+    grading_body: ManualGradingBody,
+    perm: None = Depends(PermissionDependency(UserIsInstructorPermission))
+):
+    assignment = await AssignmentService(db).get_assignment_by_name(assignment_name)
+    
+    grade_submissions = []
+    for manual_grade in grading_body.grade_data:
+        submission = await SubmissionService(db).get_submission_by_id(manual_grade.submission_id)
+        grade_submissions.append(IdentifiableSubmissionGradeSchema(
+            score=manual_grade.grade_percent * 100,
+            total_points=100,
+            comments=manual_grade.comments,
+            submission_already_graded=submission.graded,
+            submission_id=submission.id
+        ))
+    return await GradingService(db).grade_assignment_manual(
+        assignment,
+        grade_submissions
+    )
