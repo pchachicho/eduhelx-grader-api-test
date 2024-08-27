@@ -211,6 +211,8 @@ class AssignmentService:
             raise AssignmentDueBeforeOpenException()
 
         self.session.commit()
+        
+        await LmsSyncService(self.session).upsync_assignment(assignment)
 
         dispatch(ModifyAssignmentCrudEvent(assignment=assignment, modified_fields=list(update_fields.keys())))
 
