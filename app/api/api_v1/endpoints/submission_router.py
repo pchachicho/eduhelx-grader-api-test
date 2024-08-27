@@ -32,7 +32,7 @@ async def create_submission(
         student,
         assignment,
         commit_id=submission_body.commit_id,
-        studnet_notebook_content=submission_body.student_notebook_content.encode()
+        student_notebook_content=submission_body.student_notebook_content.encode()
     )
 
     return await submission_service.get_submission_schema(submission)
