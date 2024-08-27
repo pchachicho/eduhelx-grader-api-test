@@ -38,7 +38,7 @@ class OtterGradingBody(BaseModel):
 class ManualGrade(BaseModel):
     submission_id: int
     # Between [0,1]
-    grade_percent: float
+    grade_proportion: float
     comments: Optional[str]
 
 class ManualGradingBody(BaseModel):
@@ -130,7 +130,7 @@ async def grade_assignment(
     for manual_grade in grading_body.grade_data:
         submission = await SubmissionService(db).get_submission_by_id(manual_grade.submission_id)
         grade_submissions.append(IdentifiableSubmissionGradeSchema(
-            score=manual_grade.grade_percent * 100,
+            score=manual_grade.grade_proportion * 100,
             total_points=100,
             comments=manual_grade.comments,
             submission_already_graded=submission.graded,
