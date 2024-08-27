@@ -116,7 +116,7 @@ class LmsSyncService:
                 print("getting user info for ", pid)
                 user_info = self.ldap_service.get_user_info(pid)
                 print(pid, "->", user_info.onyen)
-            except:
+            except UserNotFoundException:
                 print("Skipping over student not in LDAP: ", pid or email or "<unknown>")
                 return None
 
@@ -180,9 +180,7 @@ class LmsSyncService:
         if db_student is not None and canvas_student is None:
             # delete
             await self.student_service.delete_user(db_student.onyen)
-            try: await self.canvas_service.unassociate_pid_from_user(db_student.onyen)
-            except LMSUserNotFoundException: pass
-
+            
     async def sync_students_conc(self):
         db_students = await self.student_service.list_students()
         canvas_students = await self.canvas_service.get_students()
@@ -304,8 +302,6 @@ class LmsSyncService:
             print("student pid is", student_pid)
             if student_pid not in canvas_student_pids:
                 await self.student_service.delete_user(student.onyen)
-                try: await self.canvas_service.unassociate_pid_from_user(student.onyen)
-                except LMSUserNotFoundException: pass
        
         for student in canvas_students:
             pid, email, name = student.get("sis_user_id"), student.get("email"), student.get("name")
@@ -317,13 +313,12 @@ class LmsSyncService:
                 print("getting user info for ", pid)
                 user_info = self.ldap_service.get_user_info(pid)
                 print(pid, "->", user_info.onyen)
-            except:
+            except UserNotFoundException:
                 print("Skipping over student not in LDAP: ", pid or "<unknown>")
                 continue
 
             try:
                 await self.student_service.get_user_by_onyen(user_info.onyen)
-
             except UserNotFoundException:
                 #create a new student
                 print("student doesn't exist", user_info.onyen)
