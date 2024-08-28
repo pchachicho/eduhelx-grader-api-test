@@ -11,7 +11,7 @@ from app.core.exceptions import (
     UserNotFoundException, LMSUserNotFoundException
 )
 
-class ResourcePair(BaseModel):
+class DatabaseLMSResourcePair(BaseModel):
     # User exists in LMS but not DB = create
     # User exists in DB but not LMS = delete
     # User exists in both DB and LMS = update
@@ -111,7 +111,7 @@ class LmsSyncService:
         # User exists in both DB and Canvas = update
         pairs = []
         
-        async def process_canvas_user(canvas_user) -> ResourcePair | None:
+        async def process_canvas_user(canvas_user) -> DatabaseLMSResourcePair | None:
             pid, email, name = canvas_user.get("sis_user_id"), canvas_user.get("email"), canvas_user.get("name")
             if pid is None or email is None or name is None:
                 print("Skipping over pending user", name or email or "<unknown>")
@@ -127,10 +127,10 @@ class LmsSyncService:
 
             try:
                 user = await self.user_service.get_user_by_onyen(user_info.onyen)
-                return ResourcePair(db_resource=user, lms_resource=canvas_user, user_info=user_info)
+                return DatabaseLMSResourcePair(db_resource=user, lms_resource=canvas_user, user_info=user_info)
 
             except UserNotFoundException:
-                return ResourcePair(db_resource=None, lms_resource=canvas_user, user_info=user_info)
+                return DatabaseLMSResourcePair(db_resource=None, lms_resource=canvas_user, user_info=user_info)
         
 
         # We begin by checking if there are any users that have been deleted from Canvas.
@@ -138,7 +138,7 @@ class LmsSyncService:
         for db_user in db_users:
             pid = await self.canvas_service.get_pid_from_onyen(db_user.onyen)
             if pid not in canvas_user_pids:
-                pairs.append(ResourcePair(db_resource=db_user, lms_resource=None))
+                pairs.append(DatabaseLMSResourcePair(db_resource=db_user, lms_resource=None))
         
         # Then we process Canvas users
         pairs += await asyncio.gather(*[process_canvas_user(u) for u in canvas_users])
@@ -151,26 +151,27 @@ class LmsSyncService:
         canvas_assignment_ids = [a["id"] for a in canvas_assignments]
         for db_assignment in db_assignments:
             if db_assignment.id not in canvas_assignment_ids:
-                pairs.append(ResourcePair(db_resource=db_assignment, lms_resource=None))
+                pairs.append(DatabaseLMSResourcePair(db_resource=db_assignment, lms_resource=None))
 
         for canvas_assignment in canvas_assignments:
             try:
                 db_assignment = await self.assignment_service.get_assignment_by_id(canvas_assignment["id"])
-                pairs.append(ResourcePair(db_resource=db_assignment, lms_resource=canvas_assignment))
+                pairs.append(DatabaseLMSResourcePair(db_resource=db_assignment, lms_resource=canvas_assignment))
 
             except AssignmentNotFoundException as e:
-                pairs.append(ResourcePair(db_resource=None, lms_resource=canvas_assignment))
+                pairs.append(DatabaseLMSResourcePair(db_resource=None, lms_resource=canvas_assignment))
 
         return pairs
     
     async def sync_student(
         self,
-        resource_pair: ResourcePair
+        resource_pair: DatabaseLMSResourcePair
     ):
         db_student, canvas_student = resource_pair.db_resource, resource_pair.lms_resource
 
         if db_student is None and canvas_student is not None:
             # create
+            print("creating student", canvas_student["name"])
             await self.student_service.create_student(
                 onyen=resource_pair.user_info.onyen,
                 name=canvas_student["name"],
@@ -180,10 +181,12 @@ class LmsSyncService:
 
         if db_student is not None and canvas_student is not None:
             # update
+            print("updating student", canvas_student["name"])
             pass
 
         if db_student is not None and canvas_student is None:
             # delete
+            print("deleting student", canvas_student["name"])
             await self.student_service.delete_user(db_student.onyen)
             
     async def sync_students_conc(self):
@@ -206,12 +209,13 @@ class LmsSyncService:
 
     async def sync_instructor(
         self,
-        resource_pair: ResourcePair
+        resource_pair: DatabaseLMSResourcePair
     ):
         db_instructor, canvas_instructor = resource_pair.db_resource, resource_pair.lms_resource
 
         if db_instructor is None and canvas_instructor is not None:
             # create
+            print("creating instructor", canvas_instructor["name"])
             await self.instructor_service.create_instructor(
                 onyen=resource_pair.user_info.onyen,
                 name=canvas_instructor["name"],
@@ -221,13 +225,13 @@ class LmsSyncService:
 
         if db_instructor is not None and canvas_instructor is not None:
             # update
+            print("updating instructor", canvas_instructor["name"])
             pass
 
         if db_instructor is not None and canvas_instructor is None:
             # delete
+            print("deleting instructor", canvas_instructor["name"])
             await self.instructor_service.delete_user(db_instructor.onyen)
-            try: await self.canvas_service.unassociate_pid_from_user(db_instructor.onyen)
-            except LMSUserNotFoundException: pass
 
     async def sync_instructors_conc(self):
         db_instructors = await self.instructor_service.list_instructors()
@@ -248,7 +252,7 @@ class LmsSyncService:
         ])
 
 
-    async def sync_assignment(self, resource_pair: ResourcePair):
+    async def sync_assignment(self, resource_pair: DatabaseLMSResourcePair):
         db_assignment, canvas_assignment = resource_pair.db_resource, resource_pair.lms_resource
         
         # Canvas uses -1 for unlimited attempts.
@@ -256,17 +260,20 @@ class LmsSyncService:
             
         if db_assignment is None and canvas_assignment is not None:
             # create
+            print("creating assignment", canvas_assignment["name"])
             await self.assignment_service.create_assignment(
                 id=canvas_assignment["id"],
                 name=canvas_assignment["name"], 
                 due_date=canvas_assignment["due_at"], 
                 available_date=canvas_assignment["unlock_at"],
                 directory_path=canvas_assignment["name"],
+                is_published=canvas_assignment["published"],
                 max_attempts=max_attempts
             )
 
         if db_assignment is not None and canvas_assignment is not None:
             # update
+            print("updating assignment", canvas_assignment["name"])
             await self.assignment_service.update_assignment(db_assignment, UpdateAssignmentSchema(
                 name=canvas_assignment["name"],
                 available_date=canvas_assignment["unlock_at"],
@@ -276,6 +283,7 @@ class LmsSyncService:
         
         if db_assignment is not None and canvas_assignment is None:
             # delete
+            print("deleting assignment", canvas_assignment["name"])
             await self.assignment_service.delete_assignment(db_assignment)
     
     async def sync_assignments_conc(self):
@@ -356,8 +364,6 @@ class LmsSyncService:
             print("instructor pid is", instructor_pid)
             if instructor_pid not in canvas_instructor_pids:
                 await self.instructor_service.delete_user(instructor.onyen)
-                try: await self.canvas_service.unassociate_pid_from_user(instructor.onyen)
-                except LMSUserNotFoundException: pass
         
         for instructor in canvas_instructors:
             pid, email, name = instructor.get("sis_user_id"), instructor.get("email"), instructor.get("name")
