@@ -116,7 +116,7 @@ async def grade_assignment(
     "/assignments/{assignment_name}/grade_manual",
     response_model=GradeReportSchema
 )
-async def grade_assignment(
+async def grade_assignment_manual(
     *,
     request: Request,
     db: Session = Depends(get_db),
