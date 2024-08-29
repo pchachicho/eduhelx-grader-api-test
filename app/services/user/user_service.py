@@ -1,3 +1,4 @@
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from app.events import dispatch
 from app.models import UserModel, AutoPasswordAuthModel
@@ -12,6 +13,11 @@ from app.core.exceptions import (
     UserNotFoundException,
     PasswordDoesNotMatchException
 )
+
+class UserCleanupMetadata(BaseModel):
+    database_user_hit: bool = False
+    password_secret_hit: bool = False
+    gitea_user_hit: bool = False
 
 class UserService:
     def __init__(self, session: Session):

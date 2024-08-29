@@ -4,7 +4,7 @@ from pydantic import PositiveInt
 from datetime import datetime, timedelta
 from sqlalchemy import func
 from sqlalchemy.orm import Session
-from app.core.exceptions.assignment import AssignmentCannotBeUnpublished
+from app.core.exceptions.assignment import AssignmentCannotBeUnpublished, AssignmentAlreadyExistsException
 from app.events import dispatch
 from app.models import AssignmentModel, InstructorModel, StudentModel, ExtraTimeModel
 from app.models.course import CourseModel
@@ -52,6 +52,18 @@ class AssignmentService:
                 assignment.available_date >= assignment.due_date
             ):
                 raise AssignmentDueBeforeOpenException
+            
+            try:
+                await self.get_assignment_by_id(assignment.id)
+                raise AssignmentAlreadyExistsException()
+            except AssignmentNotFoundException:
+                pass
+
+            try:
+                await self.get_assignment_by_name(assignment.name)
+                raise AssignmentAlreadyExistsException()
+            except AssignmentNotFoundException:
+                pass
 
             assignment_models.append(AssignmentModel(
                 id=assignment.id,

@@ -1,5 +1,10 @@
 from .base import CustomException
 
+class AssignmentAlreadyExistsException(CustomException):
+    code = 400
+    error_code = "ASSIGNMENT__ALREADY_EXISTS"
+    message = "assignment id or name already in use"
+
 class AssignmentDueBeforeOpenException(CustomException):
     code = 400
     error_code = "ASSIGNMENT__DUE_BEFORE_OPEN"

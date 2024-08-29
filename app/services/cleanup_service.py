@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 from app.models import UserModel, CourseModel, GradeReportModel, AssignmentModel
 from app.services import GiteaService, KubernetesService
+from app.core.exceptions import GiteaNotFoundException
 
 class CleanupService:
     class Grading:

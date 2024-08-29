@@ -50,3 +50,8 @@ class LMSBackendException(CustomException):
     def __init__(self, message: str | None = None, response: Response | None = None):
         super().__init__(message)
         self.response = response
+
+    @property
+    def status_code(self) -> int | None:
+        if self.response: return self.response.status_code
+        return None
