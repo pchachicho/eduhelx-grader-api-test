@@ -187,7 +187,7 @@ class LmsSyncService:
         if db_student is not None and canvas_student is None:
             # delete
             print("deleting student", canvas_student["name"])
-            await self.student_service.delete_user(db_student.onyen)
+            await self.student_service.delete_user(db_student)
             
     async def sync_students_conc(self):
         db_students = await self.student_service.list_students()
@@ -231,7 +231,7 @@ class LmsSyncService:
         if db_instructor is not None and canvas_instructor is None:
             # delete
             print("deleting instructor", canvas_instructor["name"])
-            await self.instructor_service.delete_user(db_instructor.onyen)
+            await self.instructor_service.delete_user(db_instructor)
 
     async def sync_instructors_conc(self):
         db_instructors = await self.instructor_service.list_instructors()
@@ -314,7 +314,7 @@ class LmsSyncService:
             student_pid = await self.canvas_service.get_pid_from_onyen(student.onyen)
             print("student pid is", student_pid)
             if student_pid not in canvas_student_pids:
-                await self.student_service.delete_user(student.onyen)
+                await self.student_service.delete_user(student)
        
         for student in canvas_students:
             pid, email, name = student.get("sis_user_id"), student.get("email"), student.get("name")
@@ -363,7 +363,7 @@ class LmsSyncService:
             instructor_pid = await self.canvas_service.get_pid_from_onyen(instructor.onyen)
             print("instructor pid is", instructor_pid)
             if instructor_pid not in canvas_instructor_pids:
-                await self.instructor_service.delete_user(instructor.onyen)
+                await self.instructor_service.delete_user(instructor)
         
         for instructor in canvas_instructors:
             pid, email, name = instructor.get("sis_user_id"), instructor.get("email"), instructor.get("name")
