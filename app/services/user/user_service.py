@@ -85,7 +85,8 @@ class UserService:
 
         return autogen_password
 
-    """ Due to the fact we can't unpurge a Gitea user, no batch user deletion currently. """
+    """ We can't unpurge a Gitea user, so no batch user deletion currently, since we
+    can't cleanup if a failure is encountered in the middle of deleting Gitea users. """
     async def delete_user(
         self,
         user: UserModel
