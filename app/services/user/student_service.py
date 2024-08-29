@@ -2,6 +2,7 @@ from typing import List
 from app.events import dispatch
 from app.models import StudentModel
 from app.events import CreateUserCrudEvent
+from app.schemas import CollaboratorPermission
 from app.core.role_permissions import student_role
 from app.core.exceptions import NotAStudentException, UserAlreadyExistsException, UserNotFoundException
 from .user_service import UserService
@@ -18,7 +19,7 @@ class StudentService(UserService):
         name: str,
         email: str
     ) -> StudentModel:
-        from app.services import GiteaService, CourseService, CleanupService, CollaboratorPermission
+        from app.services import GiteaService, CourseService, CleanupService
 
         try:
             await super().get_user_by_onyen(onyen)

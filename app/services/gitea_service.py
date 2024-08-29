@@ -1,3 +1,5 @@
+import httpx
+import base64
 from typing import List, Optional
 from enum import Enum
 from io import BytesIO
@@ -8,29 +10,8 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.services import AssignmentService
-from app.schemas import CommitSchema
+from app.schemas import CommitSchema, FileOperation, FileOperationType, CollaboratorPermission
 from app.core.utils.header import parse_content_disposition_header
-import httpx
-import base64
-
-class FileOperationType(str, Enum):
-    CREATE = "create"
-    UPDATE = "update"
-    DELETE = "delete"
-
-class FileOperation(BaseModel):
-    # File content
-    content: str
-    # Path to file
-    path: str
-    # Rename an existing file
-    from_path: Optional[str] = None
-    operation: FileOperationType
-
-class CollaboratorPermission(str, Enum):
-    READ = "read"
-    WRITE = "write"
-    ADMIN = "admin"
 
 class GiteaService:
     def __init__(self, session: Session):
