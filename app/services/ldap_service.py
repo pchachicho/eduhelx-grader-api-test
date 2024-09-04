@@ -9,7 +9,7 @@ class LDAPUserInfoSchema(BaseModel):
     first_name: str
     last_name: str
     email: str
-    pid: int
+    pid: str
 
 class LDAPService:
     def get_user_info(self, pid: str) -> LDAPUserInfoSchema:
@@ -46,7 +46,7 @@ class LDAPService:
                     raise UserNotFoundException()
                 student = conn.entries[0]
                 return LDAPUserInfoSchema(
-                    pid=student.pid.value,
+                    pid=str(student.pid.value),
                     onyen=student.uid.value,
                     first_name=student.givenName.value,
                     last_name=student.sn.value,

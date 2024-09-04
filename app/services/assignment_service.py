@@ -89,7 +89,7 @@ class AssignmentService:
                 name=master_repository_name,
                 owner=owner,
                 branch_name=branch_name,
-                commit_message=f"Initialize assignments { ', '.join([a.id for a in assignment_models]) }",
+                commit_message=f"Initialize assignments { ', '.join([str(a.id) for a in assignment_models]) }",
                 files=files_to_modify
             )
         except Exception as e:
@@ -164,7 +164,8 @@ class AssignmentService:
             self.session.delete(assignment)
         self.session.commit()
 
-        dispatch(DeleteAssignmentCrudEvent(assignment=assignment))
+        for assignment in assignments:
+            dispatch(DeleteAssignmentCrudEvent(assignment=assignment))
 
     async def delete_assignment(self, assignment: AssignmentModel) -> None:
         await self.delete_assignments([assignment])

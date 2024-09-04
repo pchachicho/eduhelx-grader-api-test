@@ -144,6 +144,8 @@ class LmsSyncService:
         return self._group_resource_pairs_by_operation(pairs)
 
     async def _create_students_from_pairs(self, pairs: list[DatabaseLMSResourceCreatePair]):
+        if len(pairs) == 0: return
+
         tuple_resource_pairs = [(pair.db_resource, pair.lms_resource, pair.user_info) for pair in pairs]
         await self.student_service.create_students([
             CreateStudentSchema(
@@ -151,16 +153,20 @@ class LmsSyncService:
                 name=canvas_student["name"],
                 email=canvas_student["email"]
             )
-            for (db_student, canvas_student, user_info) in pairs
+            for (db_student, canvas_student, user_info) in tuple_resource_pairs
         ])
         for pair in pairs:
             await self.canvas_service.associate_pid_to_user(pair.user_info.onyen, pair.user_info.pid)
 
     async def _update_students_from_pairs(self, pairs: list[DatabaseLMSResourceUpdatePair]):
+        if len(pairs) == 0: return
+        
         # Not implemented.
         pass
 
     async def _delete_students_from_pairs(self, pairs: list[DatabaseLMSResourceDeletePair]):
+        if len(pairs) == 0: return
+
         db_students = [pair.db_resource for pair in pairs]
         
         # We don't have a batch user deletion method at the moment due to cleanup concerns.
@@ -193,6 +199,8 @@ class LmsSyncService:
         )
 
     async def _create_instructors_from_pairs(self, pairs: list[DatabaseLMSResourceCreatePair]):
+        if len(pairs) == 0: return
+        
         tuple_resource_pairs = [(pair.db_resource, pair.lms_resource, pair.user_info) for pair in pairs]
         await self.instructor_service.create_instructors([
             CreateInstructorSchema(
@@ -200,16 +208,20 @@ class LmsSyncService:
                 name=canvas_instructor["name"],
                 email=canvas_instructor["email"]
             )
-            for (db_instructor, canvas_instructor, user_info) in pairs
+            for (db_instructor, canvas_instructor, user_info) in tuple_resource_pairs
         ])
         for pair in pairs:
             await self.canvas_service.associate_pid_to_user(pair.user_info.onyen, pair.user_info.pid)
 
     async def _update_instructors_from_pairs(self, pairs: list[DatabaseLMSResourceUpdatePair]):
+        if len(pairs) == 0: return
+
         # Not implemented.
         pass
 
     async def _delete_instructors_from_pairs(self, pairs: list[DatabaseLMSResourceDeletePair]):
+        if len(pairs) == 0: return
+
         db_instructors = [pair.db_resource for pair in pairs]
         
         # We don't have a batch user deletion method at the moment due to cleanup concerns.
@@ -242,6 +254,8 @@ class LmsSyncService:
         )
 
     async def _create_assignments_from_pairs(self, pairs: list[DatabaseLMSResourceCreatePair]):
+        if len(pairs) == 0: return
+
         canvas_assignments = [pair.lms_resource for pair in pairs]
         await self.assignment_service.create_assignments([
             CreateAssignmentSchema(
@@ -257,6 +271,8 @@ class LmsSyncService:
         ])
 
     async def _update_assignments_from_pairs(self, pairs: list[DatabaseLMSResourceUpdatePair]):
+        if len(pairs) == 0: return
+
         tuple_resource_pairs = [(pair.db_resource, pair.lms_resource) for pair in pairs]
         await self.assignment_service.update_assignments([
             (
@@ -271,6 +287,8 @@ class LmsSyncService:
         ])
 
     async def _delete_assignments_from_pairs(self, pairs: list[DatabaseLMSResourceDeletePair]):
+        if len(pairs) == 0: return
+
         db_assignments = [pair.db_resource for pair in pairs]
         await self.assignment_service.delete_assignments(db_assignments)
     
