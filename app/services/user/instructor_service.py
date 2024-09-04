@@ -51,7 +51,7 @@ class InstructorService(UserService):
 
         """ Create models """
         instructor_models = []
-        for instructor in instructor_models:
+        for instructor in instructors:
             try:
                 await super().get_user_by_onyen(instructor.onyen)
                 raise UserAlreadyExistsException()
