@@ -1,21 +1,6 @@
 from httpx import Response
 from .base import CustomException
 
-class LMSNoAssignmentFetchedException(CustomException):
-    code = 404
-    error_code = "LMS__NO_ASSIGNMENT_FETCHED"
-    message = "Failed to fetch assignment from LMS"
-
-class LMSNoCourseFetchedException(CustomException):
-    code = 404
-    error_code = "LMS__NO_COURSE_FETCHED"
-    message = "Failed to fetch course from LMS"
-
-class LMSNoStudentsFetchedException(CustomException):
-    code = 404
-    error_code = "LMS__NO_STUDENTS_FETCHED"
-    message = "Failed to fetch students from LMS"
-
 class LMSUserNotFoundException(CustomException):
     code = 404
     error_code = "LMS__USER_NOT_FOUND"
