@@ -51,6 +51,8 @@ class LmsSyncService:
         self.ldap_service = LDAPService()
         self.session = session
 
+    async def get_assignments(self): return await self.canvas_service.get_assignments()
+
     async def get_assignment(self, assignment_id):
         return await self.canvas_service.get_assignment(assignment_id)
 
@@ -86,7 +88,8 @@ class LmsSyncService:
         canvas_user_pids: list[str]
     ) -> tuple[list[DatabaseLMSResourceCreatePair],list[DatabaseLMSResourceUpdatePair],list[DatabaseLMSResourceDeletePair]]:
         pairs = []
-        
+        print([u.onyen for u in db_users])
+        print([u.get("name") for u in canvas_users])
         async def process_canvas_user(canvas_user) -> None:
             pid, email, name = canvas_user.get("sis_user_id"), canvas_user.get("email"), canvas_user.get("name")
             if pid is None or email is None or name is None:
@@ -156,6 +159,7 @@ class LmsSyncService:
             for (db_student, canvas_student, user_info) in tuple_resource_pairs
         ])
         for pair in pairs:
+            print("ASSOCIATE STUDENT", pair.user_info.onyen)
             await self.canvas_service.associate_pid_to_user(pair.user_info.onyen, pair.user_info.pid)
 
     async def _update_students_from_pairs(self, pairs: list[DatabaseLMSResourceUpdatePair]):
@@ -211,6 +215,7 @@ class LmsSyncService:
             for (db_instructor, canvas_instructor, user_info) in tuple_resource_pairs
         ])
         for pair in pairs:
+            print("ASSOCIATE INSTRUCTOR", pair.user_info.onyen)
             await self.canvas_service.associate_pid_to_user(pair.user_info.onyen, pair.user_info.pid)
 
     async def _update_instructors_from_pairs(self, pairs: list[DatabaseLMSResourceUpdatePair]):

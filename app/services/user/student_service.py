@@ -41,7 +41,7 @@ class StudentService(UserService):
 
             return autogen_password
 
-        """ Create Gitea students. This modifies the database but does not commit. """
+        """ Create Gitea students. """
         async def create_gitea_student(student: StudentModel, autogen_password: str) -> None:
             await gitea_service.create_user(student.onyen, student.email, autogen_password)
             cleanup_metadata[student.onyen].gitea_user_hit = True
@@ -52,6 +52,12 @@ class StudentService(UserService):
                 collaborator_name=student.onyen,
                 permission=CollaboratorPermission.READ
             )
+        
+        """ Create Gitea student forks. This modifies the database but does not commit. """
+        """ NOTE: User forks currently cannot be created concurrently due to a restriction of Gitea/Gitea-Assist.
+        Gitea only allows forking under the authenticated user, and does not allow renaming during creation, so
+        concurrent fork creation can result in two forks being created under the same name under the Gitea-Assist account. """
+        async def create_student_fork(student: StudentModel) -> None:
             await gitea_service.fork_repository(
                 name=master_repo_name,
                 owner=instructor_organization,
@@ -114,6 +120,9 @@ class StudentService(UserService):
                 create_gitea_student(student, autogen_password)
                 for student, autogen_password in zip(student_models, autogen_passwords)
             ])
+            for student in student_models:
+                await create_student_fork(student)
+
             # We've updated the `fork_remote_url` column for students
             self.session.commit()
         except Exception as e:

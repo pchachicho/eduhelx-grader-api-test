@@ -1,6 +1,7 @@
 import json
 from typing import List
 from pydantic import PositiveInt
+from collections import Counter
 from datetime import datetime, timedelta
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -31,6 +32,39 @@ class AssignmentService:
     def __init__(self, session: Session):
         self.session = session
 
+    async def validate_assignments(self, new_assignments: list[AssignmentModel] | None = None):
+        from app.services import LmsSyncService
+        
+        assignments = await self.get_assignments()
+        lms_assignments = await LmsSyncService(self.session).get_assignments()
+        if new_assignments is not None: assignments += new_assignments
+
+        id_count = Counter(a.id for a in assignments)
+        name_count = Counter(a.name for a in assignments)
+
+        id_violations = [i for i, count in id_count if count > 1]
+        name_violations = [i for i, count in name_count if count > 1]
+
+        if len(id_violations) > 0:
+            raise AssignmentAlreadyExistsException(f"assignment IDs { ', '.join(id_violations) } are already in use")
+
+        if len(name_violations) > 0:
+            raise AssignmentAlreadyExistsException(f"assignment names { ', '.join(name_violations) } are already in use")
+        
+        for assignment in assignments:
+            if (
+                assignment.available_date is not None and
+                assignment.due_date is not None and
+                assignment.available_date >= assignment.due_date
+            ):
+                raise AssignmentDueBeforeOpenException
+            
+            if not assignment.is_published:
+                canvas_assignment = [a for a in lms_assignments if a["id"] == assignment.id]
+                if not canvas_assignment["unpublishable"]:
+                    # The assignment is unpublished, but is not unpublishable.
+                    raise AssignmentCannotBeUnpublished(f"LMS does not permit assignment { assignment.id } to be unpublished")
+
     async def create_assignments(
         self,
         assignments: list[CreateAssignmentSchema]
@@ -46,25 +80,6 @@ class AssignmentService:
 
         assignment_models = []
         for assignment in assignments:
-            if (
-                assignment.available_date is not None and
-                assignment.due_date is not None and
-                assignment.available_date >= assignment.due_date
-            ):
-                raise AssignmentDueBeforeOpenException
-            
-            try:
-                await self.get_assignment_by_id(assignment.id)
-                raise AssignmentAlreadyExistsException()
-            except AssignmentNotFoundException:
-                pass
-
-            try:
-                await self.get_assignment_by_name(assignment.name)
-                raise AssignmentAlreadyExistsException()
-            except AssignmentNotFoundException:
-                pass
-
             assignment_models.append(AssignmentModel(
                 id=assignment.id,
                 name=assignment.name,
@@ -76,6 +91,7 @@ class AssignmentService:
                 due_date=assignment.due_date,
                 is_published=assignment.is_published
             ))
+        await self.validate_assignments(new_assignments=assignment_models)
 
         # We could use bulk save to optimize here but it's really not necessary and there are drawbacks.
         self.session.add_all(assignment_models)
@@ -136,15 +152,9 @@ class AssignmentService:
                 assignment.due_date = update_fields["due_date"]
 
             if "is_published" in update_fields:
-                if update_fields["is_published"] == False:
-                    canvas_assignment = await LmsSyncService(self.session).get_assignment(assignment.id)
-                    if canvas_assignment["unpublishable"] == False:
-                        raise AssignmentCannotBeUnpublished("Canvas is not allowing this assignment to be unpublished")
                 assignment.is_published = update_fields["is_published"]
 
-            if assignment.available_date is not None and assignment.due_date is not None and assignment.available_date >= assignment.due_date:
-                raise AssignmentDueBeforeOpenException()
-
+        await self.validate_assignments()
         self.session.commit()
 
         for assignment, update_assignment in assignments_with_updates:

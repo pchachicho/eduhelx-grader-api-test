@@ -31,7 +31,7 @@ class InstructorService(UserService):
                 )
 
         """ Create autogen passwords """
-        async def create_user_password(instuctor: InstructorModel) -> str:
+        async def create_user_password(instructor: InstructorModel) -> str:
             autogen_password = await self.create_user_auto_password_auth(instructor.onyen)
             cleanup_metadata[instructor.onyen].password_secret_hit = True
 
