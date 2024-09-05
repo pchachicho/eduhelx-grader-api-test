@@ -42,8 +42,8 @@ class AssignmentService:
         id_count = Counter(a.id for a in assignments)
         name_count = Counter(a.name for a in assignments)
 
-        id_violations = [i for i, count in id_count if count > 1]
-        name_violations = [i for i, count in name_count if count > 1]
+        id_violations = [i for i, count in id_count.items() if count > 1]
+        name_violations = [i for i, count in name_count.items() if count > 1]
 
         if len(id_violations) > 0:
             raise AssignmentAlreadyExistsException(f"assignment IDs { ', '.join(id_violations) } are already in use")
@@ -60,7 +60,7 @@ class AssignmentService:
                 raise AssignmentDueBeforeOpenException
             
             if not assignment.is_published:
-                canvas_assignment = [a for a in lms_assignments if a["id"] == assignment.id]
+                canvas_assignment = [a for a in lms_assignments if a["id"] == assignment.id][0]
                 if not canvas_assignment["unpublishable"]:
                     # The assignment is unpublished, but is not unpublishable.
                     raise AssignmentCannotBeUnpublished(f"LMS does not permit assignment { assignment.id } to be unpublished")
