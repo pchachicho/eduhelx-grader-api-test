@@ -19,7 +19,7 @@ from app.core.exceptions import (
     StudentGradedMultipleTimesException, SubmissionMismatchException
 )
 from app.core.utils.datetime import get_now_with_tzinfo
-from app.services import StudentService, SubmissionService, CourseService, GiteaService, LmsSyncService, CleanupService
+from app.services import StudentService, SubmissionService, CourseService, GiteaService
 from app.models import AssignmentModel, SubmissionModel, GradeReportModel
 from app.schemas import GradeReportSchema, SubmissionGradeSchema, IdentifiableSubmissionGradeSchema
 
@@ -145,7 +145,7 @@ class GradingService:
         *,
         dry_run=False
     ) -> GradeReportModel:
-        lms_sync_service = LmsSyncService(self.session)
+        from app.services import LmsSyncService, CleanupService
 
         if assignment.manual_grading:
             raise AutogradingDisabledException()
@@ -228,11 +228,9 @@ class GradingService:
                         # This submission is already graded. No point in reuploading it to Canvas.
                         continue
                     
-                    student_notebook_upload = await self.get_student_notebook_upload(submission, student_notebook_content)
-                    await lms_sync_service.upsync_grade(
+                    await LmsSyncService(self.session).upsync_grade(
                         submission=submission,
-                        grade_percent=submission_grade.score / grade_report.total_points,
-                        student_notebook=student_notebook_upload,
+                        grade_proportion=submission_grade.score / grade_report.total_points,
                         comments=submission_grade.comments if assignment.grader_question_feedback else None,
                     )
                     submission.graded = True
