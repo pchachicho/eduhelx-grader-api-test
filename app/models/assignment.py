@@ -32,5 +32,5 @@ class AssignmentModel(Base):
         if self.manual_grading:
             # If the assignment is manually graded, there is no distinct "student" version.
             # They just share the same notebook.
-            return p
+            return str(p)
         return str(p.parents[0] / (p.stem + "-student.ipynb"))
