@@ -43,19 +43,13 @@ class LmsSyncService:
                 print("COURSE EXISTS ALREADY")
                 #update the existing course
                 await self.course_service.update_course(UpdateCourseSchema(
-                    name=canvas_course["name"],
-                    start_at=canvas_course["start_at"],
-                    end_at=canvas_course["end_at"]
+                    name=canvas_course["name"]
                 ))
                 print("UPDATED COURSE")
 
         except NoCourseExistsException as e:
             print("CREATING COURSE (LMS)", e)
-            return await CourseService(self.session).create_course(
-                name=canvas_course['name'], 
-                start_at=canvas_course['start_at'], 
-                end_at=canvas_course['end_at']
-            )
+            return await CourseService(self.session).create_course(name=canvas_course['name'])
 
 
     async def sync_assignments(self):
