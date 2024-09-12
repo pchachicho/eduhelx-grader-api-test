@@ -136,7 +136,7 @@ async def grade_assignment_manual(
             submission_already_graded=submission.graded,
             submission_id=submission.id
         ))
-    return await GradingService(db).grade_assignment_manual(
+    return await GradingService(db).grade_assignment_manually(
         assignment,
         grade_submissions
     )

@@ -19,7 +19,7 @@ from app.core.exceptions import (
     StudentGradedMultipleTimesException, SubmissionMismatchException
 )
 from app.core.utils.datetime import get_now_with_tzinfo
-from app.services import StudentService, SubmissionService, CourseService, GiteaService
+from app.services import StudentService, SubmissionService, CourseService, GiteaService, LmsSyncService, CleanupService
 from app.models import AssignmentModel, SubmissionModel, GradeReportModel
 from app.schemas import GradeReportSchema, SubmissionGradeSchema, IdentifiableSubmissionGradeSchema
 
@@ -243,7 +243,7 @@ class GradingService:
             
             return grade_report
         
-    async def grade_assignment_manual(
+    async def grade_assignment_manually(
         self,
         assignment: AssignmentModel,
         grade_data: list[IdentifiableSubmissionGradeSchema],
