@@ -48,6 +48,8 @@ class Settings(BaseSettings):
     CANVAS_API_KEY: str
     CANVAS_API_URL: str
     CANVAS_COURSE_ID: str
+    CANVAS_COURSE_START_DATE: str
+    CANVAS_COURSE_END_DATE: str
 
     # Authentication
     JWT_SECRET_KEY: str
