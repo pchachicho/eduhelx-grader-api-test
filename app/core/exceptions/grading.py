@@ -13,7 +13,7 @@ class AutogradingDisabledException(CustomException):
 class StudentGradedMultipleTimesException(CustomException):
     code = 400
     error_code = "GRADING__STUDENT_GRADED_MULTIPLE_TIMES"
-    message = "only 1 submission per student is permitted for batch grading"
+    message = "only 1 submission per student is permitted during grading"
 
 class SubmissionMismatchException(CustomException):
     code = 400
