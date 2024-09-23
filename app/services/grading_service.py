@@ -19,7 +19,7 @@ from app.core.exceptions import (
     StudentGradedMultipleTimesException, SubmissionMismatchException
 )
 from app.core.utils.datetime import get_now_with_tzinfo
-from app.services import StudentService, SubmissionService, CourseService, GiteaService, LmsSyncService, CleanupService
+from app.services import StudentService, SubmissionService, CourseService, GiteaService
 from app.models import AssignmentModel, SubmissionModel, GradeReportModel
 from app.schemas import GradeReportSchema, SubmissionGradeSchema, IdentifiableSubmissionGradeSchema
 
@@ -250,6 +250,8 @@ class GradingService:
         *,
         dry_run=False
     ) -> GradeReportModel:
+        from app.services import LmsSyncService, CleanupService
+        
         lms_sync_service = LmsSyncService(self.session)
 
         # Validate that manually-entered grading data does not attempt
