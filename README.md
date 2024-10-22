@@ -7,6 +7,7 @@ A microservice supporting student submissions to otter grader within EduHeLx
 
 ### Installation
 You'll need to have installed libpq (Postgres client) first before installing psycopg2 (Postgres driver).
+You'll also need to have a message broker (e.g., RabbitMQ) installed and running.
 ```bash
 # Setup virtual environment
 python3 -m venv venv
@@ -23,10 +24,15 @@ vim .env
 ### Running
 ```bash
 set -a && source .env
+python start.py -r
+# or
 python -m app.main
 # or
 uvicorn --reload app.main:app --log-level=info
 ```
+
+It is assumed that you've configured your .env properly. This includes the expectation that a Postgres
+instance, Gitea Assist, message broker, and celery worker(s) are all configured and running.
 
 ### Documentation
 The OpenAPI UI is accessible under /docs. To login, first use the login endpoint to get access/refresh tokens.

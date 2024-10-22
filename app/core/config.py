@@ -33,6 +33,15 @@ class Settings(BaseSettings):
     # Setup wizard (JSON-serialized string)
     SETUP_WIZARD_DATA: Optional[SetupWizardData] = None
 
+    # Job queue
+    BROKER_HOST: str
+    BROKER_PORT: int
+    BROKER_USER: str
+    BROKER_PASSWORD: str
+
+    CELERY_BROKER_URI: Optional[str] = None # computed
+    CELERY_RESULT_BACKEND: str = "rpc://"
+
     # Gitea
     GITEA_SSH_URL: str
     GITEA_ASSIST_API_URL: str
@@ -90,6 +99,15 @@ class Settings(BaseSettings):
     def compute_instructor_appstore_api_url(cls, v: Optional[str], values: Dict[str, Any]) -> Any:
         if isinstance(v, str): return v
         return values.get("INSTRUCTOR_APPSTORE_HOST") + "/api/v1"
+
+    @validator("CELERY_BROKER_URI", pre=True)
+    def assemble_broker_uri(cls, v: Optional[str], values: Dict[str, Any]) -> Any:
+        if isinstance(v, str): return v
+        user = values.get("BROKER_USER")
+        pw = values.get("BROKER_PASSWORD")
+        host = values.get("BROKER_HOST")
+        port = values.get("BROKER_PORT")
+        return f"amqp://{ user }:{ pw }@{ host }:{ port }/"
 
     @validator("SQLALCHEMY_DATABASE_URI", pre=True)
     def assemble_db_connection(cls, v: Optional[str], values: Dict[str, Any]) -> Any:
