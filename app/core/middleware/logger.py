@@ -6,6 +6,11 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from app.core.middleware.iterator_wrapper import iterator_wrapper as aiwrap
 
 class LogMiddleware(BaseHTTPMiddleware):
+
+    # Leaving the code in here that sets up the request and response body just in
+    # case we want to use it in the future. But for now it's taking up way too much
+    # log space for no benefit.
+
     # https://github.com/tiangolo/fastapi/issues/394#issuecomment-927272627
     # async def set_body(self, request: Request):
     #     receive_ = await request._receive()
