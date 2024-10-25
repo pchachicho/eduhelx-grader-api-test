@@ -9,9 +9,8 @@ on:
       - ghactions
     paths-ignore:
       - README.md
-      - .old_cicd/*
-      - .github/*
-      - .github/workflows/*
+      # - .github/*
+      # - .github/workflows/*
       - LICENSE
       - .gitignore
       - .dockerignore
