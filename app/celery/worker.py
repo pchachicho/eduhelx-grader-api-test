@@ -8,7 +8,8 @@ redis_client = Redis.from_url(settings.CELERY_BROKER_URI)
 celery_app = Celery(
     __name__,
     broker=settings.CELERY_BROKER_URI,
-    backend=settings.CELERY_RESULT_BACKEND
+    backend=settings.CELERY_RESULT_BACKEND,
+    result_extended=True
 )
 celery_app.conf.update(
     imports=["app.celery.tasks"],

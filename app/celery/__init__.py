@@ -1,1 +1,1 @@
-from .worker import celery_app
+from .worker import *

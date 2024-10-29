@@ -1,8 +1,11 @@
 from typing import List
 from pydantic import BaseModel
+from uuid import UUID
 from fastapi import APIRouter, Request, Depends, UploadFile, File
 from sqlalchemy.orm import Session
+from app.celery.tasks import downsync_task
 from app.services import LmsSyncService, AssignmentService
+from app.schemas import JobSchema
 from app.core.dependencies import (
     get_db, PermissionDependency,
     UserIsInstructorPermission
@@ -17,13 +20,14 @@ class GradeUpload(BaseModel):
 class UploadGradesBody(BaseModel):
     grades: List[GradeUpload]
 
-@router.post("/lms/downsync")
+@router.post("/lms/downsync", response_model=UUID)
 async def downsync(
     *,
     db: Session = Depends(get_db),
     perm: None = Depends(PermissionDependency(UserIsInstructorPermission))
 ):
-    await LmsSyncService(db).downsync()
+    task = downsync_task.delay()
+    return task.id
 
 @router.post("/lms/downsync/students")
 async def downsync_students(

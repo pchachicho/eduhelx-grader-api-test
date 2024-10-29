@@ -7,7 +7,7 @@ A microservice supporting student submissions to otter grader within EduHeLx
 
 ### Installation
 You'll need to have installed libpq (Postgres client) first before installing psycopg2 (Postgres driver).
-You'll also need to have a message broker (e.g., RabbitMQ) installed and running.
+You'll also need to have a message broker (e.g., Redis) installed and running.
 ```bash
 # Setup virtual environment
 python3 -m venv venv
