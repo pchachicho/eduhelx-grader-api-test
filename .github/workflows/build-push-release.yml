@@ -5,10 +5,10 @@
 name: Build-Push-Release
 on:
   push:
-    branches:
-      - master
-      - master-v1
-      - ghactions
+    # branches:
+    #   - master
+    #   - master-v1
+    #   - ghactions
     paths-ignore:
       - README.md
       # - .github/*
