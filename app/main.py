@@ -1,3 +1,4 @@
+import sys
 from typing import List
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
@@ -16,19 +17,19 @@ from app.core.exceptions import CustomException
 import logging
 from pathlib import Path
 
+logger = logging.getLogger("root")
+# logger.setLevel(logging.INFO)
+# formatter = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
+# stream_handler = logging.StreamHandler(sys.stdout)
+# stream_handler.setFormatter(formatter)
+# file_handler = logging.FileHandler("info.log")
+# file_handler.setFormatter(formatter)
+# logger.addHandler(stream_handler)
+# logger.addHandler(file_handler)
+
+
 def init_routers(app: FastAPI):
     app.include_router(api_router, prefix=settings.API_V1_STR)
-
-def init_listeners(app: FastAPI):
-    @app.exception_handler(CustomException)
-    async def custom_exception_handler(request: Request, exc: CustomException):
-        content = { "error_code": exc.error_code, "message": exc.message }
-        if settings.DEV_PHASE == DevPhase.DEV:
-            content["stack"] = exc.stack
-        return JSONResponse(
-            status_code=exc.code,
-            content=content,
-        )
     
 def init_monkeypatch():
     ### Monkey patch serializers for custom types
@@ -64,27 +65,32 @@ def make_middleware() -> List[Middleware]:
         Middleware(
             EventHandlerASGIMiddleware,
             handlers=[local_handler]
+        ),
+        Middleware(
+            LogMiddleware, 
+            logger=logger
         )
     ]
 
+app = FastAPI(
+    openapi_url=f"{ settings.API_V1_STR }/openapi.json",
+    middleware=make_middleware()
+)
 
-logger = logging.getLogger(__name__)
-config_path=Path(__file__).with_name("logging_config.json")
-
-def create_app() -> FastAPI:
-    app = FastAPI(
-        openapi_url=f"{ settings.API_V1_STR }/openapi.json",
-        middleware=make_middleware()
+@app.exception_handler(CustomException)
+async def custom_exception_handler(request: Request, exc: CustomException):
+    content = { "error_code": exc.error_code, "message": exc.message }
+    if settings.DEV_PHASE == DevPhase.DEV:
+        content["stack"] = exc.stack
+    return JSONResponse(
+        status_code=exc.code,
+        content=content,
     )
-    if not settings.DISABLE_LOGGER:
-        logger = CustomizeLogger.make_logger(config_path)
-        app.logger = logger
-        app.add_middleware(LogMiddleware)
-    init_monkeypatch()
-    init_routers(app)
-    init_listeners(app)
-    add_pagination(app)
-    
-    return app
 
-app = create_app()
+# if not settings.DISABLE_LOGGER:
+    # logger = CustomizeLogger.make_logger(config_path)
+    # app.logger = logger
+    # app.add_middleware(LogMiddleware, logger=logger)
+init_monkeypatch()
+init_routers(app)
+add_pagination(app)

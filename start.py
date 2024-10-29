@@ -8,6 +8,34 @@ from alembic import command
 from app.services import LmsSyncService
 from app.database import SessionLocal
 
+logging_config = {
+  "version": 1,
+  "disable_existing_loggers": True,
+  "formatters": {
+    "json": {
+      "class": "pythonjsonlogger.jsonlogger.JsonFormatter",
+      "format": "%(asctime)s %(levelname)s %(message)s"
+    }
+  },
+  "handlers": {
+    "default": {
+      "level": "INFO",
+      "class": "logging.StreamHandler",
+      "formatter": "json",
+      "stream": "sys.stdout"
+    }
+  },
+  "loggers": { 
+    "uvicorn": {
+      "handlers": ["default"],
+      "level": "INFO",
+      "propagate": True
+    }
+  },
+  "rotation": "20 days",
+  "retention": "12 months"
+}
+
 def positive_int(value):
     ivalue = int(value)
     if ivalue <= 0: raise argparse.ArgumentTypeError(f"{ value } must be a positive integer")
@@ -58,7 +86,7 @@ def main(host: str, port: int, reload: bool, workers: int | None=None):
         print(str(e))
 
     # Start the application
-    uvicorn.run("app.main:app", host=host, port=port, reload=reload, workers=workers)
+    uvicorn.run("app.main:app", host=host, port=port, reload=reload, workers=workers, log_config=logging_config)
 
 
 if __name__ == "__main__":
