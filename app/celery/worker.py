@@ -15,7 +15,13 @@ celery_app.conf.update(
     imports=["app.celery.tasks"],
     broker_connection_retry_on_startup=True,
     task_track_started=True,
-    worker_enable_remote_control=True
+    worker_enable_remote_control=True,
+    beat_schedule={
+        "periodic-downsync": {
+            "task": "downsync",
+            "schedule": 60
+        }
+    }
 )
 
 def get_tasks_by_name(
