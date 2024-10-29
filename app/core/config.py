@@ -40,7 +40,7 @@ class Settings(BaseSettings):
     BROKER_PASSWORD: str
 
     CELERY_BROKER_URI: Optional[str] = None # computed
-    CELERY_RESULT_BACKEND: str = "rpc://"
+    CELERY_RESULT_BACKEND: Optional[str] = None # computed
 
     # Gitea
     GITEA_SSH_URL: str
@@ -107,7 +107,16 @@ class Settings(BaseSettings):
         pw = values.get("BROKER_PASSWORD")
         host = values.get("BROKER_HOST")
         port = values.get("BROKER_PORT")
-        return f"amqp://{ user }:{ pw }@{ host }:{ port }/"
+        return f"redis://{ user }:{ pw }@{ host }:{ port }/0"
+    
+    @validator("CELERY_RESULT_BACKEND", pre=True)
+    def assemble_result_backend(cls, v: Optional[str], values: Dict[str, Any]) -> Any:
+        if isinstance(v, str): return v
+        user = values.get("BROKER_USER")
+        pw = values.get("BROKER_PASSWORD")
+        host = values.get("BROKER_HOST")
+        port = values.get("BROKER_PORT")
+        return f"redis://{ user }:{ pw }@{ host }:{ port }/1"
 
     @validator("SQLALCHEMY_DATABASE_URI", pre=True)
     def assemble_db_connection(cls, v: Optional[str], values: Dict[str, Any]) -> Any:

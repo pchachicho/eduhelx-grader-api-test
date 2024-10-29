@@ -1,7 +1,10 @@
+import json
+from redis import Redis
 from celery import Celery
 from celery.result import AsyncResult
 from app.core.config import settings
 
+redis_client = Redis.from_url(settings.CELERY_BROKER_URI)
 celery_app = Celery(
     __name__,
     broker=settings.CELERY_BROKER_URI,
@@ -13,6 +16,35 @@ celery_app.conf.update(
     task_track_started=True,
     worker_enable_remote_control=True
 )
+
+def get_tasks_by_name(
+    task_name: str,
+    # Currently running tasks
+    include_active=True,
+    # Reserved by a worker to run, but not running yet
+    include_reserved=True,
+    # Scheduled to run by a worker at some point in the future, but not running yet
+    include_scheduled=True,
+    # Entered into the broker queue but not yet picked up by a worker
+    include_pending=True
+) -> list[str]:
+    inspect = celery_app.control.inspect()
+    tasks = {}
+    if include_active: tasks += inspect.active()
+    if include_reserved: tasks += inspect.reserved()
+    if include_scheduled: tasks += inspect.scheduled()
+
+    task_ids = [task["id"] for task in tasks.values() if task["name"] == task_name]
+
+    # Load pending tasks (still in queue)
+    if include_pending:
+        for item in redis_client.lrange("celery", 0, -1):
+            task_data = json.loads(item)
+            if task_data.get("headers", {}).get("task") == task_name:
+                task_id = task_data["headers"].get("id")
+                if task_id is not None: task_ids.append(task_id)
+
+    return task_ids
 
 def get_task_status_by_id(task_id: str) -> AsyncResult:
     return celery_app.AsyncResult(task_id)
