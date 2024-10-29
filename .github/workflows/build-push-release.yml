@@ -1,0 +1,13 @@
+# Workflow responsible for the 
+# major release processes.
+#
+
+name: Build-Push-Release
+on:
+  push:
+
+
+jobs:
+  build-push-release:
+    uses: pchachicho/renci-github-actions/.github/workflows/build-push-release.yml@main
+    secrets: inherit
